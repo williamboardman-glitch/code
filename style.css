@@ -1,12 +1,12 @@
 :root {
-  --bone: #d8d3c4;
-  --necro-green: #5ef29a;
-  --necro-green-dim: #2a8f5b;
-  --blood: #c0392b;
-  --fire: #e67e22;
-  --frost: #48c9e0;
-  --panel-bg: rgba(10, 12, 16, 0.92);
-  --purple: #7a4fc4;
+  --stone: #f2d99b;
+  --stone-dark: #c9a361;
+  --sky: #6be3d8;
+  --gold: #ffcd3c;
+  --jungle: #3fb54a;
+  --coral: #ff6b4a;
+  --ink: #2b1d14;
+  --panel-bg: rgba(43, 29, 20, 0.94);
 }
 
 * { box-sizing: border-box; }
@@ -16,16 +16,18 @@ html, body {
   padding: 0;
   width: 100%;
   height: 100%;
-  background: #05060a;
+  background: #0d1f22;
   overflow: hidden;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
 }
 
 #game {
   display: block;
   width: 100vw;
   height: 100vh;
-  cursor: none;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
 
 .overlay {
@@ -34,7 +36,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at center, rgba(20, 30, 25, 0.75), rgba(2, 3, 5, 0.96));
+  background: radial-gradient(ellipse at center, rgba(60, 120, 110, 0.55), rgba(5, 10, 12, 0.92));
   z-index: 10;
 }
 
@@ -44,28 +46,28 @@ html, body {
   max-width: 640px;
   width: 90%;
   background: var(--panel-bg);
-  border: 1px solid var(--necro-green-dim);
-  border-radius: 8px;
+  border: 4px solid var(--gold);
+  border-radius: 6px;
   padding: 32px 36px;
-  box-shadow: 0 0 40px rgba(94, 242, 154, 0.15), inset 0 0 60px rgba(0,0,0,0.6);
+  box-shadow: 0 0 0 4px var(--stone-dark), 0 10px 40px rgba(0,0,0,0.6);
   text-align: center;
-  color: var(--bone);
+  color: var(--stone);
 }
 
 h1 {
   margin: 0 0 14px;
-  font-size: 2.2em;
+  font-size: 2.1em;
   letter-spacing: 2px;
-  color: var(--bone);
-  text-shadow: 0 0 12px var(--necro-green), 0 0 2px #fff;
+  color: var(--stone);
+  text-shadow: 3px 3px 0 var(--ink);
 }
 
-h1 .accent { color: var(--necro-green); }
+h1 .accent { color: var(--gold); }
 
 .lore {
   font-size: 0.98em;
   line-height: 1.5;
-  color: #b9c2bd;
+  color: #ead9b8;
   margin-bottom: 18px;
 }
 
@@ -74,46 +76,47 @@ h1 .accent { color: var(--necro-green); }
   margin: 0 auto 18px;
   max-width: 480px;
   font-size: 0.9em;
-  border-top: 1px solid #263329;
-  border-bottom: 1px solid #263329;
+  border-top: 2px solid var(--stone-dark);
+  border-bottom: 2px solid var(--stone-dark);
   padding: 10px 0;
 }
 
 .legendRow {
   padding: 4px 0;
-  color: #d3d8d3;
+  color: #ead9b8;
 }
 
 .swatch {
   display: inline-block;
   width: 12px;
   height: 12px;
-  border-radius: 50%;
+  border-radius: 2px;
   margin-right: 8px;
   vertical-align: middle;
 }
 
-.swatch.grunt { background: #9fb4c7; }
-.swatch.berserker { background: var(--blood); }
-.swatch.pyromancer { background: var(--fire); }
-.swatch.frost { background: var(--frost); }
+.swatch.grunt { background: #6ecb63; }
+.swatch.brute { background: #c0392b; }
+.swatch.pyro { background: #ff8a3d; }
+.swatch.frost { background: #6bd9e8; }
 
 .controls {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px 18px;
   font-size: 0.85em;
-  color: #9fb0a5;
+  color: #cbb98f;
   margin-bottom: 22px;
   text-align: left;
 }
 
 button {
-  background: linear-gradient(180deg, var(--necro-green-dim), #144228);
-  color: #eafff0;
-  border: 1px solid var(--necro-green);
+  background: linear-gradient(180deg, var(--gold), #d99a1f);
+  color: #2b1d14;
+  border: 3px solid var(--ink);
   padding: 12px 28px;
   font-size: 1.05em;
+  font-weight: bold;
   letter-spacing: 1.5px;
   border-radius: 4px;
   cursor: pointer;
@@ -122,7 +125,7 @@ button {
 }
 
 button:hover {
-  box-shadow: 0 0 20px rgba(94, 242, 154, 0.6);
+  box-shadow: 0 0 20px rgba(255, 205, 60, 0.7);
   transform: translateY(-1px);
 }
 
