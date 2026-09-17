@@ -310,12 +310,29 @@
     if (player.lives <= 0) {
       state = 'dead';
       stopBossMusic();
-      endTitle.innerHTML = 'THE TEMPLE <span class="accent">CLAIMS YOU</span>';
-      finalStats.textContent = `Score: ${player.score} — Kills: ${player.kills}`;
+      endTitle.innerHTML = `${currentLevel().name.toUpperCase()} <span class="accent">CLAIMS YOU</span>`;
+      finalStats.textContent = `Score: ${player.score} — Kills: ${player.kills} — All shop gear is gone. You'll wake at the start of this floor.`;
       gameOverScreen.classList.remove('hidden');
     } else {
       respawnPlayer();
     }
+  }
+
+  // Losing all 3 lives sends you back to the start of the CURRENT floor
+  // (not all the way to floor 1) — but every shop upgrade is wiped, so
+  // dying still costs you something real.
+  function respawnAtFloorStart() {
+    claimFocus();
+    player.dmgMult = 1;
+    player.armor = 0;
+    player.maxHp = 100;
+    player.upgrades = { damage: 0, vitality: 0, armor: 0 };
+    player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0 };
+    player.ammo = 'normal';
+    player.lives = 3;
+    player.hp = player.maxHp;
+    gameOverScreen.classList.add('hidden');
+    goToLevel(levelIndex);
   }
 
   function shakeScreen(mag) { shake.mag = Math.max(shake.mag, mag); shake.t = 0.25; }
@@ -1866,7 +1883,10 @@
   }
 
   startBtn.addEventListener('click', beginIntro);
-  restartBtn.addEventListener('click', beginGameplay);
+  restartBtn.addEventListener('click', () => {
+    if (state === 'dead') respawnAtFloorStart();
+    else beginGameplay();
+  });
 
   requestAnimationFrame(loop);
 })();
