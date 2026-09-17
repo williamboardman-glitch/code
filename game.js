@@ -125,8 +125,8 @@
   const ENEMY_TYPES = {
     grunt: { name: 'grunt', color: '#5fae4a', dark: '#2f6b26', light: '#8fd478', bone: '#e8e0c8', w: 16, h: 24, speed: 26, hp: 20, dmg: 8, soul: null, points: 10, melee: true },
     brute: { name: 'brute', color: '#c0392b', dark: '#6f1f16', light: '#e0684f', bone: '#f0d9b0', w: 22, h: 29, speed: 40, hp: 50, dmg: 16, soul: 'berserker', points: 25, melee: true },
-    pyro: { name: 'pyro', color: '#ff8a3d', dark: '#a24512', light: '#ffc26b', bone: '#3a1f12', w: 16, h: 25, speed: 14, hp: 28, dmg: 0, soul: 'pyromancer', points: 30, ranged: true, fireRate: 2.0, projSpeed: 180, projDmg: 12, kind: 'fire' },
-    frost: { name: 'frost', color: '#6bd9e8', dark: '#2c7c8a', light: '#cdf6fb', bone: '#173f47', w: 16, h: 25, speed: 12, hp: 26, dmg: 0, soul: 'frost', points: 30, ranged: true, fireRate: 2.4, projSpeed: 160, projDmg: 9, kind: 'frost' },
+    pyro: { name: 'pyro', color: '#ff8a3d', dark: '#a24512', light: '#ffc26b', bone: '#3a1f12', w: 16, h: 25, speed: 14, hp: 28, dmg: 0, soul: 'pyromancer', points: 30, ranged: true, fireRate: 2.0, projSpeed: 230, range: 380, projDmg: 12, kind: 'fire' },
+    frost: { name: 'frost', color: '#6bd9e8', dark: '#2c7c8a', light: '#cdf6fb', bone: '#173f47', w: 16, h: 25, speed: 12, hp: 26, dmg: 0, soul: 'frost', points: 30, ranged: true, fireRate: 2.4, projSpeed: 200, range: 380, projDmg: 9, kind: 'frost' },
   };
   const SOUL_META = {
     berserker: { label: 'HEAVY', color: '#c0392b' },
@@ -226,6 +226,8 @@
     if (e.dead) return;
     e.hp -= dmg; e.hitFlash = 0.12;
     spawnHitParticles(e.x, e.y, '#fff5cc');
+    spawnImpactFlash(e.x, e.y);
+    shakeScreen(3);
     sfx.hit();
     if (e.hp <= 0) killEnemy(e);
   }
@@ -244,7 +246,8 @@
   }
 
   function explode(x, y, radius, dmg, opts = {}) {
-    spawnExplosionParticles(x, y);
+    spawnExplosionParticles(x, y, opts.palette);
+    spawnShockwave(x, y, opts.ringColor || 'rgba(255,200,120,0.9)', radius);
     sfx.explosion();
     shakeScreen(8);
     for (const e of enemies) {
@@ -293,7 +296,13 @@
 
   // ---------- Particles ----------
   function spawnHitParticles(x, y, color) {
-    for (let i = 0; i < 4; i++) particles.push({ x, y, vx: (Math.random() - 0.5) * 100, vy: (Math.random() - 0.5) * 100, life: 0.3, color, size: 2, grav: true });
+    for (let i = 0; i < 8; i++) particles.push({ x, y, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160, life: 0.35, color, size: 3, grav: true });
+  }
+  function spawnImpactFlash(x, y, color = '#fff8d8') {
+    particles.push({ x, y, vx: 0, vy: 0, life: 0.1, maxLife: 0.1, color, size: 11, shape: 'star', grav: false });
+  }
+  function spawnShockwave(x, y, color, maxRadius) {
+    particles.push({ x, y, vx: 0, vy: 0, life: 0.3, maxLife: 0.3, color, maxRadius, shape: 'ring', grav: false });
   }
   function spawnDeathParticles(x, y, color) {
     for (let i = 0; i < 12; i++) {
@@ -301,10 +310,11 @@
       particles.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life: 0.5, color, size: 3, grav: true });
     }
   }
-  function spawnExplosionParticles(x, y) {
-    for (let i = 0; i < 22; i++) {
-      const a = Math.random() * Math.PI * 2, spd = 60 + Math.random() * 150;
-      particles.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life: 0.4, color: Math.random() < 0.5 ? '#ff9d3d' : '#ffe27a', size: 3, grav: false });
+  function spawnExplosionParticles(x, y, palette) {
+    const colors = palette || ['#ff9d3d', '#ffe27a'];
+    for (let i = 0; i < 26; i++) {
+      const a = Math.random() * Math.PI * 2, spd = 60 + Math.random() * 160;
+      particles.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life: 0.45, color: colors[Math.random() < 0.5 ? 0 : 1], size: 3, grav: false });
     }
   }
   function spawnSoulParticle(x, y, soulType) {
@@ -456,13 +466,21 @@
       e.walkT += dt;
       if (e.slowTimer > 0) { e.slowTimer -= dt; if (e.slowTimer <= 0) e.speedMult = 1; }
       if (e.burnTimer > 0) {
+        // Fire is a lingering poison-like DoT: keep dripping embers so the
+        // damage-over-time reads clearly, not just a one-off explosion.
         e.burnTimer -= dt; e.burnTick -= dt;
-        if (e.burnTick <= 0) { applyDamage(e, 4); e.burnTick = 0.5; }
+        if (Math.random() < dt * 8) {
+          particles.push({ x: e.x + (Math.random() - 0.5) * e.cfg.w, y: e.y - e.cfg.h / 2, vx: (Math.random() - 0.5) * 15, vy: -30 - Math.random() * 25, life: 0.4, color: Math.random() < 0.5 ? '#ff9d3d' : '#8a5a2a', size: 2, grav: false });
+        }
+        if (e.burnTick <= 0) {
+          applyDamage(e, 4);
+          addMessage(e.x, e.y - e.cfg.h / 2 - 4, '-4', '#ff9d3d');
+          e.burnTick = 0.5;
+        }
       }
       if (e.dead) continue;
 
       const distToPlayer = Math.hypot(e.x - player.x, e.y - player.y);
-      const facingPlayer = player.x < e.x ? -1 : 1;
 
       if (e.cfg.melee) {
         // Hunt the player when they're nearby and on roughly the same
@@ -483,7 +501,10 @@
           hurtPlayer(e.cfg.dmg);
         }
       } else if (e.cfg.ranged) {
-        const inRange = distToPlayer < 220 && Math.abs(e.y - player.y) < 50;
+        // Long-range snipers: engage from well off-screen-adjacent distance
+        // with a fast, flat shot aimed straight at the player rather than a
+        // short lobbed arc, so "in range" actually means long range.
+        const inRange = distToPlayer < e.cfg.range && Math.abs(e.y - player.y) < 70;
         if (!inRange) {
           e.vx = (e.vx >= 0 ? 1 : -1) * e.cfg.speed * 0.6 * e.speedMult;
           if (e.x <= e.minX) { e.x = e.minX; e.vx = e.cfg.speed * 0.6 * e.speedMult; }
@@ -493,9 +514,11 @@
           e.shootTimer -= dt;
           if (e.shootTimer <= 0) {
             e.shootTimer = e.cfg.fireRate;
+            const dx = player.x - e.x, dy = player.y - e.y;
+            const d = Math.hypot(dx, dy) || 1;
             eBullets.push({
-              x: e.x, y: e.y, vx: facingPlayer * e.cfg.projSpeed, vy: -60,
-              kind: e.cfg.kind, dmg: e.cfg.projDmg, grav: true,
+              x: e.x, y: e.y, vx: (dx / d) * e.cfg.projSpeed, vy: (dy / d) * e.cfg.projSpeed,
+              kind: e.cfg.kind, dmg: e.cfg.projDmg, grav: false,
             });
           }
         }
@@ -514,9 +537,15 @@
       for (const e of enemies) {
         if (e.dead) continue;
         if (rectsOverlap(b.x, b.y, 4, 4, e.x, e.y, e.cfg.w, e.cfg.h)) {
-          if (b.kind === 'pyro') explode(b.x, b.y, 55, b.dmg, { burn: true });
-          else if (b.kind === 'frost') { applyDamage(e, b.dmg); applyFrost(e); for (const o of enemies) if (!o.dead && o !== e && Math.hypot(o.x - b.x, o.y - b.y) < 40) applyFrost(o); }
-          else applyDamage(e, b.dmg);
+          if (b.kind === 'pyro') {
+            explode(b.x, b.y, 55, b.dmg, { burn: true, palette: ['#ff9d3d', '#ffe27a'], ringColor: 'rgba(255,120,40,0.9)' });
+          } else if (b.kind === 'berserker') {
+            applyDamage(e, b.dmg);
+            explode(b.x, b.y, 60, 20, { palette: ['#ffe98a', '#fff5cc'], ringColor: 'rgba(255,220,140,0.95)' });
+          } else if (b.kind === 'frost') {
+            applyDamage(e, b.dmg); applyFrost(e);
+            for (const o of enemies) if (!o.dead && o !== e && Math.hypot(o.x - b.x, o.y - b.y) < 40) applyFrost(o);
+          } else applyDamage(e, b.dmg);
           b.dead = true;
           break;
         }
@@ -838,9 +867,22 @@
 
   function drawParticle(p) {
     const x = px(p.x - camX), y = px(p.y);
-    ctx.globalAlpha = Math.max(0, p.life);
-    ctx.fillStyle = p.color;
-    ctx.fillRect(x - p.size / 2, y - p.size / 2, p.size, p.size);
+    ctx.globalAlpha = Math.max(0, p.maxLife ? p.life / p.maxLife : p.life);
+    if (p.shape === 'ring') {
+      const t = 1 - p.life / p.maxLife;
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(1, p.maxRadius * t), 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (p.shape === 'star') {
+      ctx.fillStyle = p.color;
+      ctx.fillRect(x - p.size / 2, y - 1, p.size, 2);
+      ctx.fillRect(x - 1, y - p.size / 2, 2, p.size);
+    } else {
+      ctx.fillStyle = p.color;
+      ctx.fillRect(x - p.size / 2, y - p.size / 2, p.size, p.size);
+    }
     ctx.globalAlpha = 1;
   }
 
