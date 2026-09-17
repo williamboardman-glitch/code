@@ -175,6 +175,8 @@
     lightning: { name: 'lightning', color: '#a78bfa', dark: '#5b3fa0', light: '#e0d4ff', bone: '#241748', w: 16, h: 25, speed: 14, hp: 30, dmg: 0, soul: 'lightning', points: 35, ranged: true, fireRate: 2.8, projSpeed: 900, range: 300, spread: 0.05, projDmg: 16, kind: 'lightning' },
     acid: { name: 'acid', color: '#8bc34a', dark: '#4b6b1f', light: '#c8e6a0', bone: '#1f2b10', w: 16, h: 25, speed: 12, hp: 30, dmg: 0, soul: 'acid', points: 32, ranged: true, fireRate: 2.6, projSpeed: 170, range: 240, spread: 0.1, arc: true, projDmg: 8, kind: 'acid' },
     shrieker: { name: 'shrieker', color: '#c7c2b8', dark: '#6b675e', light: '#e8e4da', bone: '#2b2822', w: 14, h: 22, speed: 20, hp: 14, dmg: 4, soul: null, points: 20, melee: true, support: true },
+    shadow: { name: 'shadow', color: '#241a33', dark: '#120c1c', light: '#4a3566', bone: '#0a0610', w: 15, h: 24, speed: 10, hp: 22, dmg: 3, soul: 'shadow', points: 34, ranged: true, fireRate: 3.0, projSpeed: 260, range: 340, spread: 0.05, projDmg: 3, kind: 'shadow', pull: true },
+    imp: { name: 'imp', color: '#ff5a2e', dark: '#8a2508', light: '#ffb37a', bone: '#2a0a02', w: 13, h: 18, speed: 62, hp: 10, dmg: 10, soul: null, points: 12, melee: true },
     boss: { name: 'boss', color: '#2a1a3a', dark: '#150d1f', light: '#5a3a7a', bone: '#0a0610', w: 34, h: 44, speed: 22, hp: 260, dmg: 22, soul: null, points: 200, ranged: true, fireRate: 1.8, projSpeed: 220, range: 260, spread: 0.08, projDmg: 14, kind: 'dark', isBoss: true },
   };
   const SOUL_META = {
@@ -183,6 +185,7 @@
     frost: { label: 'FROST', color: '#6bd9e8' },
     lightning: { label: 'CHAIN', color: '#a78bfa' },
     acid: { label: 'ACID', color: '#8bc34a' },
+    shadow: { label: 'PULL', color: '#8a6fd1' },
   };
   const LEVEL1_SPAWN = [
     ['grunt', 3, 8], ['grunt', 9, 8],
@@ -226,10 +229,25 @@
     ['brute', 61, 8], ['brute', 62, 8], ['acid', 63, 8], ['brute', 64, 8],
     ['acid', 65, 8], ['grunt', 66, 8], ['frost', 67, 8],
   ];
+  const HELL_SPAWN = [
+    ['imp', 3, 8], ['imp', 4, 8], ['imp', 5, 8], ['brute', 7, 8],
+    ['shadow', 9, 6], ['imp', 11, 8], ['imp', 12, 8], ['grunt', 13, 8],
+    ['pyro', 15, 8], ['imp', 17, 8], ['imp', 18, 8], ['acid', 19, 8],
+    ['shadow', 21, 6], ['brute', 23, 8], ['imp', 24, 8], ['imp', 25, 8],
+    ['lightning', 27, 8], ['imp', 29, 8], ['frost', 30, 8], ['imp', 31, 8],
+    ['shadow', 33, 7], ['brute', 36, 8], ['imp', 37, 8], ['imp', 38, 8],
+    ['acid', 40, 8], ['shrieker', 41, 6], ['imp', 42, 6], ['imp', 43, 6],
+    ['shadow', 45, 8], ['brute', 46, 8], ['lightning', 47, 8], ['imp', 49, 8],
+    ['pyro', 50, 8], ['imp', 51, 8], ['imp', 52, 8], ['frost', 54, 8],
+    ['shadow', 55, 6], ['brute', 56, 8], ['imp', 58, 6], ['imp', 59, 6],
+    ['acid', 60, 6], ['brute', 61, 8], ['shadow', 62, 8], ['imp', 63, 8],
+    ['imp', 64, 8], ['lightning', 65, 8], ['brute', 66, 8], ['imp', 67, 8],
+  ];
   const LEVEL_DEFS = [
     { theme: 'temple', name: 'Temple of Bones', spawnList: LEVEL1_SPAWN },
     { theme: 'dungeon', name: 'The Dark Dungeon', spawnList: LEVEL2_SPAWN },
     { theme: 'jungle', name: 'The Dark Jungle', spawnList: LEVEL3_SPAWN },
+    { theme: 'hell', name: 'The Burning Hell', spawnList: HELL_SPAWN },
   ];
 
   const BASE_DMG = 16;
@@ -242,17 +260,21 @@
   // ---------- State ----------
   let state = 'start'; // start | cutscene | playing | shop | win | dead
   let keys = {};
-  let player, pet, enemies, pBullets, eBullets, hazards, particles, messages, camX, respawn, elapsed, shake, levelBanner;
+  let player, wolf, enemies, pBullets, eBullets, hazards, particles, messages, camX, respawn, elapsed, shake, levelBanner;
 
   function newPlayer() {
     return {
       x: 1 * TILE + TILE / 2, y: (ROWS - 1) * TILE - 13, vx: 0, vy: 0, w: 14, h: 24,
       onGround: false, facing: 1, aim: 0, // aim: -1 up, 0 horizontal, 1 down
       hp: 100, maxHp: 100, lives: 3, score: 0, kills: 0,
-      ammo: 'normal', souls: { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0 },
+      ammo: 'normal', souls: { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0 },
       fireCooldown: 0, invuln: 0, coyote: 0, jumpBuffer: 0, jumpsUsed: 0, walkT: 0, hurtFlash: 0,
       shockedTimer: 0, blockMsgCooldown: 0, won: false,
       dmgMult: 1, armor: 0, upgrades: { damage: 0, vitality: 0, armor: 0 },
+      // helmDmgBonus is tracked apart from dmgMult (which the shop and floor
+      // deaths wipe) so the Guardian's reward can survive a death that
+      // doesn't put the boss back in play to be re-earned.
+      homingNext: false, shadowHelm: false, helmDmgBonus: 1, knockX: 0, knockTimer: 0,
     };
   }
 
@@ -261,7 +283,7 @@
     levelIndex = 0;
     buildMap();
     player = newPlayer();
-    pet = null;
+    wolf = { x: player.x - 14, y: player.y, biteCooldown: 0 };
     enemies = currentLevel().spawnList.map(([type, col, row]) => spawnEnemy(type, col, row));
     pBullets = []; eBullets = []; hazards = []; particles = []; messages = [];
     camX = 0; elapsed = 0; shake = { t: 0, mag: 0 };
@@ -277,6 +299,8 @@
     camX = 0;
     player.x = 1 * TILE + TILE / 2; player.y = (ROWS - 1) * TILE - 13;
     player.vx = 0; player.vy = 0;
+    player.knockX = 0; player.knockTimer = 0;
+    if (wolf) { wolf.x = player.x - 14; wolf.y = player.y; }
     respawn = { x: player.x, y: player.y };
     levelBanner = { text: `FLOOR ${idx + 1} — ${currentLevel().name.toUpperCase()}`, t: 3 };
     state = 'playing';
@@ -301,6 +325,7 @@
   function respawnPlayer() {
     player.x = respawn.x; player.y = respawn.y; player.vx = 0; player.vy = 0;
     player.hp = player.maxHp; player.invuln = 1.5;
+    player.knockX = 0; player.knockTimer = 0;
   }
 
   function loseLife(reason) {
@@ -327,10 +352,16 @@
     player.armor = 0;
     player.maxHp = 100;
     player.upgrades = { damage: 0, vitality: 0, armor: 0 };
-    player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0 };
+    player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0 };
     player.ammo = 'normal';
     player.lives = 3;
     player.hp = player.maxHp;
+    // Only strip the Guardian's shadow helm (and the damage bonus it
+    // carries) if this respawn puts the boss back in play (the dungeon
+    // floor) — losing it on a later floor with no way to re-earn it would
+    // be an unrecoverable, unintended penalty.
+    if (currentLevel().theme === 'dungeon') { player.shadowHelm = false; player.helmDmgBonus = 1; }
+    player.homingNext = false;
     gameOverScreen.classList.add('hidden');
     goToLevel(levelIndex);
   }
@@ -366,11 +397,12 @@
     }
     if (e.cfg.isBoss) {
       stopBossMusic();
-      pet = { x: e.x, y: e.y, fireCooldown: 0, fireRate: 3.5, dmg: 12, range: 220 };
+      player.shadowHelm = true;
+      player.helmDmgBonus = 1.1;
       spawnExplosionParticles(e.x, e.y, ['#a78bfa', '#e0d4ff']);
       spawnShockwave(e.x, e.y, 'rgba(167,139,250,0.9)', 90);
       sfx.win();
-      addMessage(e.x, e.y - 30, 'THE GUARDIAN SERVES YOU NOW', '#a78bfa');
+      addMessage(e.x, e.y - 30, "YOU CLAIM THE GUARDIAN'S SHADOW HELM", '#a78bfa');
     }
   }
 
@@ -390,14 +422,19 @@
 
   function applyFrost(e) { e.speedMult = 0.35; e.slowTimer = 4; }
 
-  function chainLightning(fromEnemy, dmg, excluded, jumpsLeft) {
-    if (jumpsLeft <= 0) return;
-    let target = null, bestDist = 90;
+  function findNearestEnemy(x, y, maxDist, exclude) {
+    let target = null, bestDist = maxDist;
     for (const o of enemies) {
-      if (o.dead || excluded.includes(o)) continue;
-      const d = Math.hypot(o.x - fromEnemy.x, o.y - fromEnemy.y);
+      if (o.dead || (exclude && exclude.includes(o))) continue;
+      const d = Math.hypot(o.x - x, o.y - y);
       if (d < bestDist) { bestDist = d; target = o; }
     }
+    return target;
+  }
+
+  function chainLightning(fromEnemy, dmg, excluded, jumpsLeft) {
+    if (jumpsLeft <= 0) return;
+    const target = findNearestEnemy(fromEnemy.x, fromEnemy.y, 90, excluded);
     if (!target) return;
     spawnLightningArc(fromEnemy.x, fromEnemy.y, target.x, target.y);
     applyDamage(target, dmg);
@@ -431,25 +468,30 @@
     const muzzleY = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
     spawnShellCasing(player.x - dir * 2, player.y - 6, dir);
 
-    const dmg = BASE_DMG * player.dmgMult;
+    const dmg = BASE_DMG * player.dmgMult * player.helmDmgBonus;
+    const homing = player.homingNext;
+    player.homingNext = false;
     if (ammo === 'normal') {
       sfx.shot();
-      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'normal', dmg });
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'normal', dmg, homing });
     } else if (ammo === 'berserker') {
       player.souls.berserker--; sfx.heavyShot();
-      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'berserker', dmg: dmg * 3 });
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'berserker', dmg: dmg * 3, homing });
     } else if (ammo === 'pyromancer') {
       player.souls.pyromancer--; sfx.shot();
-      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'pyro', dmg });
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'pyro', dmg, homing });
     } else if (ammo === 'frost') {
       player.souls.frost--; sfx.frost();
-      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'frost', dmg: dmg * 0.7 });
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'frost', dmg: dmg * 0.7, homing });
     } else if (ammo === 'lightning') {
       player.souls.lightning--; sfx.frost();
-      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'lightning', dmg: dmg * 1.2 });
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'lightning', dmg: dmg * 1.2, homing });
     } else if (ammo === 'acid') {
       player.souls.acid--; sfx.shot();
-      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'acid', dmg: dmg * 0.75 });
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'acid', dmg: dmg * 0.75, homing });
+    } else if (ammo === 'shadow') {
+      player.souls.shadow--; sfx.frost();
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'shadow', dmg: dmg * 0.5, homing });
     }
   }
 
@@ -523,7 +565,7 @@
 
   const GAME_KEYS = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
-    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6',
+    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7',
   ]);
 
   function handleKeyDown(ev) {
@@ -540,6 +582,7 @@
     if (ev.code === 'Digit4') player.ammo = 'frost';
     if (ev.code === 'Digit5') player.ammo = 'lightning';
     if (ev.code === 'Digit6') player.ammo = 'acid';
+    if (ev.code === 'Digit7') player.ammo = 'shadow';
     if (ev.code === 'KeyW' || ev.code === 'ArrowUp') player.jumpBuffer = 0.12;
   }
   function handleKeyUp(ev) {
@@ -616,6 +659,20 @@
     if (player.vy < 0 && !jumpHeld) player.vy *= 0.55; // variable jump height
 
     player.vy = Math.min(MAX_FALL, player.vy + GRAVITY * dt);
+
+    // shadow-bolt pull (horizontal component): added on top of the input-
+    // driven vx (rather than overwriting it) so it still gets resolved by
+    // moveAndCollide's wall/ground checks, and decays at a fixed per-second
+    // rate independent of framerate. vx is safe to re-add every frame since
+    // it's freshly re-derived from input each frame rather than persisting;
+    // the vertical component is applied once, directly, at the point of
+    // impact instead (see updateBullets) since vy is persistent state.
+    if (player.knockTimer > 0) {
+      player.knockTimer -= dt;
+      player.vx += player.knockX;
+      player.knockX *= Math.exp(-6 * dt);
+    }
+
     moveAndCollide(player, dt);
 
     if (player.x < player.w / 2) player.x = player.w / 2;
@@ -649,10 +706,12 @@
           player.blockMsgCooldown = 1.5;
         }
       } else if (levelIndex + 1 < LEVEL_DEFS.length) {
-        openShop(levelIndex + 1);
+        const next = levelIndex + 1;
+        if (LEVEL_DEFS[next].theme === 'hell') playCutscene(HELL_CUTSCENE, () => openShop(next));
+        else openShop(next);
       } else {
         state = 'win';
-        endTitle.innerHTML = 'THE JUNGLE <span class="accent">YIELDS ITS PRIZE</span>';
+        endTitle.innerHTML = 'THE INFERNO <span class="accent">BOWS TO YOU</span>';
         finalStats.textContent = `Score: ${player.score} — Kills: ${player.kills} — Time: ${elapsed.toFixed(1)}s`;
         gameOverScreen.classList.remove('hidden');
         sfx.win();
@@ -757,7 +816,7 @@
             let vx = Math.cos(baseAngle) * e.cfg.projSpeed;
             let vy = Math.sin(baseAngle) * e.cfg.projSpeed;
             if (e.cfg.arc) vy -= 150; // lob it instead of firing flat
-            eBullets.push({ x: e.x, y: e.y, vx, vy, kind: e.cfg.kind, dmg: e.cfg.projDmg, grav: !!e.cfg.arc });
+            eBullets.push({ x: e.x, y: e.y, vx, vy, kind: e.cfg.kind, dmg: e.cfg.projDmg, grav: !!e.cfg.arc, pull: !!e.cfg.pull, srcX: e.x, srcY: e.y });
             if (e.cfg.kind === 'lightning') sfx.frost();
           }
         }
@@ -770,6 +829,16 @@
 
   function updateBullets(dt) {
     for (const b of pBullets) {
+      if (b.homing) {
+        const target = findNearestEnemy(b.x, b.y, 160);
+        if (target) {
+          const speed = Math.hypot(b.vx, b.vy) || 1;
+          const dx = target.x - b.x, dy = target.y - b.y, d = Math.hypot(dx, dy) || 1;
+          const turnRate = Math.min(1, 6 * dt);
+          b.vx += (dx / d * speed - b.vx) * turnRate;
+          b.vy += (dy / d * speed - b.vy) * turnRate;
+        }
+      }
       b.x += b.vx * dt; b.y += b.vy * dt;
       b.dead = isSolidPixel(b.x, b.y);
       if (b.dead) { if (b.kind === 'acid') spawnAcidPuddle(b.x, b.y); continue; }
@@ -791,6 +860,17 @@
             applyDamage(e, b.dmg);
             e.acidTimer = 2.5; e.acidTick = 0.4;
             spawnAcidPuddle(b.x, b.y);
+          } else if (b.kind === 'shadow') {
+            applyDamage(e, b.dmg);
+            for (const o of enemies) {
+              if (o.dead) continue;
+              const d = Math.hypot(o.x - b.x, o.y - b.y);
+              // Horizontal only — enemies have no gravity/reattachment, so a
+              // vertical nudge would leave them permanently off their row.
+              if (d < 70 && d > 1) { o.x += (b.x - o.x) * 0.35; }
+            }
+            player.homingNext = true;
+            spawnShockwave(b.x, b.y, 'rgba(122,95,201,0.8)', 40);
           } else applyDamage(e, b.dmg);
           b.dead = true;
           break;
@@ -799,7 +879,7 @@
     }
     pBullets = pBullets.filter(b => !b.dead && b.x > camX - 30 && b.x < camX + VIEW_W + 30 && b.y > -30 && b.y < VH + 30);
 
-    const eBulletColors = { fire: '#ff9d3d', frost: '#9fe8f5', lightning: '#d8c7ff', acid: '#8bc34a', dark: '#b090ff' };
+    const eBulletColors = { fire: '#ff9d3d', frost: '#9fe8f5', lightning: '#d8c7ff', acid: '#8bc34a', dark: '#b090ff', shadow: '#8a6fd1' };
     for (const b of eBullets) {
       if (b.grav) b.vy += 900 * dt;
       b.x += b.vx * dt; b.y += b.vy * dt;
@@ -808,9 +888,27 @@
         b.dead = true; continue;
       }
       if (rectsOverlap(b.x, b.y, 5, 5, player.x, player.y, player.w, player.h)) {
+        const wasInvuln = player.invuln > 0;
+        const livesBefore = player.lives;
         hurtPlayer(b.dmg);
+        // A lethal hit already moved the player (to a checkpoint via
+        // respawnPlayer, or ended the run) before we get here — applying a
+        // pull on top of that stale position would yank the wrong player.
+        const diedOrRespawned = player.lives < livesBefore;
         if (b.kind === 'lightning') { player.shockedTimer = 1.4; sfx.frost(); addMessage(player.x, player.y - 28, 'SHOCKED', '#d8c7ff'); }
         if (b.kind === 'acid') spawnAcidPuddle(b.x, b.y);
+        if (b.pull && !wasInvuln && !diedOrRespawned) {
+          // Horizontal pull is a decaying field re-applied each frame in
+          // updatePlayer (vx is re-derived from input every frame, so it
+          // can't accumulate). Vertical is a single direct kick instead,
+          // since vy is persistent physics state — repeatedly adding to it
+          // every frame like vx would compound into an unbounded velocity.
+          const dx = b.srcX - player.x, dy = b.srcY - player.y, d = Math.hypot(dx, dy) || 1;
+          player.knockX = (dx / d) * 320;
+          player.knockTimer = 0.4;
+          player.vy = Math.max(-MAX_FALL, Math.min(MAX_FALL, player.vy + (dy / d) * 160));
+          addMessage(player.x, player.y - 28, 'PULLED', '#8a6fd1');
+        }
         spawnHitParticles(b.x, b.y, eBulletColors[b.kind] || '#fff');
         b.dead = true;
       }
@@ -836,7 +934,7 @@
     updatePlayer(dt);
     if (state !== 'playing') { updateParticles(dt); return; }
     updateEnemies(dt);
-    updatePet(dt);
+    updateWolf(dt);
     updateBullets(dt);
     updateHazards(dt);
     updateParticles(dt);
@@ -844,26 +942,45 @@
     if (levelBanner.t > 0) levelBanner.t -= dt;
   }
 
-  function updatePet(dt) {
-    if (!pet) return;
-    pet.fireCooldown = Math.max(0, pet.fireCooldown - dt);
-    const targetX = player.x - player.facing * 22;
-    const targetY = player.y - 26 + Math.sin(elapsed * 3) * 3;
-    pet.x += (targetX - pet.x) * Math.min(1, dt * 4);
-    pet.y += (targetY - pet.y) * Math.min(1, dt * 4);
-    if (pet.fireCooldown <= 0) {
-      let target = null, bestDist = pet.range;
-      for (const o of enemies) {
-        if (o.dead) continue;
-        const d = Math.hypot(o.x - pet.x, o.y - pet.y);
-        if (d < bestDist) { bestDist = d; target = o; }
+  // Starts as a puppy at the hunter's side and grows with every kill — a
+  // slow melee companion rather than a gun, so it reads as a wolf, not a
+  // second turret. Fully grown into Fenrir once the kill count caps out.
+  const WOLF_STAGES = [
+    { name: 'Puppy', dmg: 4, biteRate: 1.4, range: 100, speed: 90, scale: 0.55, color: '#8a6a4a', dark: '#5a4530', eye: '#fff2d0' },
+    { name: 'Young Wolf', dmg: 7, biteRate: 1.2, range: 130, speed: 100, scale: 0.7, color: '#7a6248', dark: '#4a3a28', eye: '#ffdf9c' },
+    { name: 'Wolf', dmg: 11, biteRate: 1.0, range: 160, speed: 110, scale: 0.85, color: '#6b5a44', dark: '#3a3024', eye: '#ffd25a' },
+    { name: 'Dire Wolf', dmg: 16, biteRate: 0.85, range: 190, speed: 120, scale: 1.0, color: '#4a4038', dark: '#2a231d', eye: '#ffb347' },
+    { name: 'Alpha Wolf', dmg: 22, biteRate: 0.7, range: 220, speed: 135, scale: 1.15, color: '#332a26', dark: '#1c1613', eye: '#ff7a3d' },
+    { name: 'Fenrir', dmg: 32, biteRate: 0.5, range: 260, speed: 155, scale: 1.4, color: '#160f0d', dark: '#000000', eye: '#ff2e2e' },
+  ];
+  const WOLF_MAX_KILLS = 300;
+  function wolfStage() { return Math.min(WOLF_STAGES.length - 1, Math.floor(player.kills / (WOLF_MAX_KILLS / (WOLF_STAGES.length - 1)))); }
+
+  function updateWolf(dt) {
+    if (!wolf) return;
+    const cfg = WOLF_STAGES[wolfStage()];
+    wolf.biteCooldown = Math.max(0, wolf.biteCooldown - dt);
+    const target = findNearestEnemy(wolf.x, wolf.y, cfg.range);
+    if (target) {
+      const dx = target.x - wolf.x, dy = target.y - wolf.y, d = Math.hypot(dx, dy) || 1;
+      wolf.facing = dx >= 0 ? 1 : -1;
+      if (d > 12) { wolf.x += (dx / d) * cfg.speed * dt; wolf.y += (dy / d) * cfg.speed * dt; wolf.moving = true; }
+      else {
+        wolf.moving = false;
+        if (wolf.biteCooldown <= 0) {
+          wolf.biteCooldown = cfg.biteRate;
+          applyDamage(target, cfg.dmg);
+          spawnHitParticles(wolf.x, wolf.y, cfg.eye);
+          sfx.hit();
+        }
       }
-      if (target) {
-        pet.fireCooldown = pet.fireRate;
-        const dx = target.x - pet.x, dy = target.y - pet.y, d = Math.hypot(dx, dy) || 1;
-        pBullets.push({ x: pet.x, y: pet.y, vx: (dx / d) * 380, vy: (dy / d) * 380, kind: 'pet', dmg: pet.dmg });
-        sfx.shot();
-      }
+    } else {
+      const targetX = player.x - player.facing * 20, targetY = player.y + 2;
+      const dx = targetX - wolf.x;
+      wolf.facing = Math.abs(dx) > 2 ? (dx >= 0 ? 1 : -1) : (wolf.facing || 1);
+      wolf.moving = Math.hypot(targetX - wolf.x, targetY - wolf.y) > 2;
+      wolf.x += (targetX - wolf.x) * Math.min(1, dt * 4);
+      wolf.y += (targetY - wolf.y) * Math.min(1, dt * 4);
     }
   }
 
@@ -881,6 +998,10 @@
       grad.addColorStop(0, '#04140a');
       grad.addColorStop(0.6, '#0a2e1a');
       grad.addColorStop(1, '#123d20');
+    } else if (theme === 'hell') {
+      grad.addColorStop(0, '#1a0503');
+      grad.addColorStop(0.55, '#4a1206');
+      grad.addColorStop(1, '#7a2a0a');
     } else {
       grad.addColorStop(0, '#6be3d8');
       grad.addColorStop(0.6, '#8fedc9');
@@ -901,20 +1022,30 @@
       ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 15, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = 'rgba(140,255,150,0.08)';
       ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 40, 0, Math.PI * 2); ctx.fill();
+    } else if (theme === 'hell') {
+      // pulsing hellfire sun
+      ctx.fillStyle = 'rgba(255,90,20,0.9)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 20, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,40,10,0.15)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 48, 0, Math.PI * 2); ctx.fill();
     } else {
       // sun
       ctx.fillStyle = '#fff3b0';
       ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 18, 0, Math.PI * 2); ctx.fill();
     }
 
-    // distant pillars / tree trunks (parallax)
+    // distant pillars / tree trunks / spires (parallax)
     const parallax = camX * 0.4;
-    ctx.fillStyle = theme === 'dungeon' ? 'rgba(20,15,30,0.6)' : theme === 'jungle' ? 'rgba(5,20,10,0.65)' : 'rgba(60,110,90,0.35)';
+    ctx.fillStyle = theme === 'dungeon' ? 'rgba(20,15,30,0.6)' : theme === 'jungle' ? 'rgba(5,20,10,0.65)' : theme === 'hell' ? 'rgba(40,10,5,0.7)' : 'rgba(60,110,90,0.35)';
     for (let i = -1; i < 8; i++) {
       const x = i * 140 - (parallax % 140);
       ctx.fillRect(px(x), VIEW_H - 160, 26, 160);
       if (theme === 'jungle') {
         ctx.beginPath(); ctx.ellipse(px(x) + 13, VIEW_H - 168, 26, 18, 0, 0, Math.PI * 2); ctx.fill();
+      } else if (theme === 'hell') {
+        ctx.beginPath();
+        ctx.moveTo(px(x) + 13, VIEW_H - 200); ctx.lineTo(px(x), VIEW_H - 160); ctx.lineTo(px(x) + 26, VIEW_H - 160);
+        ctx.closePath(); ctx.fill();
       } else {
         ctx.fillRect(px(x) - 6, VIEW_H - 172, 38, 12);
       }
@@ -925,6 +1056,14 @@
         const x = (i * 68 - (camX * 0.6 % 68));
         const y = (elapsed * 10 + i * 37) % VIEW_H;
         ctx.fillStyle = 'rgba(167,139,250,0.4)';
+        ctx.fillRect(px(x), y, 2, 2);
+      }
+    } else if (theme === 'hell') {
+      // rising embers
+      for (let i = -1; i < 16; i++) {
+        const x = (i * 55 - (camX * 0.6 % 55));
+        const y = VIEW_H - ((elapsed * 26 + i * 41) % VIEW_H);
+        ctx.fillStyle = `rgba(255,${110 + (i % 3) * 30},40,0.7)`;
         ctx.fillRect(px(x), y, 2, 2);
       }
     } else if (theme === 'jungle') {
@@ -956,11 +1095,12 @@
     const theme = currentLevel().theme;
     const dungeon = theme === 'dungeon';
     const jungle = theme === 'jungle';
-    const topColor = dungeon ? '#4a4258' : jungle ? '#3a4a2a' : '#f2d99b';
-    const sideColor = dungeon ? '#241f30' : jungle ? '#1c2814' : '#c9a361';
-    const edgeColor = dungeon ? 'rgba(10,8,16,0.5)' : jungle ? 'rgba(5,10,5,0.5)' : 'rgba(120,85,40,0.35)';
-    const highlightColor = dungeon ? 'rgba(167,139,250,0.15)' : jungle ? 'rgba(140,255,120,0.12)' : 'rgba(255,255,255,0.25)';
-    const glyphColor = dungeon ? 'rgba(167,139,250,0.35)' : jungle ? 'rgba(140,255,120,0.35)' : 'rgba(120,85,40,0.5)';
+    const hell = theme === 'hell';
+    const topColor = dungeon ? '#4a4258' : jungle ? '#3a4a2a' : hell ? '#3a1408' : '#f2d99b';
+    const sideColor = dungeon ? '#241f30' : jungle ? '#1c2814' : hell ? '#1a0a04' : '#c9a361';
+    const edgeColor = dungeon ? 'rgba(10,8,16,0.5)' : jungle ? 'rgba(5,10,5,0.5)' : hell ? 'rgba(0,0,0,0.6)' : 'rgba(120,85,40,0.35)';
+    const highlightColor = dungeon ? 'rgba(167,139,250,0.15)' : jungle ? 'rgba(140,255,120,0.12)' : hell ? 'rgba(255,120,40,0.25)' : 'rgba(255,255,255,0.25)';
+    const glyphColor = dungeon ? 'rgba(167,139,250,0.35)' : jungle ? 'rgba(140,255,120,0.35)' : hell ? 'rgba(255,120,40,0.5)' : 'rgba(120,85,40,0.5)';
 
     const c0 = Math.max(0, Math.floor(camX / TILE) - 1);
     const c1 = Math.min(COLS - 1, Math.ceil((camX + VIEW_W) / TILE) + 1);
@@ -990,17 +1130,17 @@
     for (let c = c0; c <= c1; c++) {
       if (map[ROWS - 1][c] === 1 && c % 8 === 4) {
         const x = px(c * TILE - camX) + TILE / 2, y = (ROWS - 1) * TILE;
-        ctx.fillStyle = dungeon ? '#3a3448' : jungle ? '#3a2f1a' : '#8a5a2a';
+        ctx.fillStyle = dungeon ? '#3a3448' : jungle ? '#3a2f1a' : hell ? '#2a1006' : '#8a5a2a';
         ctx.fillRect(x - 2, y - 14, 4, 14);
         const flick = 6 + Math.sin(elapsed * 12 + c) * 2;
-        ctx.fillStyle = dungeon ? '#a78bfa' : jungle ? '#5cffa0' : '#ff8a3d';
+        ctx.fillStyle = dungeon ? '#a78bfa' : jungle ? '#5cffa0' : hell ? '#ff5a1f' : '#ff8a3d';
         ctx.beginPath(); ctx.arc(x, y - 16, flick / 2, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = dungeon ? '#e0d4ff' : jungle ? '#c8ffdd' : '#ffe27a';
+        ctx.fillStyle = dungeon ? '#e0d4ff' : jungle ? '#c8ffdd' : hell ? '#ffd24a' : '#ffe27a';
         ctx.beginPath(); ctx.arc(x, y - 16, flick / 4, 0, Math.PI * 2); ctx.fill();
       }
     }
     // goal marker: an altar in the temple, a dark rift in the dungeon,
-    // a vine-choked shrine in the jungle
+    // a vine-choked shrine in the jungle, a lava gate in hell
     const gx = px(GOAL_COL * TILE - camX);
     const gy = (ROWS - 1) * TILE;
     if (dungeon) {
@@ -1011,6 +1151,14 @@
       ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 20, pulse, pulse * 1.4, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#f4e9ff';
       ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 20, pulse * 0.4, pulse * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    } else if (hell) {
+      ctx.fillStyle = '#1a0805';
+      ctx.fillRect(gx, gy - 34, TILE, 34);
+      const pulse = 8 + Math.sin(elapsed * 5) * 3;
+      ctx.fillStyle = 'rgba(255,90,20,0.85)';
+      ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 18, pulse, pulse * 1.3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffe27a';
+      ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 18, pulse * 0.4, pulse * 0.5, 0, 0, Math.PI * 2); ctx.fill();
     } else if (jungle) {
       ctx.fillStyle = '#1a2414';
       ctx.fillRect(gx, gy - 34, TILE, 34);
@@ -1091,6 +1239,17 @@
     ctx.fillStyle = flash ? '#000' : '#1a1a1a';
     ctx.fillRect(1, -13, 2, 2);
 
+    // shadow helm: the guardian's boss-drop reward, worn over the headband
+    if (player.shadowHelm) {
+      ctx.fillStyle = flash ? '#fff' : '#1a1220';
+      ctx.fillRect(-6, -20, 12, 9);
+      ctx.fillRect(-7, -14, 3, 4);
+      ctx.fillStyle = flash ? '#fff' : '#3a2a52';
+      ctx.fillRect(-6, -20, 12, 2);
+      ctx.fillStyle = flash ? '#fff' : '#a78bfa';
+      ctx.fillRect(0, -14, 2, 2);
+    }
+
     // rear arm (subtle, behind torso)
     ctx.fillStyle = flash ? '#fff' : '#7a6a48';
     ctx.fillRect(-4, -5 + armSwing, 4, 8);
@@ -1119,18 +1278,40 @@
     ctx.restore();
   }
 
-  function drawPet(p) {
-    const x = px(p.x - camX), y = px(p.y);
-    const bob = Math.sin(elapsed * 4) * 2;
+  function drawWolf(w) {
+    const cfg = WOLF_STAGES[wolfStage()];
+    const x = px(w.x - camX), y = px(w.y);
+    const bob = w.moving ? Math.sin(elapsed * 10) * 1.5 : 0;
+    const facing = w.facing || 1;
     ctx.save();
     ctx.translate(x, y + bob);
-    ctx.fillStyle = '#2a1a3a';
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 8, 7, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = p.fireCooldown < 0.15 ? '#f4e9ff' : '#a78bfa';
-    ctx.fillRect(-4, -2, 3, 3);
-    ctx.fillRect(1, -2, 3, 3);
+    ctx.scale(facing * cfg.scale, cfg.scale);
+
+    if (cfg.name === 'Fenrir') {
+      ctx.fillStyle = 'rgba(255,40,20,0.3)';
+      ctx.beginPath(); ctx.arc(0, -2, 16, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // tail + legs
+    ctx.fillStyle = cfg.dark;
+    ctx.fillRect(-13, -4, 5, 3);
+    ctx.fillRect(-8, 4, 3, 5);
+    ctx.fillRect(4, 4, 3, 5);
+
+    // body + head
+    ctx.fillStyle = cfg.color;
+    ctx.fillRect(-9, -5, 16, 9);
+    ctx.fillRect(6, -8, 8, 7);
+
+    // snout + ears
+    ctx.fillStyle = cfg.dark;
+    ctx.fillRect(12, -5, 4, 3);
+    ctx.fillRect(6, -10, 3, 3);
+    ctx.fillRect(11, -10, 3, 3);
+
+    // glowing eye
+    ctx.fillStyle = cfg.eye;
+    ctx.fillRect(10, -6, 2, 2);
     ctx.restore();
   }
 
@@ -1261,6 +1442,36 @@
       ctx.fillRect(-3, -hh + 4, 6, 3);
       ctx.fillStyle = col('#8b1a1a');
       ctx.fillRect(-2, -hh + 5, 4, 1);
+    } else if (c.name === 'shadow') {
+      // shadow: a hooded wisp of a figure, mostly cloak, glowing violet eyes
+      ctx.fillStyle = col('rgba(36,26,51,0.7)');
+      ctx.fillRect(-hw - 2, -hh + 6, c.w + 4, c.h - 10);
+      ctx.fillStyle = col(c.color);
+      ctx.fillRect(-hw, -hh + 4, c.w, c.h - 12);
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(-hw + 1, -hh - 2, c.w - 2, 9);
+      ctx.fillStyle = col('#8a6fd1');
+      ctx.fillRect(-3, -hh + 1, 2, 2);
+      ctx.fillRect(2, -hh + 1, 2, 2);
+      if (Math.sin(e.walkT * 3) > 0.2) {
+        ctx.fillStyle = 'rgba(122,95,201,0.4)';
+        ctx.fillRect(-hw - 4, -hh + 10, 3, 8);
+        ctx.fillRect(hw + 1, -hh + 6, 3, 8);
+      }
+    } else if (c.name === 'imp') {
+      // imp: small fiery demon, horns, tail, clawed hands
+      ctx.fillStyle = col(c.color);
+      ctx.fillRect(-hw, -hh + 6, c.w, c.h - 12);
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(-hw + 1, -hh, c.w - 2, 7);
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(-hw - 1, -hh - 3, 2, 4);
+      ctx.fillRect(hw - 1, -hh - 3, 2, 4);
+      ctx.fillStyle = col('#ffcf4a');
+      ctx.fillRect(-3, -hh + 2, 2, 2);
+      ctx.fillRect(2, -hh + 2, 2, 2);
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(hw - 1, hh - 10, 6, 2 + Math.sin(e.walkT * 8) * 2);
     } else if (c.name === 'boss') {
       // the guardian: hulking dark knight with a jagged crown and burning eyes
       ctx.fillStyle = col(c.color);
@@ -1373,11 +1584,15 @@
       ctx.beginPath(); ctx.arc(0, 0, 6.5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#b090ff';
       ctx.beginPath(); ctx.arc(1.5, -1.5, 2.6, 0, Math.PI * 2); ctx.fill();
-    } else if (kind === 'pet') {
-      ctx.fillStyle = '#5b3fa0';
-      ctx.beginPath(); ctx.ellipse(0, 0, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#d8c7ff';
-      ctx.beginPath(); ctx.ellipse(1, 0, 3, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === 'shadow') {
+      ctx.fillStyle = 'rgba(36,26,51,0.6)';
+      ctx.beginPath(); ctx.moveTo(-10, -3); ctx.lineTo(-16, 0); ctx.lineTo(-10, 3); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#120c1c';
+      ctx.beginPath(); ctx.arc(0, 0, 6.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8a6fd1';
+      ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e0d4ff';
+      ctx.beginPath(); ctx.arc(1.5, -1, 1.6, 0, Math.PI * 2); ctx.fill();
     } else {
       // normal (player default)
       ctx.fillStyle = '#2f8f5b';
@@ -1448,6 +1663,21 @@
     ctx.fillStyle = hpPct > 0.5 ? '#6ecb63' : hpPct > 0.2 ? '#e6c14a' : '#c0392b';
     ctx.fillRect(9, 19, 88 * hpPct, 4);
 
+    // wolf companion: name + progress toward its next stage (Fenrir at 300 kills)
+    if (wolf) {
+      const stage = wolfStage();
+      const wcfg = WOLF_STAGES[stage];
+      const perStage = WOLF_MAX_KILLS / (WOLF_STAGES.length - 1);
+      const wPct = stage >= WOLF_STAGES.length - 1 ? 1 : (player.kills % perStage) / perStage;
+      ctx.font = '8px monospace';
+      ctx.fillStyle = wcfg.eye;
+      ctx.fillText(wcfg.name.toUpperCase(), 8, 32);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(8, 34, 60, 3);
+      ctx.fillStyle = wcfg.eye;
+      ctx.fillRect(8, 34, 60 * Math.max(0, Math.min(1, wPct)), 3);
+    }
+
     // score
     ctx.fillStyle = '#2b1d14';
     ctx.font = 'bold 12px monospace';
@@ -1484,6 +1714,7 @@
       { key: 'frost', label: '4', color: SOUL_META.frost.color, count: player.souls.frost },
       { key: 'lightning', label: '5', color: SOUL_META.lightning.color, count: player.souls.lightning },
       { key: 'acid', label: '6', color: SOUL_META.acid.color, count: player.souls.acid },
+      { key: 'shadow', label: '7', color: SOUL_META.shadow.color, count: player.souls.shadow },
     ];
     let sx = VIEW_W / 2 - (slots.length * 34) / 2;
     const sy = VIEW_H - 22;
@@ -1537,7 +1768,7 @@
     for (const hz of hazards) drawHazard(hz);
     for (const e of enemies) drawEnemy(e);
     drawPlayer();
-    if (pet) drawPet(pet);
+    if (wolf) drawWolf(wolf);
     for (const b of pBullets) drawBullet(b, b.kind);
     for (const b of eBullets) drawBullet(b, b.kind);
     for (const p of particles) drawParticle(p);
@@ -1558,8 +1789,24 @@
     { type: 'arrive', speaker: 'HUNTER', text: 'Or something did.' },
     { type: 'zombie', speaker: 'HUNTER', text: 'Right. Guess the old stories were true after all.' },
   ];
+  // Plays between the jungle and the hell floor — the ground gives way to a
+  // fiery portal and something drags the hunter down before the shop screen.
+  const HELL_CUTSCENE = [
+    { type: 'ground', speaker: 'HUNTER', text: "Ground's warm down here. Warmer than it should be." },
+    { type: 'crack', speaker: 'HUNTER', text: "...That's not warmth. That's a crack splitting open." },
+    { type: 'devil', speaker: '???', text: 'FOOLISH MORTAL. YOU HAVE DUG FAR ENOUGH.' },
+    { type: 'devil', speaker: 'HUNTER', text: 'Wait — !' },
+  ];
   const CUTSCENE_CPS = 30;
   let cutsceneBeat = 0, cutsceneChars = 0, cutsceneIdleT = 0, cutsceneT = 0;
+  let activeCutscene = CUTSCENE, cutsceneOnEnd = null;
+
+  function playCutscene(script, onEnd) {
+    activeCutscene = script;
+    cutsceneOnEnd = onEnd;
+    state = 'cutscene';
+    initCutscene();
+  }
 
   function initCutscene() {
     cutsceneBeat = 0; cutsceneChars = 0; cutsceneIdleT = 0; cutsceneT = 0;
@@ -1567,22 +1814,28 @@
     sfx.wave();
   }
 
+  function endCutscene() {
+    const onEnd = cutsceneOnEnd || beginGameplay;
+    cutsceneOnEnd = null;
+    onEnd();
+  }
+
   function advanceCutscene() {
-    const beat = CUTSCENE[cutsceneBeat];
+    const beat = activeCutscene[cutsceneBeat];
     if (!beat) return;
     if (cutsceneChars < beat.text.length) { cutsceneChars = beat.text.length; return; }
     sfx.advance();
     cutsceneBeat++;
     cutsceneChars = 0;
     cutsceneIdleT = 0;
-    if (cutsceneBeat >= CUTSCENE.length) beginGameplay();
+    if (cutsceneBeat >= activeCutscene.length) endCutscene();
   }
 
-  function skipCutscene() { beginGameplay(); }
+  function skipCutscene() { endCutscene(); }
 
   function updateCutscene(dt) {
     cutsceneT += dt;
-    const beat = CUTSCENE[cutsceneBeat];
+    const beat = activeCutscene[cutsceneBeat];
     if (!beat) return;
     if (cutsceneChars < beat.text.length) {
       const prevChars = cutsceneChars;
@@ -1651,7 +1904,7 @@
   }
 
   function renderCutscene() {
-    const beat = CUTSCENE[cutsceneBeat];
+    const beat = activeCutscene[cutsceneBeat];
     if (!beat) { blit(); return; }
     const horizon = VIEW_H * 0.5;
 
@@ -1700,6 +1953,49 @@
       ctx.fill();
 
       drawCutsceneHunter(boatX - 6, boatY - 6 + Math.sin(cutsceneT * 2.4) * 3, 1);
+    } else if (beat.type === 'ground' || beat.type === 'crack' || beat.type === 'devil') {
+      const grad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+      grad.addColorStop(0, '#1a0805');
+      grad.addColorStop(0.55, '#3a1208');
+      grad.addColorStop(0.56, '#180a06');
+      grad.addColorStop(1, '#000000');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+      // the crack in the ground widens and glows brighter with each beat
+      const crackW = beat.type === 'ground' ? 20 : beat.type === 'crack' ? 70 : 140;
+      const glowAlpha = beat.type === 'ground' ? 0.3 : beat.type === 'crack' ? 0.6 : 0.9;
+      ctx.fillStyle = `rgba(255,90,20,${glowAlpha})`;
+      ctx.fillRect(VIEW_W / 2 - crackW / 2, horizon + 58, crackW, 6);
+      for (let i = 0; i < 18; i++) {
+        const ex = VIEW_W / 2 + Math.sin(i * 1.7 + cutsceneT * 2) * crackW * 0.6;
+        const ey = horizon + 58 - ((cutsceneT * 40 + i * 23) % 90);
+        ctx.fillStyle = 'rgba(255,150,40,0.8)';
+        ctx.fillRect(px(ex), ey, 2, 2);
+      }
+
+      const dragDown = beat.type === 'devil' ? Math.min(24, cutsceneT * 12) : 0;
+      drawCutsceneHunter(VIEW_W * 0.4, horizon + 64 + dragDown, 1);
+
+      if (beat.type === 'devil') {
+        const riseY = horizon + 40 - Math.min(40, cutsceneT * 22);
+        ctx.save();
+        ctx.translate(VIEW_W * 0.58, riseY);
+        ctx.fillStyle = '#4a0e08';
+        ctx.beginPath();
+        ctx.moveTo(-14, 20); ctx.lineTo(-10, -14); ctx.lineTo(0, -22); ctx.lineTo(10, -14); ctx.lineTo(14, 20);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#1a0503';
+        ctx.beginPath(); ctx.moveTo(-8, -14); ctx.lineTo(-14, -30); ctx.lineTo(-4, -16); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(8, -14); ctx.lineTo(14, -30); ctx.lineTo(4, -16); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ffcf4a';
+        ctx.fillRect(-6, -6, 3, 3);
+        ctx.fillRect(3, -6, 3, 3);
+        ctx.restore();
+      }
+
+      ctx.fillStyle = `rgba(255,60,20,${beat.type === 'devil' ? 0.15 : 0.05})`;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     } else {
       const grad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
       grad.addColorStop(0, '#3a2a4a');
@@ -1773,39 +2069,45 @@
   skipCutsceneBtn.addEventListener('click', skipCutscene);
 
   // ---------- Shop (between floors) ----------
+  // Prices climb the deeper you go, on top of the existing per-purchase
+  // escalation, so gear bought outside the temple actually costs more.
+  let shopNextLevel = 0;
+  const SHOP_FLOOR_MULT = { 1: 1.2, 2: 1.7, 3: 2.4 };
+  function shopCostMult() { return SHOP_FLOOR_MULT[shopNextLevel] || 1; }
+  function scaledCost(base) { return Math.round((base * shopCostMult()) / 5) * 5; }
+
   const SHOP_ITEMS = [
     {
       key: 'heal', name: 'Field Medic', desc: 'Refill your health to full.',
-      cost: () => 30,
+      cost: () => scaledCost(30),
       canBuy: (p) => p.hp < p.maxHp,
       buy: (p) => { p.hp = p.maxHp; },
     },
     {
       key: 'ammo', name: 'Ammo Cache', desc: '+1 soul of every special ammo type.',
-      cost: () => 50,
+      cost: () => scaledCost(50),
       canBuy: () => true,
       buy: (p) => { for (const k of Object.keys(p.souls)) p.souls[k]++; },
     },
     {
       key: 'damage', name: 'Sharpened Rounds', desc: '+15% permanent damage.',
-      cost: (p) => 80 + p.upgrades.damage * 40,
+      cost: (p) => scaledCost(80 + p.upgrades.damage * 40),
       canBuy: () => true,
       buy: (p) => { p.dmgMult *= 1.15; p.upgrades.damage++; },
     },
     {
       key: 'vitality', name: 'Vitality Boost', desc: '+20 max health, healed on the spot.',
-      cost: (p) => 60 + p.upgrades.vitality * 30,
+      cost: (p) => scaledCost(60 + p.upgrades.vitality * 30),
       canBuy: () => true,
       buy: (p) => { p.maxHp += 20; p.hp += 20; p.upgrades.vitality++; },
     },
     {
       key: 'armor', name: 'Scavenged Armor', desc: '-2 damage taken per hit (max -10).',
-      cost: (p) => 100 + p.upgrades.armor * 50,
+      cost: (p) => scaledCost(100 + p.upgrades.armor * 50),
       canBuy: (p) => p.armor < 10,
       buy: (p) => { p.armor = Math.min(10, p.armor + 2); p.upgrades.armor++; },
     },
   ];
-  let shopNextLevel = 0;
 
   function openShop(nextLevel) {
     shopNextLevel = nextLevel;
@@ -1863,10 +2165,9 @@
   function beginIntro() {
     ensureAudio();
     claimFocus();
-    state = 'cutscene';
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
-    initCutscene();
+    playCutscene(CUTSCENE, beginGameplay);
   }
 
   // Called when the cutscene ends/is skipped, and by the restart button

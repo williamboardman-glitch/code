@@ -1,8 +1,10 @@
 # Temple of Bones
 
-A pixel-art 2D run-and-gun platformer. Jump across a sunken temple's crumbling
-ledges and gun down the zombies guarding it — every clean kill leaves behind
-a soul you can load as special ammunition.
+A pixel-art 2D run-and-gun platformer. Jump across four crumbling floors —
+temple, dungeon, jungle, and finally Hell itself — and gun down whatever's
+guarding them. Every clean kill leaves behind a soul you can load as special
+ammunition, and a wolf pup follows you the whole way, growing fiercer with
+every kill.
 
 ## Play
 
@@ -16,7 +18,7 @@ genuine chunky pixel-art look.
 - **← → / A D** — move
 - **↑ / W** — jump (hold for a higher, longer jump — needed to clear the wider pits)
 - **Space / X / J** — shoot in the direction you're facing (hold ↑ or ↓ to aim vertically)
-- **1 / 2 / 3 / 4** — switch ammo
+- **1-7** — switch ammo
 
 ## Enemies & souls
 
@@ -26,10 +28,32 @@ genuine chunky pixel-art look.
 | Brute | Faster, tankier melee rusher | Berserker soul | Heavy single-target shot (3x damage) |
 | Fire Cultist | Stationary, lobs fireballs | Pyromancer soul | Explosive shot: AoE damage + burn DoT |
 | Frost Priest | Stationary, lobs ice shards | Frost soul | Freezing shot: AoE slow on everything hit |
+| Lightning Trooper | Stationary, fires a fast flat bolt | Lightning soul | Chain lightning: jumps between nearby enemies |
+| Acid Spitter | Stationary, lobs a corrosive glob | Acid soul | Corrosive shot: leaves a damaging puddle |
+| Shrieker | Support — buffs nearby melee zombies with haste | none | — |
+| Shadow | Very low direct damage but very long range; its bolt pulls you toward it | Shadow soul | Pull shot: yanks nearby enemies toward the hit and primes your next shot to home in |
+| Imp | Small, fast, swarming melee — low health, decent bite | none | — |
+| The Guardian | Floor 2's boss | — | Drops the Shadow Helm on death (+10% damage) instead of a soul |
 
 Souls are consumed one per special shot — normal ammo is infinite, specials
 require harvesting the matching zombie type first.
 
+## Wolf companion
+
+A wolf pup starts at your side from the first floor and levels up purely
+from your running kill count — no feeding or separate XP to manage. It
+fights in melee, biting whatever's nearest, and gets stronger, faster, and
+tougher-looking at each stage: Puppy → Young Wolf → Wolf → Dire Wolf →
+Alpha Wolf → **Fenrir**, fully grown at 300 kills.
+
+## Shop
+
+Between floors, spend your score at the supply cache on healing, ammo
+refills, and permanent damage/health/armor upgrades. Prices climb both with
+repeated purchases of the same upgrade and with how deep you are — the
+dungeon, jungle, and Hell caches all charge more than the temple's.
+
 You have 3 lives and respawn at the last torch-lit checkpoint you passed.
 Falling into a pit costs a life instantly, however much HP you have left.
-Reach the altar at the far end of the temple to win.
+Losing all 3 lives sends you back to the start of the current floor and
+wipes every shop upgrade. Reach the end of Hell to win.

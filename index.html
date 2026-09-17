@@ -14,7 +14,7 @@
   <div id="startScreen" class="overlay">
     <div class="panel">
       <h1>TEMPLE <span class="accent">OF BONES</span></h1>
-      <p class="lore">A sunken temple, cracked open after a thousand years — and the dead inside never stopped guarding it. Run, jump, and shoot your way through three floors to reach whatever's waiting at the bottom. Every zombie you drop leaves a soul behind, and a soul loaded in your gun is not the same as a bullet. Floor two guards its exit with something much worse than a zombie — beat it, and it stops fighting you. Between floors, spend what you've looted at the supply cache.</p>
+      <p class="lore">A sunken temple, cracked open after a thousand years — and the dead inside never stopped guarding it. Run, jump, and shoot your way through four floors — temple, dungeon, jungle, and finally Hell itself — to reach whatever's waiting at the bottom. Every zombie you drop leaves a soul behind, and a soul loaded in your gun is not the same as a bullet. Floor two guards its exit with something much worse than a zombie — beat it, and you claim its shadow helm. A wolf pup follows you from the start and grows fiercer with every kill, fully grown into Fenrir after 300. Between floors, spend what you've looted at the supply cache — though it charges more the deeper you go.</p>
       <div class="soulKeyLegend">
         <div class="legendRow"><span class="swatch grunt"></span> Shambler — fodder, no soul</div>
         <div class="legendRow"><span class="swatch brute"></span> Brute — soul loads a <b>heavy 3x-damage shot</b></div>
@@ -22,12 +22,13 @@
         <div class="legendRow"><span class="swatch frost"></span> Frost Priest — soul loads a <b>freezing blast shot</b></div>
         <div class="legendRow"><span class="swatch lightning"></span> Lightning Trooper — soul loads a <b>chain lightning shot</b></div>
         <div class="legendRow"><span class="swatch acid"></span> Acid Spitter — soul loads a <b>corrosive acid shot</b></div>
+        <div class="legendRow"><span class="swatch shadow"></span> Shadow — low damage but long range, its bolt pulls you in; soul loads a <b>pull shot that primes your next shot to home</b></div>
       </div>
       <div class="controls">
         <div><b>Move:</b> ← → / A D</div>
         <div><b>Jump:</b> ↑ / W (double-jump in mid-air, hold to jump higher)</div>
         <div><b>Shoot:</b> Space / X / J (aim ↑ ↓ while holding)</div>
-        <div><b>Ammo:</b> Keys 1-6</div>
+        <div><b>Ammo:</b> Keys 1-7</div>
       </div>
       <button id="startBtn">ENTER THE TEMPLE</button>
     </div>
@@ -44,7 +45,7 @@
   <div id="shopScreen" class="overlay hidden">
     <div class="panel">
       <h1>SUPPLY <span class="accent">CACHE</span></h1>
-      <p class="lore">Spend what you looted before the next floor. Prices climb the more you lean on one upgrade.</p>
+      <p class="lore">Spend what you looted before the next floor. Prices climb the more you lean on one upgrade, and steeper again the deeper you go.</p>
       <div id="shopScore" class="shopScore"></div>
       <div id="shopItems" class="shopItems"></div>
       <button id="shopContinueBtn">CONTINUE</button>

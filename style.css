@@ -101,6 +101,7 @@ h1 .accent { color: var(--gold); }
 .swatch.frost { background: #6bd9e8; }
 .swatch.lightning { background: #a78bfa; }
 .swatch.acid { background: #8bc34a; }
+.swatch.shadow { background: #8a6fd1; }
 
 .controls {
   display: grid;
