@@ -19,6 +19,7 @@ genuine chunky pixel-art look.
 - **↑ / W** — jump (hold for a higher, longer jump — needed to clear the wider pits)
 - **Space / X / J** — shoot in the direction you're facing (hold ↑ or ↓ to aim vertically)
 - **1-7** — switch ammo
+- **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 ## Enemies & souls
 
@@ -53,6 +54,11 @@ the Guardian is dead. It has 520 HP and cycles between four attacks —
 Beating it grants the Shadow Helm (+10% damage), which survives death on any
 later floor — it only resets if you die back on the Guardian's own floor,
 since that's the one place you can re-earn it.
+
+The helm also unlocks **Wither** (press **R**), a once-per-floor curse on
+the nearest enemy in range: it permanently halves that target's remaining
+health pool and every point of damage it deals for the rest of the floor.
+It won't land on a target with hyperarmor (e.g. the Guardian mid-nova).
 
 ## Wolf companion
 

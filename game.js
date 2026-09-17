@@ -278,6 +278,7 @@
       // deaths wipe) so the Guardian's reward can survive a death that
       // doesn't put the boss back in play to be re-earned.
       homingNext: false, shadowHelm: false, helmDmgBonus: 1, knockX: 0, knockTimer: 0,
+      usedSpecialThisFloor: false,
     };
   }
 
@@ -302,6 +303,7 @@
     pBullets = []; eBullets = []; hazards = []; particles = [];
     camX = 0;
     bossArenaSealed = false;
+    player.usedSpecialThisFloor = false;
     player.x = 1 * TILE + TILE / 2; player.y = (ROWS - 1) * TILE - 13;
     player.vx = 0; player.vy = 0;
     player.knockX = 0; player.knockTimer = 0;
@@ -324,6 +326,7 @@
       shootTimer: 1 + Math.random() * (cfg.fireRate || 1),
       slowTimer: 0, burnTimer: 0, burnTick: 0, acidTimer: 0, acidTick: 0, speedMult: 1,
       hasteTimer: 0, hasteMult: 1, shriekTimer: 1.5 + Math.random(),
+      weakDmgMult: 1, weakened: false,
     };
     if (cfg.isBoss) {
       e.attackState = 'idle'; e.attackTimer = 1.5;
@@ -450,6 +453,41 @@
     return target;
   }
 
+  // ---------- Guardian's helm ability: Wither ----------
+  // A once-per-floor curse, unlocked by the Shadow Helm, that permanently
+  // halves one enemy's remaining health pool and every point of damage it
+  // deals for the rest of the floor — a hard counter to a single dangerous
+  // target (the Guardian included, on a later attempt).
+  function useSpecialAttack() {
+    if (!player.shadowHelm) return;
+    if (player.usedSpecialThisFloor) {
+      addMessage(player.x, player.y - 24, 'WITHER ALREADY USED', '#8a6fd1');
+      sfx.empty();
+      return;
+    }
+    const target = findNearestEnemy(player.x, player.y, 350);
+    if (!target) {
+      addMessage(player.x, player.y - 24, 'NO TARGET IN RANGE', '#c9b98f');
+      sfx.empty();
+      return;
+    }
+    if (target.invulnTimer > 0) {
+      addMessage(player.x, player.y - 24, 'TARGET HAS HYPERARMOR', '#c9b98f');
+      sfx.empty();
+      return;
+    }
+    player.usedSpecialThisFloor = true;
+    target.hp *= 0.5;
+    target.maxHp *= 0.5;
+    target.weakDmgMult = 0.5;
+    target.weakened = true;
+    spawnExplosionParticles(target.x, target.y, ['#8a6fd1', '#2a1a3a']);
+    spawnShockwave(target.x, target.y, 'rgba(122,95,201,0.9)', 50);
+    shakeScreen(8);
+    sfx.groan();
+    addMessage(target.x, target.y - target.cfg.h / 2 - 10, 'WITHERED', '#8a6fd1');
+  }
+
   function chainLightning(fromEnemy, dmg, excluded, jumpsLeft) {
     if (jumpsLeft <= 0) return;
     const target = findNearestEnemy(fromEnemy.x, fromEnemy.y, 90, excluded);
@@ -547,9 +585,9 @@
   }
 
   // ---------- Hazards (acid puddles) ----------
-  function spawnAcidPuddle(x, y) {
+  function spawnAcidPuddle(x, y, dmgMult = 1) {
     spawnHitParticles(x, y, '#8bc34a');
-    hazards.push({ x, y, radius: 20, life: 3, tick: 0.4, dmg: 5 });
+    hazards.push({ x, y, radius: 20, life: 3, tick: 0.4, dmg: 5 * dmgMult });
   }
   function updateHazards(dt) {
     for (const hz of hazards) {
@@ -583,7 +621,7 @@
 
   const GAME_KEYS = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
-    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7',
+    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7',
   ]);
 
   function handleKeyDown(ev) {
@@ -602,6 +640,7 @@
     if (ev.code === 'Digit6') player.ammo = 'acid';
     if (ev.code === 'Digit7') player.ammo = 'shadow';
     if (ev.code === 'KeyW' || ev.code === 'ArrowUp') player.jumpBuffer = 0.12;
+    if (ev.code === 'KeyR') useSpecialAttack();
   }
   function handleKeyUp(ev) {
     keys[ev.code] = false;
@@ -774,7 +813,7 @@
     // below; skip the generic body-contact check there so it doesn't fire
     // first, eat the post-hit invuln window, and silently override it.
     if (e.attackState !== 'dash' && rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, player.x, player.y, player.w, player.h)) {
-      hurtPlayer(e.cfg.dmg);
+      hurtPlayer(e.cfg.dmg * e.weakDmgMult);
     }
 
     if (e.invulnTimer > 0) e.invulnTimer -= dt;
@@ -823,7 +862,7 @@
       e.vx = e.dashDir * 520;
       e.x = Math.max(e.minX, Math.min(e.maxX, e.x + e.vx * dt));
       if (!e.hitThisStep && rectsOverlap(e.x, e.y, e.cfg.w + 10, e.cfg.h, player.x, player.y, player.w, player.h)) {
-        hurtPlayer(16);
+        hurtPlayer(16 * e.weakDmgMult);
         e.hitThisStep = true;
         shakeScreen(6);
       }
@@ -855,7 +894,7 @@
         shakeScreen(12);
         sfx.explosion();
         if (player.onGround && Math.abs(player.x - e.x) < radius) {
-          hurtPlayer(22);
+          hurtPlayer(22 * e.weakDmgMult);
           addMessage(player.x, player.y - 28, 'SLAMMED', '#a78bfa');
         }
       }
@@ -878,7 +917,7 @@
       if (e.attackTimer <= 0) {
         const dx = player.x - e.x, dy = player.y - e.y;
         const baseAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.3;
-        eBullets.push({ x: e.x, y: e.y, vx: Math.cos(baseAngle) * 260, vy: Math.sin(baseAngle) * 260, kind: 'dark', dmg: 9 });
+        eBullets.push({ x: e.x, y: e.y, vx: Math.cos(baseAngle) * 260, vy: Math.sin(baseAngle) * 260, kind: 'dark', dmg: 9 * e.weakDmgMult });
         e.dashesLeft--;
         e.attackTimer = 0.15;
         if (e.dashesLeft <= 0) { e.attackState = 'recover'; e.attackTimer = 0.4; }
@@ -896,7 +935,7 @@
         shakeScreen(16);
         sfx.explosion();
         if (Math.hypot(player.x - e.x, player.y - e.y) < 140) {
-          hurtPlayer(30);
+          hurtPlayer(30 * e.weakDmgMult);
           addMessage(player.x, player.y - 28, 'OVERWHELMED', '#b090ff');
         }
         e.attackState = 'stagger'; e.attackTimer = 1.5;
@@ -987,7 +1026,7 @@
         if (e.x >= e.maxX) { e.x = e.maxX; e.vx = -Math.abs(e.vx); }
         e.x += e.vx * dt;
         if (rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, player.x, player.y, player.w, player.h)) {
-          hurtPlayer(e.cfg.dmg);
+          hurtPlayer(e.cfg.dmg * e.weakDmgMult);
         }
       } else if (e.cfg.ranged) {
         // Long-range snipers: engage from well off-screen-adjacent distance
@@ -1008,12 +1047,12 @@
             let vx = Math.cos(baseAngle) * e.cfg.projSpeed;
             let vy = Math.sin(baseAngle) * e.cfg.projSpeed;
             if (e.cfg.arc) vy -= 150; // lob it instead of firing flat
-            eBullets.push({ x: e.x, y: e.y, vx, vy, kind: e.cfg.kind, dmg: e.cfg.projDmg, grav: !!e.cfg.arc, pull: !!e.cfg.pull, srcX: e.x, srcY: e.y });
+            eBullets.push({ x: e.x, y: e.y, vx, vy, kind: e.cfg.kind, dmg: e.cfg.projDmg * e.weakDmgMult, grav: !!e.cfg.arc, pull: !!e.cfg.pull, srcX: e.x, srcY: e.y, weakDmgMult: e.weakDmgMult });
             if (e.cfg.kind === 'lightning') sfx.frost();
           }
         }
         if (rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, player.x, player.y, player.w, player.h)) {
-          hurtPlayer(4);
+          hurtPlayer(4 * e.weakDmgMult);
         }
       }
     }
@@ -1076,7 +1115,7 @@
       if (b.grav) b.vy += 900 * dt;
       b.x += b.vx * dt; b.y += b.vy * dt;
       if (isSolidPixel(b.x, b.y)) {
-        if (b.kind === 'acid') spawnAcidPuddle(b.x, b.y);
+        if (b.kind === 'acid') spawnAcidPuddle(b.x, b.y, b.weakDmgMult || 1);
         b.dead = true; continue;
       }
       if (rectsOverlap(b.x, b.y, 5, 5, player.x, player.y, player.w, player.h)) {
@@ -1088,7 +1127,7 @@
         // pull on top of that stale position would yank the wrong player.
         const diedOrRespawned = player.lives < livesBefore;
         if (b.kind === 'lightning') { player.shockedTimer = 1.4; sfx.frost(); addMessage(player.x, player.y - 28, 'SHOCKED', '#d8c7ff'); }
-        if (b.kind === 'acid') spawnAcidPuddle(b.x, b.y);
+        if (b.kind === 'acid') spawnAcidPuddle(b.x, b.y, b.weakDmgMult || 1);
         if (b.pull && !wasInvuln && !diedOrRespawned) {
           // Horizontal pull is a decaying field re-applied each frame in
           // updatePlayer (vx is re-derived from input every frame, so it
@@ -1737,6 +1776,12 @@
       ctx.fillStyle = 'rgba(139,195,74,0.45)';
       ctx.fillRect(-hw, -hh, c.w, c.h);
     }
+    if (e.weakened) {
+      const pulse = 0.5 + Math.sin(elapsed * 4) * 0.3;
+      ctx.strokeStyle = `rgba(122,95,201,${pulse})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-hw - 3, -hh - 3, c.w + 6, c.h + 6);
+    }
     ctx.restore();
 
     const barW = c.w;
@@ -1912,6 +1957,13 @@
       ctx.fillRect(8, 34, 60, 3);
       ctx.fillStyle = wcfg.eye;
       ctx.fillRect(8, 34, 60 * Math.max(0, Math.min(1, wPct)), 3);
+    }
+
+    // Wither: the Shadow Helm's once-per-floor curse
+    if (player.shadowHelm) {
+      ctx.font = '8px monospace';
+      ctx.fillStyle = player.usedSpecialThisFloor ? 'rgba(138,111,209,0.4)' : '#a78bfa';
+      ctx.fillText(player.usedSpecialThisFloor ? 'WITHER: USED' : 'WITHER (R): READY', 8, 45);
     }
 
     // score
