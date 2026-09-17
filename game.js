@@ -140,6 +140,10 @@
   const LEVEL_CHECKPOINTS = [1, 19, 37, 56];
 
   let levelIndex = 0;
+  // The Guardian's boss room: once you walk past this column while it's
+  // still alive, a barrier seals the way back until it's dead.
+  const BOSS_ARENA_START_COL = 63;
+  let bossArenaSealed = false;
   function currentLevel() { return LEVEL_DEFS[levelIndex]; }
 
   let map;
@@ -177,7 +181,7 @@
     shrieker: { name: 'shrieker', color: '#c7c2b8', dark: '#6b675e', light: '#e8e4da', bone: '#2b2822', w: 14, h: 22, speed: 20, hp: 14, dmg: 4, soul: null, points: 20, melee: true, support: true },
     shadow: { name: 'shadow', color: '#241a33', dark: '#120c1c', light: '#4a3566', bone: '#0a0610', w: 15, h: 24, speed: 10, hp: 22, dmg: 3, soul: 'shadow', points: 34, ranged: true, fireRate: 3.0, projSpeed: 260, range: 340, spread: 0.05, projDmg: 3, kind: 'shadow', pull: true },
     imp: { name: 'imp', color: '#ff5a2e', dark: '#8a2508', light: '#ffb37a', bone: '#2a0a02', w: 13, h: 18, speed: 62, hp: 10, dmg: 10, soul: null, points: 12, melee: true },
-    boss: { name: 'boss', color: '#2a1a3a', dark: '#150d1f', light: '#5a3a7a', bone: '#0a0610', w: 34, h: 44, speed: 22, hp: 260, dmg: 22, soul: null, points: 200, ranged: true, fireRate: 1.8, projSpeed: 220, range: 260, spread: 0.08, projDmg: 14, kind: 'dark', isBoss: true },
+    boss: { name: 'boss', color: '#2a1a3a', dark: '#150d1f', light: '#5a3a7a', bone: '#0a0610', w: 34, h: 44, speed: 30, hp: 520, dmg: 22, soul: null, points: 350, isBoss: true },
   };
   const SOUL_META = {
     berserker: { label: 'HEAVY', color: '#c0392b' },
@@ -212,8 +216,7 @@
     ['grunt', 36, 8], ['grunt', 37, 8], ['lightning', 39, 8], ['acid', 40, 8], ['acid', 42, 6], ['grunt', 43, 6],
     ['brute', 44, 8], ['brute', 46, 8], ['pyro', 47, 8], ['pyro', 48, 8], ['grunt', 49, 8], ['grunt', 50, 8],
     ['shrieker', 51, 8], ['brute', 54, 8], ['lightning', 55, 8], ['grunt', 56, 8], ['grunt', 57, 8],
-    ['acid', 59, 6], ['brute', 60, 6], ['lightning', 61, 8], ['acid', 62, 8], ['grunt', 63, 8],
-    ['pyro', 65, 8], ['grunt', 66, 8], ['frost', 67, 8],
+    ['acid', 59, 6], ['brute', 60, 6], ['lightning', 61, 8], ['acid', 62, 8],
     ['boss', 64, 8],
   ];
   const LEVEL3_SPAWN = [
@@ -289,6 +292,7 @@
     camX = 0; elapsed = 0; shake = { t: 0, mag: 0 };
     levelBanner = { text: '', t: 0 };
     respawn = { x: player.x, y: player.y };
+    bossArenaSealed = false;
   }
 
   function goToLevel(idx) {
@@ -297,6 +301,7 @@
     enemies = currentLevel().spawnList.map(([type, col, row]) => spawnEnemy(type, col, row));
     pBullets = []; eBullets = []; hazards = []; particles = [];
     camX = 0;
+    bossArenaSealed = false;
     player.x = 1 * TILE + TILE / 2; player.y = (ROWS - 1) * TILE - 13;
     player.vx = 0; player.vy = 0;
     player.knockX = 0; player.knockTimer = 0;
@@ -312,7 +317,7 @@
     const cfg = ENEMY_TYPES[typeKey];
     const ext = platformExtent(row, col);
     const y = row * TILE - cfg.h / 2 + 1;
-    return {
+    const e = {
       cfg, x: col * TILE + TILE / 2, y, vx: cfg.speed, vy: 0,
       minX: ext.minCol * TILE + cfg.w / 2 + 2, maxX: (ext.maxCol + 1) * TILE - cfg.w / 2 - 2,
       hp: cfg.hp, maxHp: cfg.hp, dead: false, hitFlash: 0, walkT: Math.random() * 10,
@@ -320,12 +325,23 @@
       slowTimer: 0, burnTimer: 0, burnTick: 0, acidTimer: 0, acidTick: 0, speedMult: 1,
       hasteTimer: 0, hasteMult: 1, shriekTimer: 1.5 + Math.random(),
     };
+    if (cfg.isBoss) {
+      e.attackState = 'idle'; e.attackTimer = 1.5;
+      e.dashesLeft = 0; e.dashDir = 1; e.hitThisStep = false;
+      e.invulnTimer = 0; e.staggerTimer = 0; e.staggerBonus = 1;
+      e.usedNova50 = false; e.usedNova20 = false; e.novaRadius = 0;
+    }
+    return e;
   }
 
   function respawnPlayer() {
     player.x = respawn.x; player.y = respawn.y; player.vx = 0; player.vy = 0;
     player.hp = player.maxHp; player.invuln = 1.5;
     player.knockX = 0; player.knockTimer = 0;
+    // Unseal the arena so a checkpoint respawn actually leaves the player
+    // at the checkpoint instead of the seal's retreat-clamp immediately
+    // snapping them back into the fight; walking back in reseals it.
+    bossArenaSealed = false;
   }
 
   function loseLife(reason) {
@@ -376,6 +392,8 @@
 
   function applyDamage(e, dmg) {
     if (e.dead) return;
+    if (e.invulnTimer > 0) return; // hyperarmor while the boss is channeling an attack
+    dmg *= e.staggerBonus || 1; // bonus damage during a boss's post-nova stagger window
     e.hp -= dmg; e.hitFlash = 0.12;
     spawnHitParticles(e.x, e.y, '#fff5cc');
     spawnImpactFlash(e.x, e.y);
@@ -677,6 +695,22 @@
 
     if (player.x < player.w / 2) player.x = player.w / 2;
 
+    // The Guardian's arena: cross into it and the way back seals shut
+    // until the boss is dead — no retreating from the fight.
+    if (currentLevel().theme === 'dungeon') {
+      const boss = enemies.find(en => en.cfg.isBoss);
+      if (boss && !boss.dead) {
+        if (!bossArenaSealed && player.x >= BOSS_ARENA_START_COL * TILE) {
+          bossArenaSealed = true;
+          sfx.checkpoint();
+          addMessage(player.x, player.y - 40, 'THE ARENA SEALS SHUT', '#a78bfa');
+        }
+        if (bossArenaSealed) player.x = Math.max(player.x, BOSS_ARENA_START_COL * TILE);
+      } else if (bossArenaSealed) {
+        bossArenaSealed = false;
+      }
+    }
+
     if (held('KeyX', 'KeyJ', 'ControlLeft', 'Space')) shoot();
 
     if (player.vx !== 0 && player.onGround) player.walkT += dt;
@@ -730,6 +764,162 @@
     if (player.hp <= 0) loseLife('hp');
   }
 
+  // ---------- Boss AI ----------
+  // The Guardian cycles through four distinct attacks — a triple dash
+  // flurry, a ground slam shockwave, a dark-bolt barrage, and (once at half
+  // and again at a fifth health) a channeled nova that punishes greed with
+  // a big hit but leaves it staggered and open for bonus damage afterward.
+  function updateBossAI(e, dt) {
+    // Dash has its own dedicated (lower) contact damage via a wider hitbox
+    // below; skip the generic body-contact check there so it doesn't fire
+    // first, eat the post-hit invuln window, and silently override it.
+    if (e.attackState !== 'dash' && rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, player.x, player.y, player.w, player.h)) {
+      hurtPlayer(e.cfg.dmg);
+    }
+
+    if (e.invulnTimer > 0) e.invulnTimer -= dt;
+    if (e.staggerTimer > 0) {
+      e.staggerTimer -= dt;
+      if (e.staggerTimer <= 0) e.staggerBonus = 1;
+    }
+
+    const hpPct = e.hp / e.maxHp;
+    if (e.attackState === 'idle') {
+      if (!e.usedNova50 && hpPct <= 0.5) {
+        e.usedNova50 = true; e.attackState = 'nova_channel'; e.attackTimer = 1.0; e.invulnTimer = 1.0;
+        addMessage(e.x, e.y - 50, 'THE GUARDIAN GATHERS DARK POWER', '#b090ff');
+        sfx.groan();
+        return;
+      }
+      if (!e.usedNova20 && hpPct <= 0.2) {
+        e.usedNova20 = true; e.attackState = 'nova_channel'; e.attackTimer = 1.0; e.invulnTimer = 1.0;
+        addMessage(e.x, e.y - 50, 'THE GUARDIAN GATHERS DARK POWER', '#b090ff');
+        sfx.groan();
+        return;
+      }
+      const dist = player.x - e.x;
+      e.vx = Math.abs(dist) > 40 ? Math.sign(dist) * e.cfg.speed : 0;
+      e.x = Math.max(e.minX, Math.min(e.maxX, e.x + e.vx * dt));
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        const roll = Math.random();
+        if (roll < 0.34) { e.attackState = 'dash_telegraph'; e.attackTimer = 0.4; }
+        else if (roll < 0.64) { e.attackState = 'slam_telegraph'; e.attackTimer = 0.6; }
+        else { e.attackState = 'barrage_telegraph'; e.attackTimer = 0.3; }
+      }
+      return;
+    }
+
+    if (e.attackState === 'dash_telegraph') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        e.attackState = 'dash'; e.dashesLeft = 3; e.attackTimer = 0.15;
+        e.dashDir = Math.sign(player.x - e.x) || 1; e.hitThisStep = false;
+      }
+      return;
+    }
+    if (e.attackState === 'dash') {
+      e.vx = e.dashDir * 520;
+      e.x = Math.max(e.minX, Math.min(e.maxX, e.x + e.vx * dt));
+      if (!e.hitThisStep && rectsOverlap(e.x, e.y, e.cfg.w + 10, e.cfg.h, player.x, player.y, player.w, player.h)) {
+        hurtPlayer(16);
+        e.hitThisStep = true;
+        shakeScreen(6);
+      }
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        e.dashesLeft--;
+        if (e.dashesLeft > 0) { e.attackState = 'dash_retarget'; e.attackTimer = 0.12; }
+        else { e.attackState = 'recover'; e.attackTimer = 0.5; e.vx = 0; }
+      }
+      return;
+    }
+    if (e.attackState === 'dash_retarget') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        e.attackState = 'dash'; e.attackTimer = 0.15;
+        e.dashDir = Math.sign(player.x - e.x) || 1; e.hitThisStep = false;
+      }
+      return;
+    }
+
+    if (e.attackState === 'slam_telegraph') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        e.attackState = 'slam'; e.attackTimer = 0.15;
+        const radius = 100;
+        spawnShockwave(e.x, e.y + e.cfg.h / 2, 'rgba(167,139,250,0.9)', radius);
+        shakeScreen(12);
+        sfx.explosion();
+        if (player.onGround && Math.abs(player.x - e.x) < radius) {
+          hurtPlayer(22);
+          addMessage(player.x, player.y - 28, 'SLAMMED', '#a78bfa');
+        }
+      }
+      return;
+    }
+    if (e.attackState === 'slam') {
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) { e.attackState = 'recover'; e.attackTimer = 0.5; }
+      return;
+    }
+
+    if (e.attackState === 'barrage_telegraph') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) { e.attackState = 'barrage'; e.dashesLeft = 5; e.attackTimer = 0; }
+      return;
+    }
+    if (e.attackState === 'barrage') {
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        const dx = player.x - e.x, dy = player.y - e.y;
+        const baseAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.3;
+        eBullets.push({ x: e.x, y: e.y, vx: Math.cos(baseAngle) * 260, vy: Math.sin(baseAngle) * 260, kind: 'dark', dmg: 9 });
+        e.dashesLeft--;
+        e.attackTimer = 0.15;
+        if (e.dashesLeft <= 0) { e.attackState = 'recover'; e.attackTimer = 0.4; }
+      }
+      return;
+    }
+
+    if (e.attackState === 'nova_channel') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      e.novaRadius = 140 * (1 - Math.max(0, e.attackTimer) / 1.0);
+      if (e.attackTimer <= 0) {
+        spawnExplosionParticles(e.x, e.y, ['#b090ff', '#e0d4ff']);
+        spawnShockwave(e.x, e.y, 'rgba(176,144,255,0.95)', 140);
+        shakeScreen(16);
+        sfx.explosion();
+        if (Math.hypot(player.x - e.x, player.y - e.y) < 140) {
+          hurtPlayer(30);
+          addMessage(player.x, player.y - 28, 'OVERWHELMED', '#b090ff');
+        }
+        e.attackState = 'stagger'; e.attackTimer = 1.5;
+        e.staggerTimer = 1.5; e.staggerBonus = 1.5;
+        e.novaRadius = 0;
+      }
+      return;
+    }
+    if (e.attackState === 'stagger') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) { e.attackState = 'recover'; e.attackTimer = 0.3; }
+      return;
+    }
+
+    if (e.attackState === 'recover') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) { e.attackState = 'idle'; e.attackTimer = 1.2 + Math.random() * 0.8; }
+      return;
+    }
+  }
+
   function updateEnemies(dt) {
     for (const e of enemies) {
       if (e.dead) continue;
@@ -779,7 +969,9 @@
 
       const distToPlayer = Math.hypot(e.x - player.x, e.y - player.y);
 
-      if (e.cfg.melee) {
+      if (e.cfg.isBoss) {
+        updateBossAI(e, dt);
+      } else if (e.cfg.melee) {
         // Hunt the player when they're nearby and on roughly the same
         // level; otherwise pace back and forth. Either way, stay clamped
         // to this zombie's own platform/ground segment so it never
@@ -821,7 +1013,7 @@
           }
         }
         if (rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, player.x, player.y, player.w, player.h)) {
-          hurtPlayer(e.cfg.isBoss ? e.cfg.dmg : 4);
+          hurtPlayer(4);
         }
       }
     }
@@ -1114,12 +1306,18 @@
         ctx.fillStyle = edgeColor;
         ctx.fillRect(x, y + TILE - 4, TILE, 4);
         ctx.fillRect(x, y, 2, TILE);
+        const inArena = dungeon && c >= BOSS_ARENA_START_COL;
         if (topExposed) {
-          ctx.fillStyle = highlightColor;
+          ctx.fillStyle = inArena ? `rgba(167,139,250,${0.25 + Math.sin(elapsed * 3 + c) * 0.1})` : highlightColor;
           ctx.fillRect(x, y, TILE, 3);
         }
-        // occasional carved glyph
-        if ((c * 7 + r * 13) % 11 === 0 && topExposed) {
+        // the boss arena floor is etched with a glowing rune on every tile;
+        // elsewhere it's an occasional carved glyph
+        if (inArena && topExposed) {
+          ctx.fillStyle = 'rgba(167,139,250,0.55)';
+          ctx.fillRect(x + TILE / 2 - 2, y + 6, 4, 14);
+          ctx.fillRect(x + TILE / 2 - 6, y + 12, 12, 2);
+        } else if ((c * 7 + r * 13) % 11 === 0 && topExposed) {
           ctx.fillStyle = glyphColor;
           ctx.fillRect(x + TILE / 2 - 2, y + 8, 4, 10);
         }
@@ -1495,6 +1693,30 @@
         ctx.fillRect(-hw - 3, -hh + 10, 3, 10);
         ctx.fillRect(hw, -hh + 6, 3, 10);
       }
+      // attack telegraphs: a pulsing outline color-coded per incoming move
+      const telegraphColor = e.attackState === 'dash_telegraph' ? 'rgba(255,90,60,0.8)'
+        : e.attackState === 'slam_telegraph' ? 'rgba(167,139,250,0.8)'
+        : e.attackState === 'barrage_telegraph' ? 'rgba(90,180,255,0.8)'
+        : null;
+      if (telegraphColor) {
+        const pulse = 2 + Math.sin(elapsed * 20) * 1.5;
+        ctx.strokeStyle = telegraphColor;
+        ctx.lineWidth = pulse;
+        ctx.strokeRect(-hw - 4, -hh - 8, c.w + 8, c.h + 8);
+      }
+      if (e.attackState === 'nova_channel') {
+        ctx.strokeStyle = 'rgba(176,144,255,0.7)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, Math.max(2, e.novaRadius), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (e.attackState === 'stagger') {
+        const pulse = 0.4 + Math.sin(elapsed * 12) * 0.3;
+        ctx.strokeStyle = `rgba(255,230,140,${pulse})`;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(-hw - 4, -hh - 8, c.w + 8, c.h + 8);
+      }
     }
 
     if (e.slowTimer > 0) {
@@ -1620,6 +1842,20 @@
     ctx.globalAlpha = 1;
   }
 
+  function drawArenaBarrier() {
+    const x = px(BOSS_ARENA_START_COL * TILE - camX);
+    if (x < -20 || x > VIEW_W + 20) return;
+    const pulse = 0.5 + Math.sin(elapsed * 5) * 0.25;
+    const grad = ctx.createLinearGradient(x - 6, 0, x + 6, 0);
+    grad.addColorStop(0, 'rgba(167,139,250,0)');
+    grad.addColorStop(0.5, `rgba(167,139,250,${pulse})`);
+    grad.addColorStop(1, 'rgba(167,139,250,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x - 6, 0, 12, VIEW_H);
+    ctx.fillStyle = `rgba(224,212,255,${pulse})`;
+    ctx.fillRect(x - 1, 0, 2, VIEW_H);
+  }
+
   function drawParticle(p) {
     const x = px(p.x - camX), y = px(p.y);
     ctx.globalAlpha = Math.max(0, p.maxLife ? p.life / p.maxLife : p.life);
@@ -1698,6 +1934,10 @@
       ctx.fillRect(VIEW_W / 2 - 70, 13, 140, 6);
       ctx.fillStyle = '#a78bfa';
       ctx.fillRect(VIEW_W / 2 - 69, 14, 138 * bossPct, 4);
+      // phase-threshold ticks where the nova attack triggers
+      ctx.fillStyle = 'rgba(255,230,140,0.9)';
+      ctx.fillRect(VIEW_W / 2 - 69 + 138 * 0.5 - 1, 13, 2, 6);
+      ctx.fillRect(VIEW_W / 2 - 69 + 138 * 0.2 - 1, 13, 2, 6);
     } else {
       const prog = Math.min(1, player.x / (GOAL_COL * TILE));
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -1765,6 +2005,7 @@
     }
     drawBackground();
     drawTiles();
+    if (bossArenaSealed) drawArenaBarrier();
     for (const hz of hazards) drawHazard(hz);
     for (const e of enemies) drawEnemy(e);
     drawPlayer();

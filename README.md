@@ -33,10 +33,26 @@ genuine chunky pixel-art look.
 | Shrieker | Support — buffs nearby melee zombies with haste | none | — |
 | Shadow | Very low direct damage but very long range; its bolt pulls you toward it | Shadow soul | Pull shot: yanks nearby enemies toward the hit and primes your next shot to home in |
 | Imp | Small, fast, swarming melee — low health, decent bite | none | — |
-| The Guardian | Floor 2's boss | — | Drops the Shadow Helm on death (+10% damage) instead of a soul |
+| The Guardian | Floor 2's boss (see below) | — | Drops the Shadow Helm on death (+10% damage) instead of a soul |
 
 Souls are consumed one per special shot — normal ammo is infinite, specials
 require harvesting the matching zombie type first.
+
+## The Guardian
+
+Floor 2 ends in a sealed arena: cross into it and the way back shuts until
+the Guardian is dead. It has 520 HP and cycles between four attacks —
+
+- **Dash flurry** — three rapid dashes through your position, each its own hit
+- **Ground slam** — a telegraphed leap-slam shockwave; jump it to avoid the hit
+- **Dark bolt barrage** — a fast five-shot volley aimed at you
+- **Dark nova** — channeled once at 50% HP and again at 20%; it's briefly
+  invulnerable while charging, hits hard in a radius on release, and is left
+  staggered afterward (1.5x damage taken) — the punish window for surviving it
+
+Beating it grants the Shadow Helm (+10% damage), which survives death on any
+later floor — it only resets if you die back on the Guardian's own floor,
+since that's the one place you can re-earn it.
 
 ## Wolf companion
 
