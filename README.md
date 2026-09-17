@@ -14,8 +14,8 @@ genuine chunky pixel-art look.
 ## Controls
 
 - **← → / A D** — move
-- **Space / W** — jump (hold for a higher, longer jump — needed to clear the wider pits)
-- **X / J** — shoot in the direction you're facing (hold ↑ or ↓ to aim vertically)
+- **↑ / W** — jump (hold for a higher, longer jump — needed to clear the wider pits)
+- **Space / X / J** — shoot in the direction you're facing (hold ↑ or ↓ to aim vertically)
 - **1 / 2 / 3 / 4** — switch ammo
 
 ## Enemies & souls

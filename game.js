@@ -540,7 +540,7 @@
     if (ev.code === 'Digit4') player.ammo = 'frost';
     if (ev.code === 'Digit5') player.ammo = 'lightning';
     if (ev.code === 'Digit6') player.ammo = 'acid';
-    if (ev.code === 'Space' || ev.code === 'KeyW' || ev.code === 'ArrowUp') player.jumpBuffer = 0.12;
+    if (ev.code === 'KeyW' || ev.code === 'ArrowUp') player.jumpBuffer = 0.12;
   }
   function handleKeyUp(ev) {
     keys[ev.code] = false;
@@ -612,7 +612,7 @@
         }
       }
     }
-    const jumpHeld = held('Space', 'KeyW', 'ArrowUp');
+    const jumpHeld = held('KeyW', 'ArrowUp');
     if (player.vy < 0 && !jumpHeld) player.vy *= 0.55; // variable jump height
 
     player.vy = Math.min(MAX_FALL, player.vy + GRAVITY * dt);
@@ -620,7 +620,7 @@
 
     if (player.x < player.w / 2) player.x = player.w / 2;
 
-    if (held('KeyX', 'KeyJ', 'ControlLeft')) shoot();
+    if (held('KeyX', 'KeyJ', 'ControlLeft', 'Space')) shoot();
 
     if (player.vx !== 0 && player.onGround) player.walkT += dt;
     else player.walkT = 0;
