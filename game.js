@@ -8,6 +8,10 @@
   const startBtn = document.getElementById('startBtn');
   const restartBtn = document.getElementById('restartBtn');
   const skipCutsceneBtn = document.getElementById('skipCutsceneBtn');
+  const shopScreen = document.getElementById('shopScreen');
+  const shopScoreEl = document.getElementById('shopScore');
+  const shopItemsEl = document.getElementById('shopItems');
+  const shopContinueBtn = document.getElementById('shopContinueBtn');
 
   // ---------- Virtual low-res buffer (gives the whole game its pixelated look) ----------
   const TILE = 30;
@@ -209,9 +213,23 @@
     ['acid', 59, 6], ['lightning', 61, 8],
     ['boss', 64, 8],
   ];
+  const LEVEL3_SPAWN = [
+    ['grunt', 3, 8], ['grunt', 5, 8], ['brute', 9, 8],
+    ['acid', 12, 8], ['grunt', 17, 8], ['shrieker', 19, 8],
+    ['lightning', 22, 6], ['brute', 24, 8], ['frost', 26, 8],
+    ['grunt', 29, 8], ['acid', 31, 8],
+    ['brute', 36, 8], ['grunt', 37, 8], ['lightning', 39, 8],
+    ['shrieker', 42, 6], ['frost', 44, 8], ['brute', 45, 8],
+    ['grunt', 47, 8], ['acid', 49, 8], ['grunt', 51, 8],
+    ['brute', 54, 8], ['lightning', 56, 8], ['frost', 57, 8],
+    ['shrieker', 59, 6], ['grunt', 60, 6],
+    ['brute', 61, 8], ['acid', 63, 8], ['brute', 64, 8],
+    ['grunt', 66, 8], ['frost', 67, 8],
+  ];
   const LEVEL_DEFS = [
     { theme: 'temple', name: 'Temple of Bones', spawnList: LEVEL1_SPAWN },
     { theme: 'dungeon', name: 'The Dark Dungeon', spawnList: LEVEL2_SPAWN },
+    { theme: 'jungle', name: 'The Dark Jungle', spawnList: LEVEL3_SPAWN },
   ];
 
   const BASE_DMG = 16;
@@ -222,7 +240,7 @@
   const MAX_FALL = 620;
 
   // ---------- State ----------
-  let state = 'start'; // start | cutscene | playing | win | dead
+  let state = 'start'; // start | cutscene | playing | shop | win | dead
   let keys = {};
   let player, pet, enemies, pBullets, eBullets, hazards, particles, messages, camX, respawn, elapsed, shake, levelBanner;
 
@@ -234,6 +252,7 @@
       ammo: 'normal', souls: { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0 },
       fireCooldown: 0, invuln: 0, coyote: 0, jumpBuffer: 0, jumpsUsed: 0, walkT: 0, hurtFlash: 0,
       shockedTimer: 0, blockMsgCooldown: 0, won: false,
+      dmgMult: 1, armor: 0, upgrades: { damage: 0, vitality: 0, armor: 0 },
     };
   }
 
@@ -250,18 +269,19 @@
     respawn = { x: player.x, y: player.y };
   }
 
-  function advanceToLevel2() {
-    levelIndex = 1;
+  function goToLevel(idx) {
+    levelIndex = idx;
     buildMap();
     enemies = currentLevel().spawnList.map(([type, col, row]) => spawnEnemy(type, col, row));
     pBullets = []; eBullets = []; hazards = []; particles = [];
     camX = 0;
     player.x = 1 * TILE + TILE / 2; player.y = (ROWS - 1) * TILE - 13;
-    player.vx = 0; player.vy = 0; player.hp = player.maxHp;
+    player.vx = 0; player.vy = 0;
     respawn = { x: player.x, y: player.y };
-    levelBanner = { text: 'FLOOR 2 — THE DARK DUNGEON', t: 3 };
+    levelBanner = { text: `FLOOR ${idx + 1} — ${currentLevel().name.toUpperCase()}`, t: 3 };
+    state = 'playing';
     sfx.checkpoint();
-    startBossMusic();
+    if (currentLevel().theme === 'dungeon') startBossMusic();
   }
 
   function spawnEnemy(typeKey, col, row) {
@@ -394,24 +414,25 @@
     const muzzleY = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
     spawnShellCasing(player.x - dir * 2, player.y - 6, dir);
 
+    const dmg = BASE_DMG * player.dmgMult;
     if (ammo === 'normal') {
       sfx.shot();
-      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'normal', dmg: BASE_DMG });
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'normal', dmg });
     } else if (ammo === 'berserker') {
       player.souls.berserker--; sfx.heavyShot();
-      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'berserker', dmg: BASE_DMG * 3 });
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'berserker', dmg: dmg * 3 });
     } else if (ammo === 'pyromancer') {
       player.souls.pyromancer--; sfx.shot();
-      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'pyro', dmg: BASE_DMG });
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'pyro', dmg });
     } else if (ammo === 'frost') {
       player.souls.frost--; sfx.frost();
-      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'frost', dmg: BASE_DMG * 0.7 });
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'frost', dmg: dmg * 0.7 });
     } else if (ammo === 'lightning') {
       player.souls.lightning--; sfx.frost();
-      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'lightning', dmg: BASE_DMG * 1.2 });
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'lightning', dmg: dmg * 1.2 });
     } else if (ammo === 'acid') {
       player.souls.acid--; sfx.shot();
-      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'acid', dmg: BASE_DMG * 0.75 });
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'acid', dmg: dmg * 0.75 });
     }
   }
 
@@ -602,30 +623,29 @@
 
     // goal
     if (player.x >= GOAL_COL * TILE && state === 'playing') {
-      if (levelIndex === 0) {
-        advanceToLevel2();
-      } else {
-        const boss = enemies.find(e => e.cfg.isBoss);
-        if (boss && !boss.dead) {
-          player.x = GOAL_COL * TILE - 2;
-          player.blockMsgCooldown = Math.max(0, (player.blockMsgCooldown || 0) - dt);
-          if (player.blockMsgCooldown <= 0) {
-            addMessage(player.x, player.y - 30, 'DEFEAT THE GUARDIAN FIRST', '#a78bfa');
-            player.blockMsgCooldown = 1.5;
-          }
-        } else {
-          state = 'win';
-          endTitle.innerHTML = 'THE DUNGEON <span class="accent">IS CONQUERED</span>';
-          finalStats.textContent = `Score: ${player.score} — Kills: ${player.kills} — Time: ${elapsed.toFixed(1)}s`;
-          gameOverScreen.classList.remove('hidden');
-          sfx.win();
+      const boss = enemies.find(e => e.cfg.isBoss);
+      if (boss && !boss.dead) {
+        player.x = GOAL_COL * TILE - 2;
+        player.blockMsgCooldown = Math.max(0, (player.blockMsgCooldown || 0) - dt);
+        if (player.blockMsgCooldown <= 0) {
+          addMessage(player.x, player.y - 30, 'DEFEAT THE GUARDIAN FIRST', '#a78bfa');
+          player.blockMsgCooldown = 1.5;
         }
+      } else if (levelIndex + 1 < LEVEL_DEFS.length) {
+        openShop(levelIndex + 1);
+      } else {
+        state = 'win';
+        endTitle.innerHTML = 'THE JUNGLE <span class="accent">YIELDS ITS PRIZE</span>';
+        finalStats.textContent = `Score: ${player.score} — Kills: ${player.kills} — Time: ${elapsed.toFixed(1)}s`;
+        gameOverScreen.classList.remove('hidden');
+        sfx.win();
       }
     }
   }
 
   function hurtPlayer(dmg) {
     if (player.invuln > 0) return;
+    dmg = Math.max(1, dmg - player.armor);
     player.hp -= dmg;
     player.invuln = 1.0;
     player.hurtFlash = 0.3;
@@ -834,12 +854,16 @@
   function px(v) { return Math.round(v); }
 
   function drawBackground() {
-    const dungeon = currentLevel().theme === 'dungeon';
+    const theme = currentLevel().theme;
     const grad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
-    if (dungeon) {
+    if (theme === 'dungeon') {
       grad.addColorStop(0, '#0d0a16');
       grad.addColorStop(0.6, '#1c1428');
       grad.addColorStop(1, '#2a1a3a');
+    } else if (theme === 'jungle') {
+      grad.addColorStop(0, '#04140a');
+      grad.addColorStop(0.6, '#0a2e1a');
+      grad.addColorStop(1, '#123d20');
     } else {
       grad.addColorStop(0, '#6be3d8');
       grad.addColorStop(0.6, '#8fedc9');
@@ -848,36 +872,61 @@
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
-    if (dungeon) {
+    if (theme === 'dungeon') {
       // dim blood moon
       ctx.fillStyle = 'rgba(180,60,70,0.8)';
       ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 16, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = 'rgba(167,139,250,0.06)';
       ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 42, 0, Math.PI * 2); ctx.fill();
+    } else if (theme === 'jungle') {
+      // pale green moon through the canopy
+      ctx.fillStyle = 'rgba(200,255,210,0.85)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 15, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(140,255,150,0.08)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 40, 0, Math.PI * 2); ctx.fill();
     } else {
       // sun
       ctx.fillStyle = '#fff3b0';
       ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 18, 0, Math.PI * 2); ctx.fill();
     }
 
-    // distant pillars (parallax)
+    // distant pillars / tree trunks (parallax)
     const parallax = camX * 0.4;
-    ctx.fillStyle = dungeon ? 'rgba(20,15,30,0.6)' : 'rgba(60,110,90,0.35)';
+    ctx.fillStyle = theme === 'dungeon' ? 'rgba(20,15,30,0.6)' : theme === 'jungle' ? 'rgba(5,20,10,0.65)' : 'rgba(60,110,90,0.35)';
     for (let i = -1; i < 8; i++) {
       const x = i * 140 - (parallax % 140);
       ctx.fillRect(px(x), VIEW_H - 160, 26, 160);
-      ctx.fillRect(px(x) - 6, VIEW_H - 172, 38, 12);
+      if (theme === 'jungle') {
+        ctx.beginPath(); ctx.ellipse(px(x) + 13, VIEW_H - 168, 26, 18, 0, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.fillRect(px(x) - 6, VIEW_H - 172, 38, 12);
+      }
     }
-    if (dungeon) {
-      // drifting purple spores instead of jungle vines
+    if (theme === 'dungeon') {
+      // drifting purple spores
       for (let i = -1; i < 14; i++) {
         const x = (i * 68 - (camX * 0.6 % 68));
         const y = (elapsed * 10 + i * 37) % VIEW_H;
         ctx.fillStyle = 'rgba(167,139,250,0.4)';
         ctx.fillRect(px(x), y, 2, 2);
       }
+    } else if (theme === 'jungle') {
+      // drifting fireflies
+      for (let i = -1; i < 14; i++) {
+        const x = (i * 61 - (camX * 0.55 % 61));
+        const y = VIEW_H * 0.3 + Math.sin(elapsed * 1.5 + i * 2) * 40 + (i % 5) * 20;
+        const glow = 0.4 + Math.sin(elapsed * 5 + i) * 0.3;
+        ctx.fillStyle = `rgba(180,255,140,${Math.max(0.1, glow)})`;
+        ctx.fillRect(px(x), y, 2, 2);
+      }
+      // hanging vines
+      ctx.fillStyle = 'rgba(20,60,30,0.6)';
+      for (let i = -1; i < 10; i++) {
+        const x = i * 95 - (camX * 0.7 % 95);
+        ctx.fillRect(px(x), 0, 4, 26 + (i % 3) * 12);
+      }
     } else {
-      // jungle vines
+      // jungle vines (temple floor)
       ctx.fillStyle = 'rgba(50,140,70,0.5)';
       for (let i = -1; i < 10; i++) {
         const x = i * 95 - (camX * 0.7 % 95);
@@ -887,12 +936,14 @@
   }
 
   function drawTiles() {
-    const dungeon = currentLevel().theme === 'dungeon';
-    const topColor = dungeon ? '#4a4258' : '#f2d99b';
-    const sideColor = dungeon ? '#241f30' : '#c9a361';
-    const edgeColor = dungeon ? 'rgba(10,8,16,0.5)' : 'rgba(120,85,40,0.35)';
-    const highlightColor = dungeon ? 'rgba(167,139,250,0.15)' : 'rgba(255,255,255,0.25)';
-    const glyphColor = dungeon ? 'rgba(167,139,250,0.35)' : 'rgba(120,85,40,0.5)';
+    const theme = currentLevel().theme;
+    const dungeon = theme === 'dungeon';
+    const jungle = theme === 'jungle';
+    const topColor = dungeon ? '#4a4258' : jungle ? '#3a4a2a' : '#f2d99b';
+    const sideColor = dungeon ? '#241f30' : jungle ? '#1c2814' : '#c9a361';
+    const edgeColor = dungeon ? 'rgba(10,8,16,0.5)' : jungle ? 'rgba(5,10,5,0.5)' : 'rgba(120,85,40,0.35)';
+    const highlightColor = dungeon ? 'rgba(167,139,250,0.15)' : jungle ? 'rgba(140,255,120,0.12)' : 'rgba(255,255,255,0.25)';
+    const glyphColor = dungeon ? 'rgba(167,139,250,0.35)' : jungle ? 'rgba(140,255,120,0.35)' : 'rgba(120,85,40,0.5)';
 
     const c0 = Math.max(0, Math.floor(camX / TILE) - 1);
     const c1 = Math.min(COLS - 1, Math.ceil((camX + VIEW_W) / TILE) + 1);
@@ -917,21 +968,22 @@
         }
       }
     }
-    // torches on ground row at intervals
+    // torches (fire in the temple/dungeon, glowing fungus in the jungle)
     ctx.font = '10px monospace';
     for (let c = c0; c <= c1; c++) {
       if (map[ROWS - 1][c] === 1 && c % 8 === 4) {
         const x = px(c * TILE - camX) + TILE / 2, y = (ROWS - 1) * TILE;
-        ctx.fillStyle = dungeon ? '#3a3448' : '#8a5a2a';
+        ctx.fillStyle = dungeon ? '#3a3448' : jungle ? '#3a2f1a' : '#8a5a2a';
         ctx.fillRect(x - 2, y - 14, 4, 14);
         const flick = 6 + Math.sin(elapsed * 12 + c) * 2;
-        ctx.fillStyle = dungeon ? '#a78bfa' : '#ff8a3d';
+        ctx.fillStyle = dungeon ? '#a78bfa' : jungle ? '#5cffa0' : '#ff8a3d';
         ctx.beginPath(); ctx.arc(x, y - 16, flick / 2, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = dungeon ? '#e0d4ff' : '#ffe27a';
+        ctx.fillStyle = dungeon ? '#e0d4ff' : jungle ? '#c8ffdd' : '#ffe27a';
         ctx.beginPath(); ctx.arc(x, y - 16, flick / 4, 0, Math.PI * 2); ctx.fill();
       }
     }
-    // goal marker: an altar in the temple, a dark rift in the dungeon
+    // goal marker: an altar in the temple, a dark rift in the dungeon,
+    // a vine-choked shrine in the jungle
     const gx = px(GOAL_COL * TILE - camX);
     const gy = (ROWS - 1) * TILE;
     if (dungeon) {
@@ -942,6 +994,17 @@
       ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 20, pulse, pulse * 1.4, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#f4e9ff';
       ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 20, pulse * 0.4, pulse * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    } else if (jungle) {
+      ctx.fillStyle = '#1a2414';
+      ctx.fillRect(gx, gy - 34, TILE, 34);
+      ctx.fillStyle = '#0f1a0c';
+      ctx.fillRect(gx + 6, gy - 28, TILE - 12, 28);
+      const pulse = 7 + Math.sin(elapsed * 4) * 3;
+      ctx.fillStyle = 'rgba(140,255,150,0.75)';
+      ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 16, pulse, pulse * 1.3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(30,90,40,0.8)';
+      ctx.fillRect(gx + 2, gy - 34, 3, 30);
+      ctx.fillRect(gx + TILE - 5, gy - 30, 3, 26);
     } else {
       ctx.fillStyle = '#d9c07a';
       ctx.fillRect(gx, gy - 34, TILE, 34);
@@ -1629,6 +1692,83 @@
   screenCanvas.addEventListener('click', () => { if (state === 'cutscene') advanceCutscene(); });
   skipCutsceneBtn.addEventListener('click', skipCutscene);
 
+  // ---------- Shop (between floors) ----------
+  const SHOP_ITEMS = [
+    {
+      key: 'heal', name: 'Field Medic', desc: 'Refill your health to full.',
+      cost: () => 30,
+      canBuy: (p) => p.hp < p.maxHp,
+      buy: (p) => { p.hp = p.maxHp; },
+    },
+    {
+      key: 'ammo', name: 'Ammo Cache', desc: '+1 soul of every special ammo type.',
+      cost: () => 50,
+      canBuy: () => true,
+      buy: (p) => { for (const k of Object.keys(p.souls)) p.souls[k]++; },
+    },
+    {
+      key: 'damage', name: 'Sharpened Rounds', desc: '+15% permanent damage.',
+      cost: (p) => 80 + p.upgrades.damage * 40,
+      canBuy: () => true,
+      buy: (p) => { p.dmgMult *= 1.15; p.upgrades.damage++; },
+    },
+    {
+      key: 'vitality', name: 'Vitality Boost', desc: '+20 max health, healed on the spot.',
+      cost: (p) => 60 + p.upgrades.vitality * 30,
+      canBuy: () => true,
+      buy: (p) => { p.maxHp += 20; p.hp += 20; p.upgrades.vitality++; },
+    },
+    {
+      key: 'armor', name: 'Scavenged Armor', desc: '-2 damage taken per hit (max -10).',
+      cost: (p) => 100 + p.upgrades.armor * 50,
+      canBuy: (p) => p.armor < 10,
+      buy: (p) => { p.armor = Math.min(10, p.armor + 2); p.upgrades.armor++; },
+    },
+  ];
+  let shopNextLevel = 0;
+
+  function openShop(nextLevel) {
+    shopNextLevel = nextLevel;
+    state = 'shop';
+    renderShopUI();
+    shopScreen.classList.remove('hidden');
+    sfx.win();
+  }
+
+  function renderShopUI() {
+    shopScoreEl.textContent = `Loot: ${player.score}`;
+    shopItemsEl.innerHTML = '';
+    for (const item of SHOP_ITEMS) {
+      const cost = item.cost(player);
+      const usable = item.canBuy(player);
+      const afford = player.score >= cost;
+      const row = document.createElement('div');
+      row.className = 'shopItem';
+      const info = document.createElement('div');
+      info.className = 'shopItemInfo';
+      info.innerHTML = `<div class="shopItemName">${item.name}</div><div class="shopItemDesc">${item.desc}</div>`;
+      const btn = document.createElement('button');
+      btn.className = 'shopBuyBtn';
+      btn.textContent = usable ? cost : 'MAXED';
+      btn.disabled = !usable || !afford;
+      btn.addEventListener('click', () => {
+        if (player.score < item.cost(player) || !item.canBuy(player)) return;
+        player.score -= item.cost(player);
+        item.buy(player);
+        sfx.checkpoint();
+        renderShopUI();
+      });
+      row.appendChild(info);
+      row.appendChild(btn);
+      shopItemsEl.appendChild(row);
+    }
+  }
+
+  shopContinueBtn.addEventListener('click', () => {
+    shopScreen.classList.add('hidden');
+    goToLevel(shopNextLevel);
+  });
+
   // ---------- Main loop ----------
   let lastTime = performance.now();
   function loop(now) {
@@ -1658,6 +1798,7 @@
     state = 'playing';
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
+    shopScreen.classList.add('hidden');
     skipCutsceneBtn.classList.add('hidden');
   }
 

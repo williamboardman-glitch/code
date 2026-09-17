@@ -14,7 +14,7 @@
   <div id="startScreen" class="overlay">
     <div class="panel">
       <h1>TEMPLE <span class="accent">OF BONES</span></h1>
-      <p class="lore">A sunken temple, cracked open after a thousand years — and the dead inside never stopped guarding it. Run, jump, and shoot your way through two floors to reach whatever's waiting at the bottom. Every zombie you drop leaves a soul behind, and a soul loaded in your gun is not the same as a bullet. Floor two guards its exit with something much worse than a zombie — beat it, and it stops fighting you.</p>
+      <p class="lore">A sunken temple, cracked open after a thousand years — and the dead inside never stopped guarding it. Run, jump, and shoot your way through three floors to reach whatever's waiting at the bottom. Every zombie you drop leaves a soul behind, and a soul loaded in your gun is not the same as a bullet. Floor two guards its exit with something much worse than a zombie — beat it, and it stops fighting you. Between floors, spend what you've looted at the supply cache.</p>
       <div class="soulKeyLegend">
         <div class="legendRow"><span class="swatch grunt"></span> Shambler — fodder, no soul</div>
         <div class="legendRow"><span class="swatch brute"></span> Brute — soul loads a <b>heavy 3x-damage shot</b></div>
@@ -38,6 +38,16 @@
       <h1 id="endTitle">THE TEMPLE <span class="accent">CLAIMS YOU</span></h1>
       <p id="finalStats" class="lore"></p>
       <button id="restartBtn">RISE AGAIN</button>
+    </div>
+  </div>
+
+  <div id="shopScreen" class="overlay hidden">
+    <div class="panel">
+      <h1>SUPPLY <span class="accent">CACHE</span></h1>
+      <p class="lore">Spend what you looted before the next floor. Prices climb the more you lean on one upgrade.</p>
+      <div id="shopScore" class="shopScore"></div>
+      <div id="shopItems" class="shopItems"></div>
+      <button id="shopContinueBtn">CONTINUE</button>
     </div>
   </div>
 
