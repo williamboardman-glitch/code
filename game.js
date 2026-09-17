@@ -87,8 +87,11 @@
   };
 
   // ---------- Level ----------
-  const GAPS = [[14, 15], [33, 35], [52, 53]];
-  const PLATFORMS = [
+  // Both floors share the same physical layout (gaps/platforms) — it's
+  // already proven jumpable — and differ in theme, enemy mix, and the
+  // guardian boss waiting at the end of floor 2.
+  const LEVEL_GAPS = [[14, 15], [33, 35], [52, 53]];
+  const LEVEL_PLATFORMS = [
     { row: 6, c0: 7, c1: 9 },
     { row: 6, c0: 20, c1: 23 },
     { row: 7, c0: 33, c1: 35 }, // bridge over the wide pit
@@ -96,16 +99,20 @@
     { row: 6, c0: 58, c1: 61 },
   ];
   const GOAL_COL = 68;
+  const LEVEL_CHECKPOINTS = [1, 19, 37, 56];
+
+  let levelIndex = 0;
+  function currentLevel() { return LEVEL_DEFS[levelIndex]; }
 
   let map;
   function buildMap() {
     map = [];
     for (let r = 0; r < ROWS; r++) map.push(new Array(COLS).fill(0));
     for (let c = 0; c < COLS; c++) {
-      const inGap = GAPS.some(([a, b]) => c >= a && c <= b);
+      const inGap = LEVEL_GAPS.some(([a, b]) => c >= a && c <= b);
       map[ROWS - 1][c] = inGap ? 0 : 1;
     }
-    for (const p of PLATFORMS) for (let c = p.c0; c <= p.c1; c++) map[p.row][c] = 1;
+    for (const p of LEVEL_PLATFORMS) for (let c = p.c0; c <= p.c1; c++) map[p.row][c] = 1;
   }
 
   function isSolidPixel(px, py) {
@@ -130,6 +137,7 @@
     lightning: { name: 'lightning', color: '#a78bfa', dark: '#5b3fa0', light: '#e0d4ff', bone: '#241748', w: 16, h: 25, speed: 14, hp: 30, dmg: 0, soul: 'lightning', points: 35, ranged: true, fireRate: 2.8, projSpeed: 900, range: 300, spread: 0.05, projDmg: 16, kind: 'lightning' },
     acid: { name: 'acid', color: '#8bc34a', dark: '#4b6b1f', light: '#c8e6a0', bone: '#1f2b10', w: 16, h: 25, speed: 12, hp: 30, dmg: 0, soul: 'acid', points: 32, ranged: true, fireRate: 2.6, projSpeed: 170, range: 240, spread: 0.1, arc: true, projDmg: 8, kind: 'acid' },
     shrieker: { name: 'shrieker', color: '#c7c2b8', dark: '#6b675e', light: '#e8e4da', bone: '#2b2822', w: 14, h: 22, speed: 20, hp: 14, dmg: 4, soul: null, points: 20, melee: true, support: true },
+    boss: { name: 'boss', color: '#2a1a3a', dark: '#150d1f', light: '#5a3a7a', bone: '#0a0610', w: 34, h: 44, speed: 22, hp: 260, dmg: 22, soul: null, points: 200, ranged: true, fireRate: 1.8, projSpeed: 220, range: 260, spread: 0.08, projDmg: 14, kind: 'dark', isBoss: true },
   };
   const SOUL_META = {
     berserker: { label: 'HEAVY', color: '#c0392b' },
@@ -138,7 +146,7 @@
     lightning: { label: 'CHAIN', color: '#a78bfa' },
     acid: { label: 'ACID', color: '#8bc34a' },
   };
-  const SPAWN_LIST = [
+  const LEVEL1_SPAWN = [
     ['grunt', 3, 8], ['grunt', 5, 8], ['grunt', 9, 8], ['grunt', 11, 8],
     ['brute', 12, 8], ['grunt', 8, 6],
     ['grunt', 17, 8], ['grunt', 19, 8], ['brute', 18, 8],
@@ -156,7 +164,21 @@
     ['acid', 6, 8], ['acid', 32, 8], ['acid', 55, 8],
     ['shrieker', 20, 8], ['shrieker', 38, 8], ['shrieker', 62, 8],
   ];
-  const CHECKPOINT_COLS = [1, 19, 37, 56];
+  const LEVEL2_SPAWN = [
+    ['grunt', 3, 8], ['grunt', 9, 8], ['brute', 12, 8],
+    ['lightning', 8, 6], ['grunt', 17, 8], ['acid', 19, 8],
+    ['brute', 22, 6], ['grunt', 24, 8], ['frost', 26, 8],
+    ['shrieker', 29, 8], ['brute', 31, 8],
+    ['grunt', 36, 8], ['lightning', 39, 8], ['acid', 42, 6],
+    ['brute', 44, 8], ['frost', 47, 8], ['grunt', 49, 8],
+    ['shrieker', 51, 8], ['brute', 54, 8], ['grunt', 56, 8],
+    ['acid', 59, 6], ['lightning', 61, 8],
+    ['boss', 64, 8],
+  ];
+  const LEVEL_DEFS = [
+    { theme: 'temple', name: 'Temple of Bones', spawnList: LEVEL1_SPAWN },
+    { theme: 'dungeon', name: 'The Dark Dungeon', spawnList: LEVEL2_SPAWN },
+  ];
 
   const BASE_DMG = 16;
   const BASE_COOLDOWN = 0.28;
@@ -168,7 +190,7 @@
   // ---------- State ----------
   let state = 'start'; // start | playing | win | dead
   let keys = {};
-  let player, enemies, pBullets, eBullets, hazards, particles, messages, camX, respawn, elapsed, shake;
+  let player, pet, enemies, pBullets, eBullets, hazards, particles, messages, camX, respawn, elapsed, shake, levelBanner;
 
   function newPlayer() {
     return {
@@ -177,17 +199,33 @@
       hp: 100, maxHp: 100, lives: 3, score: 0, kills: 0,
       ammo: 'normal', souls: { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0 },
       fireCooldown: 0, invuln: 0, coyote: 0, jumpBuffer: 0, jumpsUsed: 0, walkT: 0, hurtFlash: 0,
-      shockedTimer: 0, won: false,
+      shockedTimer: 0, blockMsgCooldown: 0, won: false,
     };
   }
 
   function resetRun() {
+    levelIndex = 0;
     buildMap();
     player = newPlayer();
-    enemies = SPAWN_LIST.map(([type, col, row]) => spawnEnemy(type, col, row));
+    pet = null;
+    enemies = currentLevel().spawnList.map(([type, col, row]) => spawnEnemy(type, col, row));
     pBullets = []; eBullets = []; hazards = []; particles = []; messages = [];
     camX = 0; elapsed = 0; shake = { t: 0, mag: 0 };
+    levelBanner = { text: '', t: 0 };
     respawn = { x: player.x, y: player.y };
+  }
+
+  function advanceToLevel2() {
+    levelIndex = 1;
+    buildMap();
+    enemies = currentLevel().spawnList.map(([type, col, row]) => spawnEnemy(type, col, row));
+    pBullets = []; eBullets = []; hazards = []; particles = [];
+    camX = 0;
+    player.x = 1 * TILE + TILE / 2; player.y = (ROWS - 1) * TILE - 13;
+    player.vx = 0; player.vy = 0; player.hp = player.maxHp;
+    respawn = { x: player.x, y: player.y };
+    levelBanner = { text: 'FLOOR 2 — THE DARK DUNGEON', t: 3 };
+    sfx.checkpoint();
   }
 
   function spawnEnemy(typeKey, col, row) {
@@ -251,6 +289,13 @@
       player.souls[e.cfg.soul]++;
       spawnSoulParticle(e.x, e.y, e.cfg.soul);
       sfx.soul();
+    }
+    if (e.cfg.isBoss) {
+      pet = { x: e.x, y: e.y, fireCooldown: 0, fireRate: 3.5, dmg: 12, range: 220 };
+      spawnExplosionParticles(e.x, e.y, ['#a78bfa', '#e0d4ff']);
+      spawnShockwave(e.x, e.y, 'rgba(167,139,250,0.9)', 90);
+      sfx.win();
+      addMessage(e.x, e.y - 30, 'THE GUARDIAN SERVES YOU NOW', '#a78bfa');
     }
   }
 
@@ -501,7 +546,7 @@
     else player.walkT = 0;
 
     // checkpoints
-    for (const c of CHECKPOINT_COLS) {
+    for (const c of LEVEL_CHECKPOINTS) {
       const cx = c * TILE + TILE / 2;
       if (player.onGround && player.x >= cx && respawn.x < cx) {
         respawn = { x: cx, y: player.y };
@@ -515,11 +560,25 @@
 
     // goal
     if (player.x >= GOAL_COL * TILE && state === 'playing') {
-      state = 'win';
-      endTitle.innerHTML = 'THE ALTAR <span class="accent">IS YOURS</span>';
-      finalStats.textContent = `Score: ${player.score} — Kills: ${player.kills} — Time: ${elapsed.toFixed(1)}s`;
-      gameOverScreen.classList.remove('hidden');
-      sfx.win();
+      if (levelIndex === 0) {
+        advanceToLevel2();
+      } else {
+        const boss = enemies.find(e => e.cfg.isBoss);
+        if (boss && !boss.dead) {
+          player.x = GOAL_COL * TILE - 2;
+          player.blockMsgCooldown = Math.max(0, (player.blockMsgCooldown || 0) - dt);
+          if (player.blockMsgCooldown <= 0) {
+            addMessage(player.x, player.y - 30, 'DEFEAT THE GUARDIAN FIRST', '#a78bfa');
+            player.blockMsgCooldown = 1.5;
+          }
+        } else {
+          state = 'win';
+          endTitle.innerHTML = 'THE DUNGEON <span class="accent">IS CONQUERED</span>';
+          finalStats.textContent = `Score: ${player.score} — Kills: ${player.kills} — Time: ${elapsed.toFixed(1)}s`;
+          gameOverScreen.classList.remove('hidden');
+          sfx.win();
+        }
+      }
     }
   }
 
@@ -624,7 +683,7 @@
           }
         }
         if (rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, player.x, player.y, player.w, player.h)) {
-          hurtPlayer(4);
+          hurtPlayer(e.cfg.isBoss ? e.cfg.dmg : 4);
         }
       }
     }
@@ -661,7 +720,7 @@
     }
     pBullets = pBullets.filter(b => !b.dead && b.x > camX - 30 && b.x < camX + VIEW_W + 30 && b.y > -30 && b.y < VH + 30);
 
-    const eBulletColors = { fire: '#ff9d3d', frost: '#9fe8f5', lightning: '#d8c7ff', acid: '#8bc34a' };
+    const eBulletColors = { fire: '#ff9d3d', frost: '#9fe8f5', lightning: '#d8c7ff', acid: '#8bc34a', dark: '#b090ff' };
     for (const b of eBullets) {
       if (b.grav) b.vy += 900 * dt;
       b.x += b.vx * dt; b.y += b.vy * dt;
@@ -698,44 +757,101 @@
     updatePlayer(dt);
     if (state !== 'playing') { updateParticles(dt); return; }
     updateEnemies(dt);
+    updatePet(dt);
     updateBullets(dt);
     updateHazards(dt);
     updateParticles(dt);
     camX = Math.max(0, Math.min(player.x - VIEW_W / 2, VW - VIEW_W));
+    if (levelBanner.t > 0) levelBanner.t -= dt;
+  }
+
+  function updatePet(dt) {
+    if (!pet) return;
+    pet.fireCooldown = Math.max(0, pet.fireCooldown - dt);
+    const targetX = player.x - player.facing * 22;
+    const targetY = player.y - 26 + Math.sin(elapsed * 3) * 3;
+    pet.x += (targetX - pet.x) * Math.min(1, dt * 4);
+    pet.y += (targetY - pet.y) * Math.min(1, dt * 4);
+    if (pet.fireCooldown <= 0) {
+      let target = null, bestDist = pet.range;
+      for (const o of enemies) {
+        if (o.dead) continue;
+        const d = Math.hypot(o.x - pet.x, o.y - pet.y);
+        if (d < bestDist) { bestDist = d; target = o; }
+      }
+      if (target) {
+        pet.fireCooldown = pet.fireRate;
+        const dx = target.x - pet.x, dy = target.y - pet.y, d = Math.hypot(dx, dy) || 1;
+        pBullets.push({ x: pet.x, y: pet.y, vx: (dx / d) * 380, vy: (dy / d) * 380, kind: 'pet', dmg: pet.dmg });
+        sfx.shot();
+      }
+    }
   }
 
   // ---------- Rendering ----------
   function px(v) { return Math.round(v); }
 
   function drawBackground() {
+    const dungeon = currentLevel().theme === 'dungeon';
     const grad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
-    grad.addColorStop(0, '#6be3d8');
-    grad.addColorStop(0.6, '#8fedc9');
-    grad.addColorStop(1, '#c8e896');
+    if (dungeon) {
+      grad.addColorStop(0, '#0d0a16');
+      grad.addColorStop(0.6, '#1c1428');
+      grad.addColorStop(1, '#2a1a3a');
+    } else {
+      grad.addColorStop(0, '#6be3d8');
+      grad.addColorStop(0.6, '#8fedc9');
+      grad.addColorStop(1, '#c8e896');
+    }
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
-    // sun
-    ctx.fillStyle = '#fff3b0';
-    ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 18, 0, Math.PI * 2); ctx.fill();
+    if (dungeon) {
+      // dim blood moon
+      ctx.fillStyle = 'rgba(180,60,70,0.8)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 16, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(167,139,250,0.06)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 42, 0, Math.PI * 2); ctx.fill();
+    } else {
+      // sun
+      ctx.fillStyle = '#fff3b0';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 18, 0, Math.PI * 2); ctx.fill();
+    }
 
     // distant pillars (parallax)
     const parallax = camX * 0.4;
-    ctx.fillStyle = 'rgba(60,110,90,0.35)';
+    ctx.fillStyle = dungeon ? 'rgba(20,15,30,0.6)' : 'rgba(60,110,90,0.35)';
     for (let i = -1; i < 8; i++) {
       const x = i * 140 - (parallax % 140);
       ctx.fillRect(px(x), VIEW_H - 160, 26, 160);
       ctx.fillRect(px(x) - 6, VIEW_H - 172, 38, 12);
     }
-    // jungle vines
-    ctx.fillStyle = 'rgba(50,140,70,0.5)';
-    for (let i = -1; i < 10; i++) {
-      const x = i * 95 - (camX * 0.7 % 95);
-      ctx.fillRect(px(x), 0, 4, 20 + (i % 3) * 10);
+    if (dungeon) {
+      // drifting purple spores instead of jungle vines
+      for (let i = -1; i < 14; i++) {
+        const x = (i * 68 - (camX * 0.6 % 68));
+        const y = (elapsed * 10 + i * 37) % VIEW_H;
+        ctx.fillStyle = 'rgba(167,139,250,0.4)';
+        ctx.fillRect(px(x), y, 2, 2);
+      }
+    } else {
+      // jungle vines
+      ctx.fillStyle = 'rgba(50,140,70,0.5)';
+      for (let i = -1; i < 10; i++) {
+        const x = i * 95 - (camX * 0.7 % 95);
+        ctx.fillRect(px(x), 0, 4, 20 + (i % 3) * 10);
+      }
     }
   }
 
   function drawTiles() {
+    const dungeon = currentLevel().theme === 'dungeon';
+    const topColor = dungeon ? '#4a4258' : '#f2d99b';
+    const sideColor = dungeon ? '#241f30' : '#c9a361';
+    const edgeColor = dungeon ? 'rgba(10,8,16,0.5)' : 'rgba(120,85,40,0.35)';
+    const highlightColor = dungeon ? 'rgba(167,139,250,0.15)' : 'rgba(255,255,255,0.25)';
+    const glyphColor = dungeon ? 'rgba(167,139,250,0.35)' : 'rgba(120,85,40,0.5)';
+
     const c0 = Math.max(0, Math.floor(camX / TILE) - 1);
     const c1 = Math.min(COLS - 1, Math.ceil((camX + VIEW_W) / TILE) + 1);
     for (let r = 0; r < ROWS; r++) {
@@ -743,18 +859,18 @@
         if (map[r][c] !== 1) continue;
         const x = px(c * TILE - camX), y = r * TILE;
         const topExposed = r === 0 || map[r - 1][c] !== 1;
-        ctx.fillStyle = topExposed ? '#f2d99b' : '#c9a361';
+        ctx.fillStyle = topExposed ? topColor : sideColor;
         ctx.fillRect(x, y, TILE, TILE);
-        ctx.fillStyle = 'rgba(120,85,40,0.35)';
+        ctx.fillStyle = edgeColor;
         ctx.fillRect(x, y + TILE - 4, TILE, 4);
         ctx.fillRect(x, y, 2, TILE);
         if (topExposed) {
-          ctx.fillStyle = 'rgba(255,255,255,0.25)';
+          ctx.fillStyle = highlightColor;
           ctx.fillRect(x, y, TILE, 3);
         }
         // occasional carved glyph
         if ((c * 7 + r * 13) % 11 === 0 && topExposed) {
-          ctx.fillStyle = 'rgba(120,85,40,0.5)';
+          ctx.fillStyle = glyphColor;
           ctx.fillRect(x + TILE / 2 - 2, y + 8, 4, 10);
         }
       }
@@ -764,22 +880,32 @@
     for (let c = c0; c <= c1; c++) {
       if (map[ROWS - 1][c] === 1 && c % 8 === 4) {
         const x = px(c * TILE - camX) + TILE / 2, y = (ROWS - 1) * TILE;
-        ctx.fillStyle = '#8a5a2a';
+        ctx.fillStyle = dungeon ? '#3a3448' : '#8a5a2a';
         ctx.fillRect(x - 2, y - 14, 4, 14);
         const flick = 6 + Math.sin(elapsed * 12 + c) * 2;
-        ctx.fillStyle = '#ff8a3d';
+        ctx.fillStyle = dungeon ? '#a78bfa' : '#ff8a3d';
         ctx.beginPath(); ctx.arc(x, y - 16, flick / 2, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#ffe27a';
+        ctx.fillStyle = dungeon ? '#e0d4ff' : '#ffe27a';
         ctx.beginPath(); ctx.arc(x, y - 16, flick / 4, 0, Math.PI * 2); ctx.fill();
       }
     }
-    // altar / goal
+    // goal marker: an altar in the temple, a dark rift in the dungeon
     const gx = px(GOAL_COL * TILE - camX);
     const gy = (ROWS - 1) * TILE;
-    ctx.fillStyle = '#d9c07a';
-    ctx.fillRect(gx, gy - 34, TILE, 34);
-    ctx.fillStyle = '#ffcd3c';
-    ctx.fillRect(gx + TILE / 2 - 3, gy - 46, 6, 12 + Math.sin(elapsed * 4) * 3);
+    if (dungeon) {
+      ctx.fillStyle = '#150d1f';
+      ctx.fillRect(gx, gy - 34, TILE, 34);
+      const pulse = 8 + Math.sin(elapsed * 4) * 3;
+      ctx.fillStyle = 'rgba(167,139,250,0.8)';
+      ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 20, pulse, pulse * 1.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f4e9ff';
+      ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 20, pulse * 0.4, pulse * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillStyle = '#d9c07a';
+      ctx.fillRect(gx, gy - 34, TILE, 34);
+      ctx.fillStyle = '#ffcd3c';
+      ctx.fillRect(gx + TILE / 2 - 3, gy - 46, 6, 12 + Math.sin(elapsed * 4) * 3);
+    }
   }
 
   function drawPlayer() {
@@ -868,6 +994,21 @@
       ctx.fillStyle = '#ffcf4a';
       ctx.fillRect(fx + 1, fy - 1, 4, 3);
     }
+    ctx.restore();
+  }
+
+  function drawPet(p) {
+    const x = px(p.x - camX), y = px(p.y);
+    const bob = Math.sin(elapsed * 4) * 2;
+    ctx.save();
+    ctx.translate(x, y + bob);
+    ctx.fillStyle = '#2a1a3a';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 8, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = p.fireCooldown < 0.15 ? '#f4e9ff' : '#a78bfa';
+    ctx.fillRect(-4, -2, 3, 3);
+    ctx.fillRect(1, -2, 3, 3);
     ctx.restore();
   }
 
@@ -998,6 +1139,29 @@
       ctx.fillRect(-3, -hh + 4, 6, 3);
       ctx.fillStyle = col('#8b1a1a');
       ctx.fillRect(-2, -hh + 5, 4, 1);
+    } else if (c.name === 'boss') {
+      // the guardian: hulking dark knight with a jagged crown and burning eyes
+      ctx.fillStyle = col(c.color);
+      ctx.fillRect(-hw, -hh + 12, c.w, c.h - 20);
+      ctx.fillStyle = col(c.light);
+      ctx.fillRect(-hw, -hh + 12, 5, c.h - 20);
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(-hw + 3, -hh, c.w - 6, 14);
+      // crown spikes
+      ctx.fillStyle = col(c.bone);
+      ctx.fillRect(-hw + 2, -hh - 6, 4, 8);
+      ctx.fillRect(-2, -hh - 9, 4, 11);
+      ctx.fillRect(hw - 6, -hh - 6, 4, 8);
+      // burning eyes
+      ctx.fillStyle = col('#ff5a3d');
+      ctx.fillRect(-7, -hh + 5, 4, 3);
+      ctx.fillRect(3, -hh + 5, 4, 3);
+      // dark aura wisps
+      if (Math.sin(e.walkT * 6) > 0) {
+        ctx.fillStyle = 'rgba(90,58,122,0.6)';
+        ctx.fillRect(-hw - 3, -hh + 10, 3, 10);
+        ctx.fillRect(hw, -hh + 6, 3, 10);
+      }
     }
 
     if (e.slowTimer > 0) {
@@ -1030,7 +1194,7 @@
 
   function drawBullet(b, kind) {
     const x = px(b.x - camX), y = px(b.y);
-    const colors = { normal: '#5ef29a', berserker: '#ffcf4a', pyro: '#ff8a3d', frost: '#9fe8f5', fire: '#ff8a3d', lightning: '#d8c7ff', acid: '#8bc34a' };
+    const colors = { normal: '#5ef29a', berserker: '#ffcf4a', pyro: '#ff8a3d', frost: '#9fe8f5', fire: '#ff8a3d', lightning: '#d8c7ff', acid: '#8bc34a', dark: '#b090ff', pet: '#d8c7ff' };
     ctx.fillStyle = colors[kind] || '#fff';
     if (kind === 'lightning') {
       ctx.fillRect(x - 6, y - 1, 4, 2);
@@ -1106,12 +1270,26 @@
     ctx.fillText(`${player.score}`, VIEW_W - 8, 16);
     ctx.textAlign = 'left';
 
-    // progress bar
-    const prog = Math.min(1, player.x / (GOAL_COL * TILE));
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(VIEW_W / 2 - 60, 6, 120, 5);
-    ctx.fillStyle = '#ffcd3c';
-    ctx.fillRect(VIEW_W / 2 - 60, 6, 120 * prog, 5);
+    // progress bar (or the guardian's health bar, once it's engaged)
+    const boss = enemies.find(e => e.cfg.isBoss);
+    if (boss && !boss.dead) {
+      const bossPct = Math.max(0, boss.hp / boss.maxHp);
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = '#a78bfa';
+      ctx.fillText('THE GUARDIAN', VIEW_W / 2, 10);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(VIEW_W / 2 - 70, 13, 140, 6);
+      ctx.fillStyle = '#a78bfa';
+      ctx.fillRect(VIEW_W / 2 - 69, 14, 138 * bossPct, 4);
+    } else {
+      const prog = Math.min(1, player.x / (GOAL_COL * TILE));
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(VIEW_W / 2 - 60, 6, 120, 5);
+      ctx.fillStyle = '#ffcd3c';
+      ctx.fillRect(VIEW_W / 2 - 60, 6, 120 * prog, 5);
+    }
 
     // ammo slots
     const slots = [
@@ -1148,6 +1326,19 @@
       ctx.globalAlpha = 1;
     }
     ctx.textAlign = 'left';
+
+    if (levelBanner.t > 0) {
+      ctx.globalAlpha = Math.min(1, levelBanner.t);
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 20px monospace';
+      ctx.fillStyle = '#a78bfa';
+      ctx.shadowColor = '#a78bfa';
+      ctx.shadowBlur = 12;
+      ctx.fillText(levelBanner.text, VIEW_W / 2, VIEW_H / 2 - 40);
+      ctx.shadowBlur = 0;
+      ctx.textAlign = 'left';
+      ctx.globalAlpha = 1;
+    }
   }
 
   function render() {
@@ -1161,6 +1352,7 @@
     for (const hz of hazards) drawHazard(hz);
     for (const e of enemies) drawEnemy(e);
     drawPlayer();
+    if (pet) drawPet(pet);
     for (const b of pBullets) drawBullet(b, b.kind);
     for (const b of eBullets) drawBullet(b, b.kind);
     for (const p of particles) drawParticle(p);
