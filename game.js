@@ -181,7 +181,22 @@
     shrieker: { name: 'shrieker', color: '#c7c2b8', dark: '#6b675e', light: '#e8e4da', bone: '#2b2822', w: 14, h: 22, speed: 20, hp: 14, dmg: 4, soul: null, points: 20, melee: true, support: true },
     shadow: { name: 'shadow', color: '#241a33', dark: '#120c1c', light: '#4a3566', bone: '#0a0610', w: 15, h: 24, speed: 10, hp: 22, dmg: 3, soul: 'shadow', points: 34, ranged: true, fireRate: 3.0, projSpeed: 260, range: 340, spread: 0.05, projDmg: 3, kind: 'shadow', pull: true },
     imp: { name: 'imp', color: '#ff5a2e', dark: '#8a2508', light: '#ffb37a', bone: '#2a0a02', w: 13, h: 18, speed: 62, hp: 10, dmg: 10, soul: null, points: 12, melee: true },
-    boss: { name: 'boss', color: '#2a1a3a', dark: '#150d1f', light: '#5a3a7a', bone: '#0a0610', w: 34, h: 44, speed: 30, hp: 520, dmg: 22, soul: null, points: 350, isBoss: true },
+    boss: {
+      name: 'boss', displayName: 'THE GUARDIAN', color: '#2a1a3a', dark: '#150d1f', light: '#5a3a7a', bone: '#0a0610',
+      w: 34, h: 44, speed: 30, hp: 520, dmg: 22, soul: null, points: 350, isBoss: true,
+      hudColor: '#a78bfa', novaRingColor: 'rgba(176,144,255,0.7)',
+      telegraphColors: { dash_telegraph: 'rgba(255,90,60,0.8)', slam_telegraph: 'rgba(167,139,250,0.8)', barrage_telegraph: 'rgba(90,180,255,0.8)' },
+    },
+    archdemon: {
+      name: 'archdemon', displayName: 'THE ARCH DEMON', color: '#7a1a0a', dark: '#3a0a03', light: '#ff5a1f', bone: '#1a0500',
+      w: 40, h: 52, speed: 34, hp: 900, dmg: 26, soul: null, points: 800, isBoss: true,
+      hudColor: '#ff5a1f', novaRingColor: 'rgba(255,90,31,0.7)',
+      telegraphColors: {
+        charge_telegraph: 'rgba(255,90,60,0.8)', fireball_telegraph: 'rgba(255,160,40,0.8)',
+        meteor_telegraph: 'rgba(255,60,20,0.8)', eruption_telegraph: 'rgba(255,200,40,0.8)',
+        summon_telegraph: 'rgba(180,60,180,0.8)',
+      },
+    },
   };
   const SOUL_META = {
     berserker: { label: 'HEAVY', color: '#c0392b' },
@@ -223,28 +238,18 @@
     ['grunt', 3, 8], ['grunt', 5, 8], ['brute', 7, 8], ['brute', 9, 8], ['grunt', 11, 8],
     ['acid', 12, 8], ['acid', 16, 8], ['grunt', 17, 8], ['grunt', 18, 8], ['shrieker', 19, 8],
     ['lightning', 21, 6], ['lightning', 22, 6], ['brute', 24, 8], ['frost', 26, 8], ['brute', 27, 8],
-    ['grunt', 29, 8], ['grunt', 30, 8], ['acid', 31, 8], ['frost', 34, 7],
-    ['brute', 36, 8], ['grunt', 37, 8], ['lightning', 39, 8], ['acid', 40, 8],
+    ['shadow', 20, 6], ['grunt', 29, 8], ['grunt', 30, 8], ['acid', 31, 8], ['frost', 34, 7],
+    ['brute', 36, 8], ['grunt', 37, 8], ['lightning', 39, 8], ['acid', 40, 8], ['shadow', 32, 8],
     ['shrieker', 42, 6], ['grunt', 43, 6], ['frost', 44, 8], ['brute', 45, 8], ['brute', 46, 8],
     ['grunt', 47, 8], ['grunt', 48, 8], ['acid', 49, 8], ['lightning', 50, 8], ['grunt', 51, 8],
-    ['brute', 54, 8], ['frost', 55, 8], ['lightning', 56, 8], ['frost', 57, 8],
-    ['grunt', 58, 6], ['shrieker', 59, 6], ['grunt', 60, 6],
+    ['shadow', 41, 6], ['brute', 54, 8], ['frost', 55, 8], ['lightning', 56, 8], ['frost', 57, 8],
+    ['grunt', 58, 6], ['shrieker', 59, 6], ['grunt', 60, 6], ['shadow', 51, 8],
     ['brute', 61, 8], ['brute', 62, 8], ['acid', 63, 8], ['brute', 64, 8],
-    ['acid', 65, 8], ['grunt', 66, 8], ['frost', 67, 8],
+    ['acid', 65, 8], ['grunt', 66, 8], ['frost', 67, 8], ['shadow', 61, 6],
   ];
+  // Hell belongs to the Arch Demon alone — no lesser zombies share its floor.
   const HELL_SPAWN = [
-    ['imp', 3, 8], ['imp', 4, 8], ['imp', 5, 8], ['brute', 7, 8],
-    ['shadow', 9, 6], ['imp', 11, 8], ['imp', 12, 8], ['grunt', 13, 8],
-    ['pyro', 15, 8], ['imp', 17, 8], ['imp', 18, 8], ['acid', 19, 8],
-    ['shadow', 21, 6], ['brute', 23, 8], ['imp', 24, 8], ['imp', 25, 8],
-    ['lightning', 27, 8], ['imp', 29, 8], ['frost', 30, 8], ['imp', 31, 8],
-    ['shadow', 33, 7], ['brute', 36, 8], ['imp', 37, 8], ['imp', 38, 8],
-    ['acid', 40, 8], ['shrieker', 41, 6], ['imp', 42, 6], ['imp', 43, 6],
-    ['shadow', 45, 8], ['brute', 46, 8], ['lightning', 47, 8], ['imp', 49, 8],
-    ['pyro', 50, 8], ['imp', 51, 8], ['imp', 52, 8], ['frost', 54, 8],
-    ['shadow', 55, 6], ['brute', 56, 8], ['imp', 58, 6], ['imp', 59, 6],
-    ['acid', 60, 6], ['brute', 61, 8], ['shadow', 62, 8], ['imp', 63, 8],
-    ['imp', 64, 8], ['lightning', 65, 8], ['brute', 66, 8], ['imp', 67, 8],
+    ['archdemon', 64, 8],
   ];
   const LEVEL_DEFS = [
     { theme: 'temple', name: 'Temple of Bones', spawnList: LEVEL1_SPAWN },
@@ -312,7 +317,7 @@
     levelBanner = { text: `FLOOR ${idx + 1} — ${currentLevel().name.toUpperCase()}`, t: 3 };
     state = 'playing';
     sfx.checkpoint();
-    if (currentLevel().theme === 'dungeon') startBossMusic();
+    if (currentLevel().theme === 'dungeon' || currentLevel().theme === 'hell') startBossMusic();
   }
 
   function spawnEnemy(typeKey, col, row) {
@@ -418,12 +423,18 @@
     }
     if (e.cfg.isBoss) {
       stopBossMusic();
-      player.shadowHelm = true;
-      player.helmDmgBonus = 1.1;
-      spawnExplosionParticles(e.x, e.y, ['#a78bfa', '#e0d4ff']);
-      spawnShockwave(e.x, e.y, 'rgba(167,139,250,0.9)', 90);
+      if (e.cfg.name === 'boss') {
+        player.shadowHelm = true;
+        player.helmDmgBonus = 1.1;
+        spawnExplosionParticles(e.x, e.y, ['#a78bfa', '#e0d4ff']);
+        spawnShockwave(e.x, e.y, 'rgba(167,139,250,0.9)', 90);
+        addMessage(e.x, e.y - 30, "YOU CLAIM THE GUARDIAN'S SHADOW HELM", '#a78bfa');
+      } else if (e.cfg.name === 'archdemon') {
+        spawnExplosionParticles(e.x, e.y, ['#ff5a1f', '#ffcf4a']);
+        spawnShockwave(e.x, e.y, 'rgba(255,90,31,0.9)', 110);
+        addMessage(e.x, e.y - 30, 'THE ARCH DEMON FALLS', '#ff5a1f');
+      }
       sfx.win();
-      addMessage(e.x, e.y - 30, "YOU CLAIM THE GUARDIAN'S SHADOW HELM", '#a78bfa');
     }
   }
 
@@ -736,13 +747,13 @@
 
     // The Guardian's arena: cross into it and the way back seals shut
     // until the boss is dead — no retreating from the fight.
-    if (currentLevel().theme === 'dungeon') {
+    if (currentLevel().theme === 'dungeon' || currentLevel().theme === 'hell') {
       const boss = enemies.find(en => en.cfg.isBoss);
       if (boss && !boss.dead) {
         if (!bossArenaSealed && player.x >= BOSS_ARENA_START_COL * TILE) {
           bossArenaSealed = true;
           sfx.checkpoint();
-          addMessage(player.x, player.y - 40, 'THE ARENA SEALS SHUT', '#a78bfa');
+          addMessage(player.x, player.y - 40, 'THE ARENA SEALS SHUT', boss.cfg.hudColor);
         }
         if (bossArenaSealed) player.x = Math.max(player.x, BOSS_ARENA_START_COL * TILE);
       } else if (bossArenaSealed) {
@@ -775,7 +786,7 @@
         player.x = GOAL_COL * TILE - 2;
         player.blockMsgCooldown = Math.max(0, (player.blockMsgCooldown || 0) - dt);
         if (player.blockMsgCooldown <= 0) {
-          addMessage(player.x, player.y - 30, 'DEFEAT THE GUARDIAN FIRST', '#a78bfa');
+          addMessage(player.x, player.y - 30, `DEFEAT ${boss.cfg.displayName} FIRST`, boss.cfg.hudColor);
           player.blockMsgCooldown = 1.5;
         }
       } else if (levelIndex + 1 < LEVEL_DEFS.length) {
@@ -804,10 +815,121 @@
   }
 
   // ---------- Boss AI ----------
+  // Shared machinery both bosses build on: invuln/stagger timers, a
+  // channeled-nova phase triggered at hp thresholds (invulnerable while
+  // charging, a big hit on release, then a bonus-damage stagger window),
+  // and the recovery beat after any attack. Each boss's own update function
+  // handles its idle chase and attack-specific states, then defers here for
+  // anything already in a shared state (nova_channel/stagger/recover).
+  function maybeTriggerNova(e, novaCfg) {
+    const hpPct = e.hp / e.maxHp;
+    if ((!e.usedNova50 && hpPct <= 0.5) || (!e.usedNova20 && hpPct <= 0.2)) {
+      if (hpPct <= 0.5) e.usedNova50 = true;
+      if (hpPct <= 0.2) e.usedNova20 = true;
+      e.attackState = 'nova_channel'; e.attackTimer = novaCfg.channelTime; e.invulnTimer = novaCfg.channelTime;
+      addMessage(e.x, e.y - 50, novaCfg.channelMsg, novaCfg.color);
+      sfx.groan();
+      return true;
+    }
+    return false;
+  }
+
+  function updateBossSharedStates(e, dt, novaCfg) {
+    if (e.invulnTimer > 0) e.invulnTimer -= dt;
+    if (e.staggerTimer > 0) {
+      e.staggerTimer -= dt;
+      if (e.staggerTimer <= 0) e.staggerBonus = 1;
+    }
+    if (e.attackState === 'nova_channel') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      e.novaRadius = novaCfg.radius * (1 - Math.max(0, e.attackTimer) / novaCfg.channelTime);
+      if (e.attackTimer <= 0) {
+        spawnExplosionParticles(e.x, e.y, novaCfg.palette);
+        spawnShockwave(e.x, e.y, novaCfg.ringColor, novaCfg.radius);
+        shakeScreen(16);
+        sfx.explosion();
+        if (Math.hypot(player.x - e.x, player.y - e.y) < novaCfg.radius) {
+          hurtPlayer(novaCfg.dmg * e.weakDmgMult);
+          addMessage(player.x, player.y - 28, novaCfg.hitMsg, novaCfg.color);
+        }
+        e.attackState = 'stagger'; e.attackTimer = novaCfg.staggerTime;
+        e.staggerTimer = novaCfg.staggerTime; e.staggerBonus = novaCfg.staggerBonus;
+        e.novaRadius = 0;
+      }
+      return true;
+    }
+    if (e.attackState === 'stagger') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) { e.attackState = 'recover'; e.attackTimer = 0.3; }
+      return true;
+    }
+    if (e.attackState === 'recover') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) { e.attackState = 'idle'; e.attackTimer = 1.2 + Math.random() * 0.8; }
+      return true;
+    }
+    return false;
+  }
+
+  // A multi-hit dash: telegraph, then a burst of `count` short dashes at
+  // `speed`, each landing at most once via a wider-than-body hitbox, with a
+  // brief retarget pause between dashes so the direction can re-lock onto
+  // the player. Shared by the Guardian's dash and the Arch Demon's charge.
+  function updateDashAttack(e, dt, states, cfg) {
+    if (e.attackState === states.telegraph) {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        e.attackState = states.dash; e.dashesLeft = cfg.count; e.attackTimer = cfg.dashTime;
+        e.dashDir = Math.sign(player.x - e.x) || 1; e.hitThisStep = false;
+      }
+      return true;
+    }
+    if (e.attackState === states.dash) {
+      e.vx = e.dashDir * cfg.speed;
+      e.x = Math.max(e.minX, Math.min(e.maxX, e.x + e.vx * dt));
+      if (!e.hitThisStep && rectsOverlap(e.x, e.y, e.cfg.w + cfg.hitboxPad, e.cfg.h, player.x, player.y, player.w, player.h)) {
+        hurtPlayer(cfg.dmg * e.weakDmgMult);
+        e.hitThisStep = true;
+        shakeScreen(cfg.shake);
+      }
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        e.dashesLeft--;
+        if (e.dashesLeft > 0) { e.attackState = states.retarget; e.attackTimer = cfg.retargetTime; }
+        else { e.attackState = 'recover'; e.attackTimer = cfg.recoverTime; e.vx = 0; }
+      }
+      return true;
+    }
+    if (e.attackState === states.retarget) {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        e.attackState = states.dash; e.attackTimer = cfg.dashTime;
+        e.dashDir = Math.sign(player.x - e.x) || 1; e.hitThisStep = false;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  const GUARDIAN_DASH_STATES = { telegraph: 'dash_telegraph', dash: 'dash', retarget: 'dash_retarget' };
+  const GUARDIAN_DASH = { count: 3, speed: 520, hitboxPad: 10, dmg: 16, shake: 6, dashTime: 0.15, retargetTime: 0.12, recoverTime: 0.5 };
+  const ARCHDEMON_CHARGE_STATES = { telegraph: 'charge_telegraph', dash: 'charge', retarget: 'charge_retarget' };
+  const ARCHDEMON_CHARGE = { count: 2, speed: 480, hitboxPad: 12, dmg: 24, shake: 7, dashTime: 0.2, retargetTime: 0.15, recoverTime: 0.5 };
+
+  const GUARDIAN_NOVA = {
+    channelTime: 1.0, radius: 140, dmg: 30, staggerTime: 1.5, staggerBonus: 1.5,
+    channelMsg: 'THE GUARDIAN GATHERS DARK POWER', hitMsg: 'OVERWHELMED', color: '#b090ff',
+    palette: ['#b090ff', '#e0d4ff'], ringColor: 'rgba(176,144,255,0.95)',
+  };
+
   // The Guardian cycles through four distinct attacks — a triple dash
   // flurry, a ground slam shockwave, a dark-bolt barrage, and (once at half
-  // and again at a fifth health) a channeled nova that punishes greed with
-  // a big hit but leaves it staggered and open for bonus damage afterward.
+  // and again at a fifth health) the shared channeled nova above.
   function updateBossAI(e, dt) {
     // Dash has its own dedicated (lower) contact damage via a wider hitbox
     // below; skip the generic body-contact check there so it doesn't fire
@@ -816,26 +938,11 @@
       hurtPlayer(e.cfg.dmg * e.weakDmgMult);
     }
 
-    if (e.invulnTimer > 0) e.invulnTimer -= dt;
-    if (e.staggerTimer > 0) {
-      e.staggerTimer -= dt;
-      if (e.staggerTimer <= 0) e.staggerBonus = 1;
-    }
+    if (updateBossSharedStates(e, dt, GUARDIAN_NOVA)) return;
+    if (updateDashAttack(e, dt, GUARDIAN_DASH_STATES, GUARDIAN_DASH)) return;
 
-    const hpPct = e.hp / e.maxHp;
     if (e.attackState === 'idle') {
-      if (!e.usedNova50 && hpPct <= 0.5) {
-        e.usedNova50 = true; e.attackState = 'nova_channel'; e.attackTimer = 1.0; e.invulnTimer = 1.0;
-        addMessage(e.x, e.y - 50, 'THE GUARDIAN GATHERS DARK POWER', '#b090ff');
-        sfx.groan();
-        return;
-      }
-      if (!e.usedNova20 && hpPct <= 0.2) {
-        e.usedNova20 = true; e.attackState = 'nova_channel'; e.attackTimer = 1.0; e.invulnTimer = 1.0;
-        addMessage(e.x, e.y - 50, 'THE GUARDIAN GATHERS DARK POWER', '#b090ff');
-        sfx.groan();
-        return;
-      }
+      if (maybeTriggerNova(e, GUARDIAN_NOVA)) return;
       const dist = player.x - e.x;
       e.vx = Math.abs(dist) > 40 ? Math.sign(dist) * e.cfg.speed : 0;
       e.x = Math.max(e.minX, Math.min(e.maxX, e.x + e.vx * dt));
@@ -845,41 +952,6 @@
         if (roll < 0.34) { e.attackState = 'dash_telegraph'; e.attackTimer = 0.4; }
         else if (roll < 0.64) { e.attackState = 'slam_telegraph'; e.attackTimer = 0.6; }
         else { e.attackState = 'barrage_telegraph'; e.attackTimer = 0.3; }
-      }
-      return;
-    }
-
-    if (e.attackState === 'dash_telegraph') {
-      e.vx = 0;
-      e.attackTimer -= dt;
-      if (e.attackTimer <= 0) {
-        e.attackState = 'dash'; e.dashesLeft = 3; e.attackTimer = 0.15;
-        e.dashDir = Math.sign(player.x - e.x) || 1; e.hitThisStep = false;
-      }
-      return;
-    }
-    if (e.attackState === 'dash') {
-      e.vx = e.dashDir * 520;
-      e.x = Math.max(e.minX, Math.min(e.maxX, e.x + e.vx * dt));
-      if (!e.hitThisStep && rectsOverlap(e.x, e.y, e.cfg.w + 10, e.cfg.h, player.x, player.y, player.w, player.h)) {
-        hurtPlayer(16 * e.weakDmgMult);
-        e.hitThisStep = true;
-        shakeScreen(6);
-      }
-      e.attackTimer -= dt;
-      if (e.attackTimer <= 0) {
-        e.dashesLeft--;
-        if (e.dashesLeft > 0) { e.attackState = 'dash_retarget'; e.attackTimer = 0.12; }
-        else { e.attackState = 'recover'; e.attackTimer = 0.5; e.vx = 0; }
-      }
-      return;
-    }
-    if (e.attackState === 'dash_retarget') {
-      e.vx = 0;
-      e.attackTimer -= dt;
-      if (e.attackTimer <= 0) {
-        e.attackState = 'dash'; e.attackTimer = 0.15;
-        e.dashDir = Math.sign(player.x - e.x) || 1; e.hitThisStep = false;
       }
       return;
     }
@@ -924,37 +996,123 @@
       }
       return;
     }
+  }
 
-    if (e.attackState === 'nova_channel') {
-      e.vx = 0;
+  const ARCHDEMON_NOVA = {
+    channelTime: 1.2, radius: 160, dmg: 35, staggerTime: 1.5, staggerBonus: 1.5,
+    channelMsg: 'THE ARCH DEMON DRINKS IN THE FLAMES', hitMsg: 'ENGULFED', color: '#ff5a1f',
+    palette: ['#ff5a1f', '#ffcf4a'], ringColor: 'rgba(255,90,31,0.95)',
+  };
+
+  // The Arch Demon commands the whole of Hell alone — no lesser zombies to
+  // hide behind here. It cycles between five attacks — a double charge, a
+  // flat fireball barrage, a lobbed meteor rain, a ground-scorching eruption
+  // that punishes standing still (jumping it, unlike the Guardian's slam,
+  // doesn't help), and a call for imp reinforcements — on top of the shared
+  // channeled nova at half and a fifth health.
+  function updateArchDemonAI(e, dt) {
+    if (e.attackState !== 'charge' && rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, player.x, player.y, player.w, player.h)) {
+      hurtPlayer(e.cfg.dmg * e.weakDmgMult);
+    }
+
+    if (updateBossSharedStates(e, dt, ARCHDEMON_NOVA)) return;
+    if (updateDashAttack(e, dt, ARCHDEMON_CHARGE_STATES, ARCHDEMON_CHARGE)) return;
+
+    if (e.attackState === 'idle') {
+      if (maybeTriggerNova(e, ARCHDEMON_NOVA)) return;
+      const dist = player.x - e.x;
+      e.vx = Math.abs(dist) > 40 ? Math.sign(dist) * e.cfg.speed : 0;
+      e.x = Math.max(e.minX, Math.min(e.maxX, e.x + e.vx * dt));
       e.attackTimer -= dt;
-      e.novaRadius = 140 * (1 - Math.max(0, e.attackTimer) / 1.0);
       if (e.attackTimer <= 0) {
-        spawnExplosionParticles(e.x, e.y, ['#b090ff', '#e0d4ff']);
-        spawnShockwave(e.x, e.y, 'rgba(176,144,255,0.95)', 140);
-        shakeScreen(16);
-        sfx.explosion();
-        if (Math.hypot(player.x - e.x, player.y - e.y) < 140) {
-          hurtPlayer(30 * e.weakDmgMult);
-          addMessage(player.x, player.y - 28, 'OVERWHELMED', '#b090ff');
-        }
-        e.attackState = 'stagger'; e.attackTimer = 1.5;
-        e.staggerTimer = 1.5; e.staggerBonus = 1.5;
-        e.novaRadius = 0;
+        const roll = Math.random();
+        if (roll < 0.22) { e.attackState = 'charge_telegraph'; e.attackTimer = 0.45; }
+        else if (roll < 0.44) { e.attackState = 'fireball_telegraph'; e.attackTimer = 0.35; }
+        else if (roll < 0.66) { e.attackState = 'meteor_telegraph'; e.attackTimer = 0.5; }
+        else if (roll < 0.86) { e.attackState = 'eruption_telegraph'; e.attackTimer = 0.6; }
+        else { e.attackState = 'summon_telegraph'; e.attackTimer = 0.5; }
       }
       return;
     }
-    if (e.attackState === 'stagger') {
+
+    if (e.attackState === 'fireball_telegraph') {
       e.vx = 0;
       e.attackTimer -= dt;
-      if (e.attackTimer <= 0) { e.attackState = 'recover'; e.attackTimer = 0.3; }
+      if (e.attackTimer <= 0) { e.attackState = 'fireball'; e.dashesLeft = 6; e.attackTimer = 0; }
+      return;
+    }
+    if (e.attackState === 'fireball') {
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        const dx = player.x - e.x, dy = player.y - e.y;
+        const baseAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.25;
+        eBullets.push({ x: e.x, y: e.y, vx: Math.cos(baseAngle) * 280, vy: Math.sin(baseAngle) * 280, kind: 'fire', dmg: 10 * e.weakDmgMult });
+        e.dashesLeft--;
+        e.attackTimer = 0.12;
+        if (e.dashesLeft <= 0) { e.attackState = 'recover'; e.attackTimer = 0.4; }
+      }
       return;
     }
 
-    if (e.attackState === 'recover') {
+    if (e.attackState === 'meteor_telegraph') {
       e.vx = 0;
       e.attackTimer -= dt;
-      if (e.attackTimer <= 0) { e.attackState = 'idle'; e.attackTimer = 1.2 + Math.random() * 0.8; }
+      if (e.attackTimer <= 0) { e.attackState = 'meteor'; e.dashesLeft = 4; e.attackTimer = 0; }
+      return;
+    }
+    if (e.attackState === 'meteor') {
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        const dx = player.x - e.x + (Math.random() - 0.5) * 70, dy = player.y - e.y;
+        const baseAngle = Math.atan2(dy, dx);
+        eBullets.push({ x: e.x, y: e.y, vx: Math.cos(baseAngle) * 190, vy: Math.sin(baseAngle) * 190 - 160, kind: 'fire', dmg: 14 * e.weakDmgMult, grav: true });
+        e.dashesLeft--;
+        e.attackTimer = 0.2;
+        if (e.dashesLeft <= 0) { e.attackState = 'recover'; e.attackTimer = 0.5; }
+      }
+      return;
+    }
+
+    if (e.attackState === 'eruption_telegraph') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        e.attackState = 'eruption'; e.attackTimer = 0.2;
+        const radius = 130;
+        spawnShockwave(e.x, e.y + e.cfg.h / 2, 'rgba(255,90,31,0.9)', radius);
+        shakeScreen(14);
+        sfx.explosion();
+        // Unlike the Guardian's slam, jumping doesn't save you here — only
+        // putting horizontal distance between yourself and the eruption does.
+        if (Math.abs(player.x - e.x) < radius) {
+          hurtPlayer(28 * e.weakDmgMult);
+          addMessage(player.x, player.y - 28, 'SCORCHED', '#ff5a1f');
+        }
+      }
+      return;
+    }
+    if (e.attackState === 'eruption') {
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) { e.attackState = 'recover'; e.attackTimer = 0.5; }
+      return;
+    }
+
+    if (e.attackState === 'summon_telegraph') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        // Clamp to the demon's own leash (already gap-free by construction
+        // via platformExtent) so an imp can never spawn floating over a pit.
+        const minCol = Math.floor(e.minX / TILE), maxCol = Math.floor(e.maxX / TILE);
+        const col = Math.round(e.x / TILE);
+        const row = ROWS - 1;
+        enemies.push(spawnEnemy('imp', Math.max(minCol, col - 2), row));
+        enemies.push(spawnEnemy('imp', Math.min(maxCol, col + 2), row));
+        spawnExplosionParticles(e.x, e.y, ['#ff5a2e', '#ffb37a']);
+        sfx.groan();
+        addMessage(e.x, e.y - 50, 'IMPS ANSWER THE CALL', '#ff5a2e');
+        e.attackState = 'recover'; e.attackTimer = 0.6;
+      }
       return;
     }
   }
@@ -1009,7 +1167,8 @@
       const distToPlayer = Math.hypot(e.x - player.x, e.y - player.y);
 
       if (e.cfg.isBoss) {
-        updateBossAI(e, dt);
+        if (e.cfg.name === 'archdemon') updateArchDemonAI(e, dt);
+        else updateBossAI(e, dt);
       } else if (e.cfg.melee) {
         // Hunt the player when they're nearby and on roughly the same
         // level; otherwise pace back and forth. Either way, stay clamped
@@ -1322,11 +1481,18 @@
     }
   }
 
+  function hexToRgbTriplet(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+  }
+
   function drawTiles() {
     const theme = currentLevel().theme;
     const dungeon = theme === 'dungeon';
     const jungle = theme === 'jungle';
     const hell = theme === 'hell';
+    const arenaBoss = (dungeon || hell) ? enemies.find(e => e.cfg.isBoss) : null;
+    const arenaRgb = hexToRgbTriplet((arenaBoss && arenaBoss.cfg.hudColor) || '#a78bfa');
     const topColor = dungeon ? '#4a4258' : jungle ? '#3a4a2a' : hell ? '#3a1408' : '#f2d99b';
     const sideColor = dungeon ? '#241f30' : jungle ? '#1c2814' : hell ? '#1a0a04' : '#c9a361';
     const edgeColor = dungeon ? 'rgba(10,8,16,0.5)' : jungle ? 'rgba(5,10,5,0.5)' : hell ? 'rgba(0,0,0,0.6)' : 'rgba(120,85,40,0.35)';
@@ -1345,15 +1511,15 @@
         ctx.fillStyle = edgeColor;
         ctx.fillRect(x, y + TILE - 4, TILE, 4);
         ctx.fillRect(x, y, 2, TILE);
-        const inArena = dungeon && c >= BOSS_ARENA_START_COL;
+        const inArena = (dungeon || hell) && c >= BOSS_ARENA_START_COL;
         if (topExposed) {
-          ctx.fillStyle = inArena ? `rgba(167,139,250,${0.25 + Math.sin(elapsed * 3 + c) * 0.1})` : highlightColor;
+          ctx.fillStyle = inArena ? `rgba(${arenaRgb},${0.25 + Math.sin(elapsed * 3 + c) * 0.1})` : highlightColor;
           ctx.fillRect(x, y, TILE, 3);
         }
         // the boss arena floor is etched with a glowing rune on every tile;
         // elsewhere it's an occasional carved glyph
         if (inArena && topExposed) {
-          ctx.fillStyle = 'rgba(167,139,250,0.55)';
+          ctx.fillStyle = `rgba(${arenaRgb},0.55)`;
           ctx.fillRect(x + TILE / 2 - 2, y + 6, 4, 14);
           ctx.fillRect(x + TILE / 2 - 6, y + 12, 12, 2);
         } else if ((c * 7 + r * 13) % 11 === 0 && topExposed) {
@@ -1732,11 +1898,37 @@
         ctx.fillRect(-hw - 3, -hh + 10, 3, 10);
         ctx.fillRect(hw, -hh + 6, 3, 10);
       }
+    } else if (c.name === 'archdemon') {
+      // the arch demon: massive horned brute wreathed in its own hellfire
+      ctx.fillStyle = col(c.color);
+      ctx.fillRect(-hw, -hh + 14, c.w, c.h - 24);
+      ctx.fillStyle = col(c.light);
+      ctx.fillRect(-hw, -hh + 14, 6, c.h - 24);
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(-hw + 4, -hh, c.w - 8, 16);
+      // horns
+      ctx.fillStyle = col(c.bone);
+      ctx.beginPath(); ctx.moveTo(-hw + 4, -hh - 2); ctx.lineTo(-hw - 6, -hh - 16); ctx.lineTo(-hw + 8, -hh - 4); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(hw - 4, -hh - 2); ctx.lineTo(hw + 6, -hh - 16); ctx.lineTo(hw - 8, -hh - 4); ctx.closePath(); ctx.fill();
+      // burning eyes
+      ctx.fillStyle = col('#ffcf4a');
+      ctx.fillRect(-9, -hh + 6, 5, 4);
+      ctx.fillRect(4, -hh + 6, 5, 4);
+      // tattered wings
+      ctx.fillStyle = col('rgba(58,10,3,0.7)');
+      ctx.beginPath(); ctx.moveTo(-hw, -hh + 16); ctx.lineTo(-hw - 16, -hh + 4); ctx.lineTo(-hw - 10, -hh + 26); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(hw, -hh + 16); ctx.lineTo(hw + 16, -hh + 4); ctx.lineTo(hw + 10, -hh + 26); ctx.closePath(); ctx.fill();
+      // hellfire licking off the shoulders
+      if (Math.sin(e.walkT * 8) > 0) {
+        ctx.fillStyle = 'rgba(255,140,20,0.7)';
+        ctx.fillRect(-hw - 2, -hh + 12, 3, 6);
+        ctx.fillRect(hw - 1, -hh + 8, 3, 6);
+      }
+    }
+
+    if (c.isBoss) {
       // attack telegraphs: a pulsing outline color-coded per incoming move
-      const telegraphColor = e.attackState === 'dash_telegraph' ? 'rgba(255,90,60,0.8)'
-        : e.attackState === 'slam_telegraph' ? 'rgba(167,139,250,0.8)'
-        : e.attackState === 'barrage_telegraph' ? 'rgba(90,180,255,0.8)'
-        : null;
+      const telegraphColor = (c.telegraphColors && c.telegraphColors[e.attackState]) || null;
       if (telegraphColor) {
         const pulse = 2 + Math.sin(elapsed * 20) * 1.5;
         ctx.strokeStyle = telegraphColor;
@@ -1744,7 +1936,7 @@
         ctx.strokeRect(-hw - 4, -hh - 8, c.w + 8, c.h + 8);
       }
       if (e.attackState === 'nova_channel') {
-        ctx.strokeStyle = 'rgba(176,144,255,0.7)';
+        ctx.strokeStyle = c.novaRingColor || 'rgba(176,144,255,0.7)';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(0, 0, Math.max(2, e.novaRadius), 0, Math.PI * 2);
@@ -1890,14 +2082,16 @@
   function drawArenaBarrier() {
     const x = px(BOSS_ARENA_START_COL * TILE - camX);
     if (x < -20 || x > VIEW_W + 20) return;
+    const boss = enemies.find(e => e.cfg.isBoss);
+    const rgb = hexToRgbTriplet((boss && boss.cfg.hudColor) || '#a78bfa');
     const pulse = 0.5 + Math.sin(elapsed * 5) * 0.25;
     const grad = ctx.createLinearGradient(x - 6, 0, x + 6, 0);
-    grad.addColorStop(0, 'rgba(167,139,250,0)');
-    grad.addColorStop(0.5, `rgba(167,139,250,${pulse})`);
-    grad.addColorStop(1, 'rgba(167,139,250,0)');
+    grad.addColorStop(0, `rgba(${rgb},0)`);
+    grad.addColorStop(0.5, `rgba(${rgb},${pulse})`);
+    grad.addColorStop(1, `rgba(${rgb},0)`);
     ctx.fillStyle = grad;
     ctx.fillRect(x - 6, 0, 12, VIEW_H);
-    ctx.fillStyle = `rgba(224,212,255,${pulse})`;
+    ctx.fillStyle = `rgba(255,255,255,${pulse})`;
     ctx.fillRect(x - 1, 0, 2, VIEW_H);
   }
 
@@ -1977,14 +2171,15 @@
     const boss = enemies.find(e => e.cfg.isBoss);
     if (boss && !boss.dead) {
       const bossPct = Math.max(0, boss.hp / boss.maxHp);
+      const bossColor = boss.cfg.hudColor;
       ctx.textAlign = 'center';
       ctx.font = 'bold 9px monospace';
-      ctx.fillStyle = '#a78bfa';
-      ctx.fillText('THE GUARDIAN', VIEW_W / 2, 10);
+      ctx.fillStyle = bossColor;
+      ctx.fillText(boss.cfg.displayName || boss.cfg.name.toUpperCase(), VIEW_W / 2, 10);
       ctx.textAlign = 'left';
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.fillRect(VIEW_W / 2 - 70, 13, 140, 6);
-      ctx.fillStyle = '#a78bfa';
+      ctx.fillStyle = bossColor;
       ctx.fillRect(VIEW_W / 2 - 69, 14, 138 * bossPct, 4);
       // phase-threshold ticks where the nova attack triggers
       ctx.fillStyle = 'rgba(255,230,140,0.9)';

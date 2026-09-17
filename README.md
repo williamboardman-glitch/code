@@ -35,6 +35,7 @@ genuine chunky pixel-art look.
 | Shadow | Very low direct damage but very long range; its bolt pulls you toward it | Shadow soul | Pull shot: yanks nearby enemies toward the hit and primes your next shot to home in |
 | Imp | Small, fast, swarming melee — low health, decent bite | none | — |
 | The Guardian | Floor 2's boss (see below) | — | Drops the Shadow Helm on death (+10% damage) instead of a soul |
+| The Arch Demon | Floor 4's boss, alone on its whole floor (see below) | — | — |
 
 Souls are consumed one per special shot — normal ammo is infinite, specials
 require harvesting the matching zombie type first.
@@ -59,6 +60,23 @@ The helm also unlocks **Wither** (press **R**), a once-per-floor curse on
 the nearest enemy in range: it permanently halves that target's remaining
 health pool and every point of damage it deals for the rest of the floor.
 It won't land on a target with hyperarmor (e.g. the Guardian mid-nova).
+
+## The Arch Demon
+
+Hell is its floor and its floor alone — no lesser zombies share it, just a
+long, empty walk in before the fight. It has 900 HP and cycles between five
+attacks, on top of the same channeled nova the Guardian uses (at 50% and
+20% HP) —
+
+- **Demon charge** — two heavy dashes through your position
+- **Fireball barrage** — a flat six-shot volley
+- **Meteor rain** — four lobbed, arcing fireballs that fall on your position
+- **Eruption** — a telegraphed ground-scorch around itself; unlike the
+  Guardian's slam, jumping doesn't save you here, only running clear does
+- **Summon** — calls in two imps to flank you
+
+Like the Guardian's arena, crossing into the Arch Demon's fight seals the
+way back until it's dead.
 
 ## Wolf companion
 
