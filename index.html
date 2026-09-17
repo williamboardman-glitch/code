@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Necromancer's Nest — 2D Sniper</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="startScreen" class="overlay">
+    <div class="panel">
+      <h1>NECROMANCER'S <span class="accent">NEST</span></h1>
+      <p class="lore">You are the last necromancer of the Ashen Vale. From your tower you pick off the marching dead with a bone-forged rifle — but every kill leaves a soul behind. Harvest it, load it, and turn your enemies into your ammunition.</p>
+      <div class="soulKeyLegend">
+        <div class="legendRow"><span class="swatch grunt"></span> Skeleton Grunt — fodder, no soul</div>
+        <div class="legendRow"><span class="swatch berserker"></span> Berserker — soul loads a <b>devastating heavy shot</b></div>
+        <div class="legendRow"><span class="swatch pyromancer"></span> Pyromancer — soul loads an <b>explosive fire shot</b></div>
+        <div class="legendRow"><span class="swatch frost"></span> Frost Witch — soul loads a <b>freezing crowd-control shot</b></div>
+      </div>
+      <div class="controls">
+        <div><b>Aim:</b> Mouse</div>
+        <div><b>Fire:</b> Left Click (headshots one-shot kill)</div>
+        <div><b>Scope (bullet-time):</b> Hold Right Click</div>
+        <div><b>Ammo:</b> Keys 1-4</div>
+      </div>
+      <button id="startBtn">ENTER THE VALE</button>
+    </div>
+  </div>
+
+  <div id="gameOverScreen" class="overlay hidden">
+    <div class="panel">
+      <h1>THE VALE <span class="accent">CLAIMS YOU</span></h1>
+      <p id="finalStats" class="lore"></p>
+      <button id="restartBtn">RISE AGAIN</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
