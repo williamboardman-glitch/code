@@ -99,6 +99,8 @@ h1 .accent { color: var(--gold); }
 .swatch.brute { background: #c0392b; }
 .swatch.pyro { background: #ff8a3d; }
 .swatch.frost { background: #6bd9e8; }
+.swatch.lightning { background: #a78bfa; }
+.swatch.acid { background: #8bc34a; }
 
 .controls {
   display: grid;

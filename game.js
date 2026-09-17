@@ -127,14 +127,16 @@
     brute: { name: 'brute', color: '#c0392b', dark: '#6f1f16', light: '#e0684f', bone: '#f0d9b0', w: 22, h: 29, speed: 40, hp: 50, dmg: 16, soul: 'berserker', points: 25, melee: true },
     pyro: { name: 'pyro', color: '#ff8a3d', dark: '#a24512', light: '#ffc26b', bone: '#3a1f12', w: 16, h: 25, speed: 14, hp: 28, dmg: 0, soul: 'pyromancer', points: 30, ranged: true, fireRate: 2.0, projSpeed: 230, range: 260, spread: 0.16, projDmg: 12, kind: 'fire' },
     frost: { name: 'frost', color: '#6bd9e8', dark: '#2c7c8a', light: '#cdf6fb', bone: '#173f47', w: 16, h: 25, speed: 12, hp: 26, dmg: 0, soul: 'frost', points: 30, ranged: true, fireRate: 2.4, projSpeed: 200, range: 260, spread: 0.16, projDmg: 9, kind: 'frost' },
-    lightning: { name: 'lightning', color: '#a78bfa', dark: '#5b3fa0', light: '#e0d4ff', bone: '#241748', w: 16, h: 25, speed: 14, hp: 30, dmg: 0, soul: null, points: 35, ranged: true, fireRate: 2.8, projSpeed: 900, range: 300, spread: 0.05, projDmg: 16, kind: 'lightning' },
-    acid: { name: 'acid', color: '#8bc34a', dark: '#4b6b1f', light: '#c8e6a0', bone: '#1f2b10', w: 16, h: 25, speed: 12, hp: 30, dmg: 0, soul: null, points: 32, ranged: true, fireRate: 2.6, projSpeed: 170, range: 240, spread: 0.1, arc: true, projDmg: 8, kind: 'acid' },
+    lightning: { name: 'lightning', color: '#a78bfa', dark: '#5b3fa0', light: '#e0d4ff', bone: '#241748', w: 16, h: 25, speed: 14, hp: 30, dmg: 0, soul: 'lightning', points: 35, ranged: true, fireRate: 2.8, projSpeed: 900, range: 300, spread: 0.05, projDmg: 16, kind: 'lightning' },
+    acid: { name: 'acid', color: '#8bc34a', dark: '#4b6b1f', light: '#c8e6a0', bone: '#1f2b10', w: 16, h: 25, speed: 12, hp: 30, dmg: 0, soul: 'acid', points: 32, ranged: true, fireRate: 2.6, projSpeed: 170, range: 240, spread: 0.1, arc: true, projDmg: 8, kind: 'acid' },
     shrieker: { name: 'shrieker', color: '#c7c2b8', dark: '#6b675e', light: '#e8e4da', bone: '#2b2822', w: 14, h: 22, speed: 20, hp: 14, dmg: 4, soul: null, points: 20, melee: true, support: true },
   };
   const SOUL_META = {
     berserker: { label: 'HEAVY', color: '#c0392b' },
     pyromancer: { label: 'FIRE', color: '#ff8a3d' },
     frost: { label: 'FROST', color: '#6bd9e8' },
+    lightning: { label: 'CHAIN', color: '#a78bfa' },
+    acid: { label: 'ACID', color: '#8bc34a' },
   };
   const SPAWN_LIST = [
     ['grunt', 3, 8], ['grunt', 5, 8], ['grunt', 9, 8], ['grunt', 11, 8],
@@ -173,8 +175,8 @@
       x: 1 * TILE + TILE / 2, y: (ROWS - 1) * TILE - 13, vx: 0, vy: 0, w: 14, h: 24,
       onGround: false, facing: 1, aim: 0, // aim: -1 up, 0 horizontal, 1 down
       hp: 100, maxHp: 100, lives: 3, score: 0, kills: 0,
-      ammo: 'normal', souls: { berserker: 0, pyromancer: 0, frost: 0 },
-      fireCooldown: 0, invuln: 0, coyote: 0, jumpBuffer: 0, walkT: 0, hurtFlash: 0,
+      ammo: 'normal', souls: { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0 },
+      fireCooldown: 0, invuln: 0, coyote: 0, jumpBuffer: 0, jumpsUsed: 0, walkT: 0, hurtFlash: 0,
       shockedTimer: 0, won: false,
     };
   }
@@ -197,7 +199,7 @@
       minX: ext.minCol * TILE + cfg.w / 2 + 2, maxX: (ext.maxCol + 1) * TILE - cfg.w / 2 - 2,
       hp: cfg.hp, maxHp: cfg.hp, dead: false, hitFlash: 0, walkT: Math.random() * 10,
       shootTimer: 1 + Math.random() * (cfg.fireRate || 1),
-      slowTimer: 0, burnTimer: 0, burnTick: 0, speedMult: 1,
+      slowTimer: 0, burnTimer: 0, burnTick: 0, acidTimer: 0, acidTick: 0, speedMult: 1,
       hasteTimer: 0, hasteMult: 1, shriekTimer: 1.5 + Math.random(),
     };
   }
@@ -268,6 +270,24 @@
 
   function applyFrost(e) { e.speedMult = 0.35; e.slowTimer = 4; }
 
+  function chainLightning(fromEnemy, dmg, excluded, jumpsLeft) {
+    if (jumpsLeft <= 0) return;
+    let target = null, bestDist = 90;
+    for (const o of enemies) {
+      if (o.dead || excluded.includes(o)) continue;
+      const d = Math.hypot(o.x - fromEnemy.x, o.y - fromEnemy.y);
+      if (d < bestDist) { bestDist = d; target = o; }
+    }
+    if (!target) return;
+    spawnLightningArc(fromEnemy.x, fromEnemy.y, target.x, target.y);
+    applyDamage(target, dmg);
+    excluded.push(target);
+    chainLightning(target, dmg * 0.7, excluded, jumpsLeft - 1);
+  }
+  function spawnLightningArc(x1, y1, x2, y2) {
+    particles.push({ x: x1, y: y1, x2, y2, vx: 0, vy: 0, life: 0.15, maxLife: 0.15, color: '#d8c7ff', shape: 'arc', grav: false });
+  }
+
   function shoot() {
     if (player.fireCooldown > 0 || player.shockedTimer > 0) return;
     let ammo = player.ammo;
@@ -282,7 +302,12 @@
     if (player.aim === -1) { vy = -420; }
     else if (player.aim === 1 && !player.onGround) { vy = 420; }
     else { vx = 420 * dir; }
-    const muzzleX = player.x + dir * player.w * 0.7;
+    // Bullets are logically spawned at the player's own center (not out at
+    // the visual muzzle tip) so a target that's overlapping the player —
+    // e.g. a melee zombie right on top of you — is guaranteed to already
+    // overlap the bullet on its very first frame instead of the shot
+    // starting past/behind it and never registering a hit.
+    const muzzleX = player.x;
     const muzzleY = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
     spawnShellCasing(player.x - dir * 2, player.y - 6, dir);
 
@@ -298,6 +323,12 @@
     } else if (ammo === 'frost') {
       player.souls.frost--; sfx.frost();
       pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'frost', dmg: BASE_DMG * 0.7 });
+    } else if (ammo === 'lightning') {
+      player.souls.lightning--; sfx.frost();
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'lightning', dmg: BASE_DMG * 1.2 });
+    } else if (ammo === 'acid') {
+      player.souls.acid--; sfx.shot();
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'acid', dmg: BASE_DMG * 0.75 });
     }
   }
 
@@ -371,7 +402,7 @@
 
   const GAME_KEYS = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
-    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'Digit1', 'Digit2', 'Digit3', 'Digit4',
+    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6',
   ]);
 
   function handleKeyDown(ev) {
@@ -382,6 +413,8 @@
     if (ev.code === 'Digit2') player.ammo = 'berserker';
     if (ev.code === 'Digit3') player.ammo = 'pyromancer';
     if (ev.code === 'Digit4') player.ammo = 'frost';
+    if (ev.code === 'Digit5') player.ammo = 'lightning';
+    if (ev.code === 'Digit6') player.ammo = 'acid';
     if (ev.code === 'Space' || ev.code === 'KeyW' || ev.code === 'ArrowUp') player.jumpBuffer = 0.12;
   }
   function handleKeyUp(ev) {
@@ -439,11 +472,20 @@
 
     player.aim = up ? -1 : (down && !player.onGround ? 1 : 0);
 
-    if (player.onGround) player.coyote = 0.09;
-    if (player.jumpBuffer > 0 && player.coyote > 0) {
-      player.vy = JUMP_VELOCITY;
+    if (player.onGround) { player.coyote = 0.09; player.jumpsUsed = 0; }
+    if (player.jumpBuffer > 0 && (player.coyote > 0 || player.jumpsUsed < 2)) {
+      const isDoubleJump = player.coyote <= 0;
+      player.vy = JUMP_VELOCITY * (isDoubleJump ? 0.85 : 1);
+      player.jumpsUsed = Math.max(player.jumpsUsed, 1) + (isDoubleJump ? 1 : 0);
       player.jumpBuffer = 0; player.coyote = 0;
       sfx.jump();
+      if (isDoubleJump) {
+        sfx.frost();
+        for (let i = 0; i < 8; i++) {
+          const a = Math.random() * Math.PI * 2;
+          particles.push({ x: player.x, y: player.y + player.h / 2, vx: Math.cos(a) * 40, vy: Math.sin(a) * 40 - 20, life: 0.3, color: '#dfeee4', size: 2, grav: true });
+        }
+      }
     }
     const jumpHeld = held('Space', 'KeyW', 'ArrowUp');
     if (player.vy < 0 && !jumpHeld) player.vy *= 0.55; // variable jump height
@@ -525,6 +567,17 @@
           e.burnTick = 0.5;
         }
       }
+      if (e.acidTimer > 0) {
+        e.acidTimer -= dt; e.acidTick -= dt;
+        if (Math.random() < dt * 8) {
+          particles.push({ x: e.x + (Math.random() - 0.5) * e.cfg.w, y: e.y - e.cfg.h / 2, vx: (Math.random() - 0.5) * 12, vy: -20 - Math.random() * 15, life: 0.35, color: '#8bc34a', size: 2, grav: true });
+        }
+        if (e.acidTick <= 0) {
+          applyDamage(e, 5);
+          addMessage(e.x, e.y - e.cfg.h / 2 - 4, '-5', '#8bc34a');
+          e.acidTick = 0.4;
+        }
+      }
       if (e.dead) continue;
 
       const distToPlayer = Math.hypot(e.x - player.x, e.y - player.y);
@@ -581,7 +634,7 @@
     for (const b of pBullets) {
       b.x += b.vx * dt; b.y += b.vy * dt;
       b.dead = isSolidPixel(b.x, b.y);
-      if (b.dead) continue;
+      if (b.dead) { if (b.kind === 'acid') spawnAcidPuddle(b.x, b.y); continue; }
       for (const e of enemies) {
         if (e.dead) continue;
         if (rectsOverlap(b.x, b.y, 4, 4, e.x, e.y, e.cfg.w, e.cfg.h)) {
@@ -593,6 +646,13 @@
           } else if (b.kind === 'frost') {
             applyDamage(e, b.dmg); applyFrost(e);
             for (const o of enemies) if (!o.dead && o !== e && Math.hypot(o.x - b.x, o.y - b.y) < 40) applyFrost(o);
+          } else if (b.kind === 'lightning') {
+            applyDamage(e, b.dmg);
+            chainLightning(e, b.dmg * 0.6, [e], 2);
+          } else if (b.kind === 'acid') {
+            applyDamage(e, b.dmg);
+            e.acidTimer = 2.5; e.acidTick = 0.4;
+            spawnAcidPuddle(b.x, b.y);
           } else applyDamage(e, b.dmg);
           b.dead = true;
           break;
@@ -954,6 +1014,10 @@
       ctx.fillStyle = 'rgba(255,140,20,0.5)';
       ctx.fillRect(-hw, -hh, c.w, c.h);
     }
+    if (e.acidTimer > 0) {
+      ctx.fillStyle = 'rgba(139,195,74,0.45)';
+      ctx.fillRect(-hw, -hh, c.w, c.h);
+    }
     ctx.restore();
 
     const barW = c.w;
@@ -1006,6 +1070,14 @@
       ctx.fillStyle = p.color;
       ctx.fillRect(x - p.size / 2, y - 1, p.size, 2);
       ctx.fillRect(x - 1, y - p.size / 2, 2, p.size);
+    } else if (p.shape === 'arc') {
+      const x2 = px(p.x2 - camX), y2 = px(p.y2);
+      const midx = (x + x2) / 2 + (Math.random() - 0.5) * 8, midy = (y + y2) / 2 + (Math.random() - 0.5) * 8;
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y); ctx.lineTo(midx, midy); ctx.lineTo(x2, y2);
+      ctx.stroke();
     } else {
       ctx.fillStyle = p.color;
       ctx.fillRect(x - p.size / 2, y - p.size / 2, p.size, p.size);
@@ -1047,6 +1119,8 @@
       { key: 'berserker', label: '2', color: SOUL_META.berserker.color, count: player.souls.berserker },
       { key: 'pyromancer', label: '3', color: SOUL_META.pyromancer.color, count: player.souls.pyromancer },
       { key: 'frost', label: '4', color: SOUL_META.frost.color, count: player.souls.frost },
+      { key: 'lightning', label: '5', color: SOUL_META.lightning.color, count: player.souls.lightning },
+      { key: 'acid', label: '6', color: SOUL_META.acid.color, count: player.souls.acid },
     ];
     let sx = VIEW_W / 2 - (slots.length * 34) / 2;
     const sy = VIEW_H - 22;
