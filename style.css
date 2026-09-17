@@ -132,3 +132,22 @@ button:hover {
 }
 
 button:active { transform: translateY(0); }
+
+.skipBtn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 20;
+  background: rgba(10, 8, 16, 0.55);
+  color: #ead9b8;
+  border: 2px solid rgba(255, 205, 60, 0.6);
+  padding: 6px 14px;
+  font-size: 0.8em;
+  letter-spacing: 1px;
+}
+
+.skipBtn:hover {
+  box-shadow: 0 0 12px rgba(255, 205, 60, 0.5);
+}
+
+.skipBtn.hidden { display: none; }

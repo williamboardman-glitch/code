@@ -7,6 +7,7 @@
   const finalStats = document.getElementById('finalStats');
   const startBtn = document.getElementById('startBtn');
   const restartBtn = document.getElementById('restartBtn');
+  const skipCutsceneBtn = document.getElementById('skipCutsceneBtn');
 
   // ---------- Virtual low-res buffer (gives the whole game its pixelated look) ----------
   const TILE = 30;
@@ -84,6 +85,10 @@
     win: () => { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, 0.25, 'square', 0.12), i * 120)); },
     death: () => tone(220, 0.4, 'sawtooth', 0.2, 40),
     empty: () => tone(180, 0.05, 'square', 0.07, 120),
+    blip: () => tone(320 + Math.random() * 180, 0.035, 'square', 0.06),
+    wave: () => tone(180, 0.6, 'sine', 0.05, 90),
+    groan: () => { tone(90, 0.5, 'sawtooth', 0.12, 60); tone(140, 0.4, 'sawtooth', 0.08, 80); },
+    advance: () => tone(440, 0.05, 'square', 0.08, 660),
   };
 
   // ---------- Boss music ----------
@@ -217,7 +222,7 @@
   const MAX_FALL = 620;
 
   // ---------- State ----------
-  let state = 'start'; // start | playing | win | dead
+  let state = 'start'; // start | cutscene | playing | win | dead
   let keys = {};
   let player, pet, enemies, pBullets, eBullets, hazards, particles, messages, camX, respawn, elapsed, shake, levelBanner;
 
@@ -486,6 +491,10 @@
   function handleKeyDown(ev) {
     keys[ev.code] = true;
     if (GAME_KEYS.has(ev.code)) ev.preventDefault();
+    if (state === 'cutscene') {
+      if (ev.code === 'Space' || ev.code === 'Enter' || ev.code === 'KeyX' || ev.code === 'KeyJ') advanceCutscene();
+      return;
+    }
     if (state !== 'playing') return;
     if (ev.code === 'Digit1') player.ammo = 'normal';
     if (ev.code === 'Digit2') player.ammo = 'berserker';
@@ -1398,26 +1407,262 @@
     blit();
   }
 
+  // ---------- Intro cutscene ----------
+  const CUTSCENE = [
+    { type: 'boat', boatX: 0.18, islandScale: 0.45, speaker: 'HUNTER', text: 'Three months chasing rumors across two oceans for this.' },
+    { type: 'boat', boatX: 0.58, islandScale: 0.85, speaker: 'HUNTER', text: 'The map better be right this time.' },
+    { type: 'arrive', speaker: 'HUNTER', text: "...Door's already broken open. Someone beat me here." },
+    { type: 'arrive', speaker: 'HUNTER', text: 'Or something did.' },
+    { type: 'zombie', speaker: 'HUNTER', text: 'Right. Guess the old stories were true after all.' },
+  ];
+  const CUTSCENE_CPS = 30;
+  let cutsceneBeat = 0, cutsceneChars = 0, cutsceneIdleT = 0, cutsceneT = 0;
+
+  function initCutscene() {
+    cutsceneBeat = 0; cutsceneChars = 0; cutsceneIdleT = 0; cutsceneT = 0;
+    skipCutsceneBtn.classList.remove('hidden');
+    sfx.wave();
+  }
+
+  function advanceCutscene() {
+    const beat = CUTSCENE[cutsceneBeat];
+    if (!beat) return;
+    if (cutsceneChars < beat.text.length) { cutsceneChars = beat.text.length; return; }
+    sfx.advance();
+    cutsceneBeat++;
+    cutsceneChars = 0;
+    cutsceneIdleT = 0;
+    if (cutsceneBeat >= CUTSCENE.length) beginGameplay();
+  }
+
+  function skipCutscene() { beginGameplay(); }
+
+  function updateCutscene(dt) {
+    cutsceneT += dt;
+    const beat = CUTSCENE[cutsceneBeat];
+    if (!beat) return;
+    if (cutsceneChars < beat.text.length) {
+      const prevChars = cutsceneChars;
+      if (prevChars === 0 && beat.type === 'zombie') sfx.groan();
+      cutsceneChars = Math.min(beat.text.length, cutsceneChars + CUTSCENE_CPS * dt);
+      if (Math.floor(cutsceneChars / 3) > Math.floor(prevChars / 3)) sfx.blip();
+    } else {
+      cutsceneIdleT += dt;
+      if (cutsceneIdleT > 3.2) advanceCutscene();
+    }
+  }
+
+  function wrapText(text, maxWidth) {
+    const words = text.split(' ');
+    const lines = [];
+    let line = '';
+    for (const w of words) {
+      const test = line ? line + ' ' + w : w;
+      if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = w; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function drawCutsceneHunter(x, y, facing) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(facing, 1);
+    ctx.fillStyle = '#1c1a16';
+    ctx.fillRect(-6, 10, 5, 8);
+    ctx.fillRect(1, 10, 5, 8);
+    ctx.fillStyle = '#6d7f4a';
+    ctx.fillRect(-6, 3, 5, 8);
+    ctx.fillRect(1, 3, 5, 8);
+    ctx.fillStyle = '#8a7a52';
+    ctx.fillRect(-7, -8, 14, 12);
+    ctx.fillStyle = '#5a3a2a';
+    ctx.fillRect(-6, -7, 12, 2);
+    ctx.fillStyle = '#d9a876';
+    ctx.fillRect(-5, -16, 10, 8);
+    ctx.fillStyle = '#7a2f22';
+    ctx.fillRect(-6, -18, 12, 3);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(1, -13, 2, 2);
+    ctx.fillStyle = '#8a7a52';
+    ctx.fillRect(3, -4, 5, 6);
+    ctx.fillStyle = '#2b2418';
+    ctx.fillRect(7, -3, 12, 3);
+    ctx.restore();
+  }
+
+  function drawTempleSilhouette(x, y, scale) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#1a2420';
+    ctx.fillRect(-50, -10, 100, 40);
+    ctx.fillRect(-60, 20, 120, 14);
+    for (let i = -1; i <= 1; i++) {
+      ctx.fillRect(i * 30 - 5, -30, 10, 30);
+    }
+    ctx.fillStyle = '#0a0a08';
+    ctx.fillRect(-14, 4, 28, 26);
+    ctx.restore();
+  }
+
+  function renderCutscene() {
+    const beat = CUTSCENE[cutsceneBeat];
+    if (!beat) { blit(); return; }
+    const horizon = VIEW_H * 0.5;
+
+    if (beat.type === 'boat') {
+      const grad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+      grad.addColorStop(0, '#2a1a3a');
+      grad.addColorStop(0.5, '#5a3a5a');
+      grad.addColorStop(0.55, '#0d3a4a');
+      grad.addColorStop(1, '#082430');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      ctx.fillStyle = 'rgba(255,225,180,0.75)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 80, 55, 20, 0, Math.PI * 2); ctx.fill();
+
+      drawTempleSilhouette(VIEW_W - 90, horizon - 6, beat.islandScale);
+
+      ctx.strokeStyle = 'rgba(200,230,240,0.25)';
+      for (let i = 0; i < 5; i++) {
+        const wy = horizon + 20 + i * 35;
+        ctx.beginPath();
+        for (let px2 = 0; px2 <= VIEW_W; px2 += 12) {
+          const wave = Math.sin(px2 * 0.06 + cutsceneT * 2 + i) * 3;
+          if (px2 === 0) ctx.moveTo(px2, wy + wave); else ctx.lineTo(px2, wy + wave);
+        }
+        ctx.stroke();
+      }
+
+      const boatX = beat.boatX * VIEW_W;
+      const boatY = horizon + 55 + Math.sin(cutsceneT * 2.4) * 3;
+      ctx.fillStyle = '#3a2a1a';
+      ctx.beginPath();
+      ctx.moveTo(boatX - 34, boatY);
+      ctx.lineTo(boatX + 34, boatY);
+      ctx.lineTo(boatX + 24, boatY + 12);
+      ctx.lineTo(boatX - 24, boatY + 12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#5a4028';
+      ctx.fillRect(boatX - 2, boatY - 26, 3, 26);
+      ctx.fillStyle = 'rgba(230,220,200,0.85)';
+      ctx.beginPath();
+      ctx.moveTo(boatX, boatY - 26);
+      ctx.lineTo(boatX + 20, boatY - 6);
+      ctx.lineTo(boatX, boatY - 6);
+      ctx.closePath();
+      ctx.fill();
+
+      drawCutsceneHunter(boatX - 6, boatY - 6 + Math.sin(cutsceneT * 2.4) * 3, 1);
+    } else {
+      const grad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+      grad.addColorStop(0, '#3a2a4a');
+      grad.addColorStop(0.55, '#6a5a5a');
+      grad.addColorStop(0.56, '#8a7550');
+      grad.addColorStop(1, '#5a4a30');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+      drawTempleSilhouette(VIEW_W * 0.62, horizon - 20, 1.6);
+
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      for (let i = -1; i < 12; i++) ctx.fillRect(i * 40, horizon + 60, 4, VIEW_H);
+
+      drawCutsceneHunter(VIEW_W * 0.32, horizon + 70, 1);
+
+      if (beat.type === 'zombie') {
+        const zx = VIEW_W * 0.6 + Math.sin(cutsceneT * 1.5) * 6;
+        const zy = horizon + 68;
+        ctx.save();
+        ctx.translate(zx, zy);
+        ctx.fillStyle = '#3f6b34';
+        ctx.fillRect(-6, -6, 12, 18);
+        ctx.fillStyle = '#274a20';
+        ctx.fillRect(-6, -16, 12, 10);
+        ctx.fillStyle = '#c0392b';
+        ctx.fillRect(-3, -12, 2, 2);
+        ctx.fillRect(2, -12, 2, 2);
+        ctx.restore();
+      }
+    }
+
+    // dialogue bubble
+    ctx.font = '9px monospace';
+    const lines = wrapText(beat.text.slice(0, Math.floor(cutsceneChars)), 210);
+    const bw = 250, bh = 24 + lines.length * 12;
+    const bx = VIEW_W / 2 - bw / 2, by = 14;
+    ctx.fillStyle = 'rgba(20,14,10,0.55)';
+    ctx.fillRect(bx + 3, by + 3, bw, bh);
+    ctx.fillStyle = '#f2e9d8';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = '#2b1d14';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bx, by, bw, bh);
+    ctx.fillStyle = '#f2e9d8';
+    ctx.beginPath();
+    ctx.moveTo(VIEW_W / 2 - 10, by + bh);
+    ctx.lineTo(VIEW_W / 2 + 6, by + bh);
+    ctx.lineTo(VIEW_W / 2 - 6, by + bh + 12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#2b1d14';
+    ctx.stroke();
+
+    ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = '#8a5a2a';
+    ctx.fillText(beat.speaker, bx + 8, by + 12);
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#2b1d14';
+    lines.forEach((line, i) => ctx.fillText(line, bx + 8, by + 24 + i * 12));
+
+    if (cutsceneChars >= beat.text.length && Math.sin(cutsceneT * 6) > 0) {
+      ctx.fillStyle = '#8a5a2a';
+      ctx.fillText('▼', bx + bw - 14, by + bh - 4);
+    }
+
+    blit();
+  }
+
+  screenCanvas.addEventListener('click', () => { if (state === 'cutscene') advanceCutscene(); });
+  skipCutsceneBtn.addEventListener('click', skipCutscene);
+
   // ---------- Main loop ----------
   let lastTime = performance.now();
   function loop(now) {
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
     if (state === 'playing' || state === 'win' || state === 'dead') { update(dt); render(); }
+    else if (state === 'cutscene') { updateCutscene(dt); renderCutscene(); }
     requestAnimationFrame(loop);
   }
 
-  function startGame() {
+  // Called by the start-screen button: plays the skippable intro first.
+  function beginIntro() {
+    ensureAudio();
+    claimFocus();
+    state = 'cutscene';
+    startScreen.classList.add('hidden');
+    gameOverScreen.classList.add('hidden');
+    initCutscene();
+  }
+
+  // Called when the cutscene ends/is skipped, and by the restart button
+  // (retrying a run doesn't replay the intro).
+  function beginGameplay() {
     ensureAudio();
     claimFocus();
     resetRun();
     state = 'playing';
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
+    skipCutsceneBtn.classList.add('hidden');
   }
 
-  startBtn.addEventListener('click', startGame);
-  restartBtn.addEventListener('click', startGame);
+  startBtn.addEventListener('click', beginIntro);
+  restartBtn.addEventListener('click', beginGameplay);
 
   requestAnimationFrame(loop);
 })();
