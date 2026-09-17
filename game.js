@@ -86,6 +86,35 @@
     empty: () => tone(180, 0.05, 'square', 0.07, 120),
   };
 
+  // ---------- Boss music ----------
+  // An original driving chiptune riff for the guardian fight — not a cover
+  // of any existing track, just written in the same fast/minor-key/bullet-
+  // hell spirit. Sequenced as a simple 16-step loop over Web Audio oscillators.
+  let bossMusicTimer = null;
+  let bossMusicStep = 0;
+  const BOSS_BPM = 168;
+  const BOSS_BASS = [73.42, 73.42, 87.31, 73.42, 65.41, 65.41, 73.42, 55.00]; // D2 D2 F2 D2 C2 C2 D2 A1
+  const BOSS_LEAD = [
+    null, 293.66, null, 349.23, null, 293.66, 440.00, null,
+    null, 261.63, null, 293.66, null, 220.00, 233.08, null,
+  ];
+  function playBossStep(step) {
+    if (step % 2 === 0) tone(BOSS_BASS[(step / 2) % BOSS_BASS.length], 0.16, 'sawtooth', 0.09);
+    const lead = BOSS_LEAD[step % BOSS_LEAD.length];
+    if (lead) tone(lead, 0.11, 'square', 0.07);
+    if (step % 4 === 0) noiseBurst(0.07, 0.1);
+    else if (step % 4 === 2) noiseBurst(0.025, 0.045);
+  }
+  function startBossMusic() {
+    if (bossMusicTimer || !actx) return;
+    bossMusicStep = 0;
+    const stepMs = (60 / BOSS_BPM / 4) * 1000;
+    bossMusicTimer = setInterval(() => { playBossStep(bossMusicStep % BOSS_LEAD.length); bossMusicStep++; }, stepMs);
+  }
+  function stopBossMusic() {
+    if (bossMusicTimer) { clearInterval(bossMusicTimer); bossMusicTimer = null; }
+  }
+
   // ---------- Level ----------
   // Both floors share the same physical layout (gaps/platforms) — it's
   // already proven jumpable — and differ in theme, enemy mix, and the
@@ -204,6 +233,7 @@
   }
 
   function resetRun() {
+    stopBossMusic();
     levelIndex = 0;
     buildMap();
     player = newPlayer();
@@ -226,6 +256,7 @@
     respawn = { x: player.x, y: player.y };
     levelBanner = { text: 'FLOOR 2 — THE DARK DUNGEON', t: 3 };
     sfx.checkpoint();
+    startBossMusic();
   }
 
   function spawnEnemy(typeKey, col, row) {
@@ -253,6 +284,7 @@
     shakeScreen(10);
     if (player.lives <= 0) {
       state = 'dead';
+      stopBossMusic();
       endTitle.innerHTML = 'THE TEMPLE <span class="accent">CLAIMS YOU</span>';
       finalStats.textContent = `Score: ${player.score} — Kills: ${player.kills}`;
       gameOverScreen.classList.remove('hidden');
@@ -291,6 +323,7 @@
       sfx.soul();
     }
     if (e.cfg.isBoss) {
+      stopBossMusic();
       pet = { x: e.x, y: e.y, fireCooldown: 0, fireRate: 3.5, dmg: 12, range: 220 };
       spawnExplosionParticles(e.x, e.y, ['#a78bfa', '#e0d4ff']);
       spawnShockwave(e.x, e.y, 'rgba(167,139,250,0.9)', 90);
