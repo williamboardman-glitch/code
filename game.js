@@ -116,10 +116,10 @@
 
   // ---------- Enemy configs ----------
   const ENEMY_TYPES = {
-    grunt: { name: 'grunt', color: '#5fae4a', dark: '#2f6b26', w: 16, h: 24, speed: 26, hp: 20, dmg: 8, soul: null, points: 10, melee: true },
-    brute: { name: 'brute', color: '#c0392b', dark: '#6f1f16', w: 20, h: 28, speed: 40, hp: 50, dmg: 16, soul: 'berserker', points: 25, melee: true },
-    pyro: { name: 'pyro', color: '#ff8a3d', dark: '#a24512', w: 16, h: 24, speed: 14, hp: 28, dmg: 0, soul: 'pyromancer', points: 30, ranged: true, fireRate: 2.0, projSpeed: 180, projDmg: 12, kind: 'fire' },
-    frost: { name: 'frost', color: '#6bd9e8', dark: '#2c7c8a', w: 16, h: 24, speed: 12, hp: 26, dmg: 0, soul: 'frost', points: 30, ranged: true, fireRate: 2.4, projSpeed: 160, projDmg: 9, kind: 'frost' },
+    grunt: { name: 'grunt', color: '#5fae4a', dark: '#2f6b26', light: '#8fd478', bone: '#e8e0c8', w: 16, h: 24, speed: 26, hp: 20, dmg: 8, soul: null, points: 10, melee: true },
+    brute: { name: 'brute', color: '#c0392b', dark: '#6f1f16', light: '#e0684f', bone: '#f0d9b0', w: 22, h: 29, speed: 40, hp: 50, dmg: 16, soul: 'berserker', points: 25, melee: true },
+    pyro: { name: 'pyro', color: '#ff8a3d', dark: '#a24512', light: '#ffc26b', bone: '#3a1f12', w: 16, h: 25, speed: 14, hp: 28, dmg: 0, soul: 'pyromancer', points: 30, ranged: true, fireRate: 2.0, projSpeed: 180, projDmg: 12, kind: 'fire' },
+    frost: { name: 'frost', color: '#6bd9e8', dark: '#2c7c8a', light: '#cdf6fb', bone: '#173f47', w: 16, h: 25, speed: 12, hp: 26, dmg: 0, soul: 'frost', points: 30, ranged: true, fireRate: 2.4, projSpeed: 160, projDmg: 9, kind: 'frost' },
   };
   const SOUL_META = {
     berserker: { label: 'HEAVY', color: '#c0392b' },
@@ -259,6 +259,7 @@
     else { vx = 420 * dir; }
     const muzzleX = player.x + dir * player.w * 0.7;
     const muzzleY = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
+    spawnShellCasing(player.x - dir * 2, player.y - 6, dir);
 
     if (ammo === 'normal') {
       sfx.shot();
@@ -293,6 +294,9 @@
   }
   function spawnSoulParticle(x, y, soulType) {
     particles.push({ x, y, vx: 0, vy: -30, life: 0.9, color: SOUL_META[soulType].color, size: 3, soul: true, grav: false });
+  }
+  function spawnShellCasing(x, y, dir) {
+    particles.push({ x, y, vx: -dir * (40 + Math.random() * 30), vy: -60 - Math.random() * 30, life: 0.5, color: '#d9b64a', size: 2, grav: true, shell: true });
   }
 
   // ---------- Input ----------
@@ -587,47 +591,87 @@
     const x = px(player.x - camX), y = px(player.y);
     if (player.invuln > 0 && Math.floor(elapsed * 20) % 2 === 0) return;
     const dir = player.facing;
-    const bob = (player.vx !== 0 && player.onGround) ? Math.sin(player.walkT * 12) * 2 : 0;
+    const moving = player.onGround && player.vx !== 0;
+    const bob = moving ? Math.sin(player.walkT * 12) * 2 : 0;
+    const flash = player.hurtFlash > 0;
+    const gunUp = player.aim === -1 ? -8 : player.aim === 1 ? 8 : 0;
+    const firing = player.fireCooldown > BASE_COOLDOWN - 0.05;
 
     ctx.save();
     ctx.translate(x, y + bob);
     ctx.scale(dir, 1);
 
-    // legs
-    const legSwing = player.onGround && player.vx !== 0 ? Math.sin(player.walkT * 12) * 4 : 0;
-    ctx.fillStyle = '#2b1d14';
-    ctx.fillRect(-6, 6 + (player.onGround ? 0 : -2), 5, 8 - legSwing * 0.3);
-    ctx.fillRect(1, 6 + (player.onGround ? 0 : -2), 5, 8 + legSwing * 0.3);
+    const legSwing = moving ? Math.sin(player.walkT * 12) * 4 : 0;
+    const armSwing = moving ? Math.sin(player.walkT * 12 + Math.PI) * 2 : 0;
 
-    // robe/torso
-    ctx.fillStyle = player.hurtFlash > 0 ? '#ffffff' : '#3b2a55';
-    ctx.fillRect(-7, -8, 14, 16);
-    // belt
-    ctx.fillStyle = '#c9a361';
-    ctx.fillRect(-7, 4, 14, 2);
+    // back boot + leg (khaki cargo pants over combat boots)
+    ctx.fillStyle = flash ? '#fff' : '#1c1a16';
+    ctx.fillRect(-6, 10 + (player.onGround ? 0 : -2), 5, 3 - legSwing * 0.2);
+    ctx.fillStyle = flash ? '#fff' : '#5b6b45';
+    ctx.fillRect(-6, 3 + (player.onGround ? 0 : -2), 5, 7 - legSwing * 0.3);
 
-    // head + hood
-    ctx.fillStyle = player.hurtFlash > 0 ? '#ffffff' : '#e8c39e';
+    // backpack (peeks out behind torso)
+    ctx.fillStyle = flash ? '#fff' : '#4a3a24';
+    ctx.fillRect(-8, -7, 4, 11);
+
+    // front boot + leg
+    ctx.fillStyle = flash ? '#fff' : '#1c1a16';
+    ctx.fillRect(1, 10 + (player.onGround ? 0 : -2), 5, 3 + legSwing * 0.2);
+    ctx.fillStyle = flash ? '#fff' : '#6d7f4a';
+    ctx.fillRect(1, 3 + (player.onGround ? 0 : -2), 5, 7 + legSwing * 0.3);
+
+    // torso: tan field jacket with a shaded side and a bandolier strap
+    ctx.fillStyle = flash ? '#fff' : '#8a7a52';
+    ctx.fillRect(-7, -8, 14, 12);
+    ctx.fillStyle = flash ? '#fff' : '#6b5d3e';
+    ctx.fillRect(-7, -8, 4, 12);
+    ctx.fillStyle = flash ? '#fff' : '#c9b98f';
+    ctx.fillRect(4, -8, 2, 12);
+    ctx.fillStyle = flash ? '#fff' : '#5a3a2a';
+    ctx.fillRect(-6, -7, 12, 2);
+    // belt + pouch
+    ctx.fillStyle = flash ? '#fff' : '#3a2e1c';
+    ctx.fillRect(-7, 3, 14, 2);
+    ctx.fillStyle = flash ? '#fff' : '#2b2216';
+    ctx.fillRect(-2, 1, 4, 4);
+
+    // head: skin + headband + hair
+    ctx.fillStyle = flash ? '#fff' : '#d9a876';
     ctx.fillRect(-5, -16, 10, 8);
-    ctx.fillStyle = player.hurtFlash > 0 ? '#ffffff' : '#241636';
-    ctx.fillRect(-6, -18, 12, 5);
+    ctx.fillStyle = flash ? '#fff' : '#7a2f22';
+    ctx.fillRect(-6, -18, 12, 3);
+    ctx.fillStyle = flash ? '#fff' : '#5a2118';
+    ctx.fillRect(4, -18, 3, 5);
+    ctx.fillStyle = flash ? '#fff' : '#2b1d14';
+    ctx.fillRect(-6, -20, 12, 2);
     // eyes
-    ctx.fillStyle = '#5ef29a';
+    ctx.fillStyle = flash ? '#000' : '#1a1a1a';
     ctx.fillRect(1, -13, 2, 2);
 
-    // arm + gun
-    let gunY = 0;
-    if (player.aim === -1) gunY = -14; else if (player.aim === 1) gunY = 10;
-    ctx.fillStyle = '#6b5a3a';
-    ctx.fillRect(6, -2 + (player.aim === -1 ? -8 : player.aim === 1 ? 8 : 0), 10, 4);
-    ctx.fillStyle = '#9c8a5a';
-    ctx.fillRect(4, -4, 6, 6);
+    // rear arm (subtle, behind torso)
+    ctx.fillStyle = flash ? '#fff' : '#7a6a48';
+    ctx.fillRect(-4, -5 + armSwing, 4, 8);
 
-    if (player.fireCooldown > BASE_COOLDOWN - 0.05) {
-      ctx.fillStyle = '#ffe27a';
-      ctx.beginPath();
-      ctx.arc(17, -2 + (player.aim === -1 ? -8 : player.aim === 1 ? 8 : 0), 4, 0, Math.PI * 2);
-      ctx.fill();
+    // front arm + rifle, angled for up/down aim
+    const gy = -2 + gunUp;
+    ctx.fillStyle = flash ? '#fff' : '#8a7a52';
+    ctx.fillRect(3, -4, 5, 6);
+    ctx.fillStyle = flash ? '#fff' : '#2b2418'; // barrel
+    ctx.fillRect(7, gy - 1, 13, 3);
+    ctx.fillStyle = flash ? '#fff' : '#4a4030'; // receiver body
+    ctx.fillRect(3, gy - 2, 6, 5);
+    ctx.fillStyle = flash ? '#fff' : '#1e1a12'; // magazine
+    ctx.fillRect(5, gy + 2, 3, 6);
+    ctx.fillStyle = flash ? '#fff' : '#2b2418'; // stock
+    ctx.fillRect(-1, gy - 1, 4, 3);
+
+    if (firing) {
+      const fx = 20, fy = gy - 1;
+      ctx.fillStyle = '#fff8c9';
+      ctx.fillRect(fx, fy - 3, 2, 7);
+      ctx.fillRect(fx - 3, fy, 8, 2);
+      ctx.fillStyle = '#ffcf4a';
+      ctx.fillRect(fx + 1, fy - 1, 4, 3);
     }
     ctx.restore();
   }
@@ -638,39 +682,100 @@
     const x = px(e.x - camX), y = px(e.y);
     const flash = e.hitFlash > 0;
     const legSwing = Math.sin(e.walkT * 8) * 3;
+    const hw = c.w / 2, hh = c.h / 2;
+    const col = (a) => flash ? '#fff' : a;
+
     ctx.save();
     ctx.translate(x, y);
-    // legs
-    ctx.fillStyle = flash ? '#fff' : c.dark;
-    ctx.fillRect(-c.w / 2 + 2, c.h / 2 - 8, 5, 8 - legSwing * 0.3);
-    ctx.fillRect(c.w / 2 - 7, c.h / 2 - 8, 5, 8 + legSwing * 0.3);
-    // body
-    ctx.fillStyle = flash ? '#fff' : c.color;
-    ctx.fillRect(-c.w / 2, -c.h / 2 + 6, c.w, c.h - 14);
-    // head
-    ctx.fillStyle = flash ? '#fff' : c.dark;
-    ctx.fillRect(-c.w / 2 + 2, -c.h / 2, c.w - 4, 8);
-    // eyes
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(-3, -c.h / 2 + 3, 2, 2);
-    ctx.fillRect(2, -c.h / 2 + 3, 2, 2);
+
+    // legs (shared base)
+    ctx.fillStyle = col(c.dark);
+    ctx.fillRect(-hw + 2, hh - 8, 5, 8 - legSwing * 0.3);
+    ctx.fillRect(hw - 7, hh - 8, 5, 8 + legSwing * 0.3);
+
+    if (c.name === 'grunt') {
+      // hunched shambler: ragged tunic, exposed ribs, lolling head
+      ctx.fillStyle = col(c.color);
+      ctx.fillRect(-hw, -hh + 8, c.w, c.h - 16);
+      ctx.fillStyle = col(c.light);
+      ctx.fillRect(-hw, -hh + 8, 3, c.h - 16);
+      ctx.fillStyle = col(c.bone);
+      ctx.fillRect(-hw + 4, -hh + 12, 2, 5);
+      ctx.fillRect(-hw + 8, -hh + 11, 2, 6);
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(-hw + 1, -hh + 1, c.w - 6, 9);
+      ctx.fillStyle = col('#c62828');
+      ctx.fillRect(-3, -hh + 2, 2, 2);
+      ctx.fillRect(2, -hh + 2, 2, 2);
+    } else if (c.name === 'brute') {
+      // bulkier rusher: armored shoulders, spiked pauldrons
+      ctx.fillStyle = col(c.color);
+      ctx.fillRect(-hw, -hh + 9, c.w, c.h - 17);
+      ctx.fillStyle = col(c.light);
+      ctx.fillRect(-hw, -hh + 9, 4, c.h - 17);
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(-hw - 2, -hh + 7, 6, 6);
+      ctx.fillRect(hw - 4, -hh + 7, 6, 6);
+      ctx.fillStyle = col('#4a4a4a');
+      ctx.fillRect(-hw - 2, -hh + 4, 3, 4);
+      ctx.fillRect(hw - 1, -hh + 4, 3, 4);
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(-hw + 2, -hh, c.w - 4, 9);
+      ctx.fillStyle = col('#ffd54f');
+      ctx.fillRect(-4, -hh + 3, 2, 2);
+      ctx.fillRect(2, -hh + 3, 2, 2);
+    } else if (c.name === 'pyro') {
+      // fire cultist: tattered robe, embers drifting off
+      ctx.fillStyle = col(c.color);
+      ctx.fillRect(-hw, -hh + 7, c.w, c.h - 15);
+      ctx.fillStyle = col(c.light);
+      ctx.fillRect(-hw, -hh + 7, 3, c.h - 15);
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(-hw + 3, hh - 10, 3, 5);
+      ctx.fillRect(hw - 6, hh - 9, 3, 5);
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(-hw + 1, -hh, c.w - 2, 8);
+      ctx.fillStyle = col('#ffcf4a');
+      ctx.fillRect(-3, -hh + 2, 2, 2);
+      ctx.fillRect(2, -hh + 2, 2, 2);
+      if (Math.sin(e.walkT * 5) > 0.3) {
+        ctx.fillStyle = 'rgba(255,140,20,0.7)';
+        ctx.fillRect(-2, -hh - 4, 2, 3);
+        ctx.fillRect(2, -hh - 6, 2, 3);
+      }
+    } else if (c.name === 'frost') {
+      // frost priest: pale, ice shards jutting from shoulders/head
+      ctx.fillStyle = col(c.color);
+      ctx.fillRect(-hw, -hh + 7, c.w, c.h - 15);
+      ctx.fillStyle = col(c.light);
+      ctx.fillRect(-hw, -hh + 7, 3, c.h - 15);
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(-hw + 1, -hh, c.w - 2, 8);
+      ctx.fillStyle = col('#e3fbff');
+      ctx.fillRect(-hw - 1, -hh - 1, 3, 6);
+      ctx.fillRect(hw - 2, -hh - 2, 3, 7);
+      ctx.fillStyle = col('#173f47');
+      ctx.fillRect(-3, -hh + 2, 2, 2);
+      ctx.fillRect(2, -hh + 2, 2, 2);
+    }
+
     if (e.slowTimer > 0) {
       ctx.strokeStyle = 'rgba(107,217,232,0.9)';
       ctx.lineWidth = 1;
-      ctx.strokeRect(-c.w / 2 - 2, -c.h / 2 - 2, c.w + 4, c.h + 4);
+      ctx.strokeRect(-hw - 2, -hh - 2, c.w + 4, c.h + 4);
     }
     if (e.burnTimer > 0) {
       ctx.fillStyle = 'rgba(255,140,20,0.5)';
-      ctx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h);
+      ctx.fillRect(-hw, -hh, c.w, c.h);
     }
     ctx.restore();
 
     const barW = c.w;
     const pct = Math.max(0, e.hp / e.maxHp);
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(x - barW / 2, y - c.h / 2 - 8, barW, 3);
+    ctx.fillRect(x - barW / 2, y - hh - 8, barW, 3);
     ctx.fillStyle = pct > 0.5 ? '#6ecb63' : pct > 0.2 ? '#e6c14a' : '#c0392b';
-    ctx.fillRect(x - barW / 2, y - c.h / 2 - 8, barW * pct, 3);
+    ctx.fillRect(x - barW / 2, y - hh - 8, barW * pct, 3);
   }
 
   function drawBullet(b, kind) {
