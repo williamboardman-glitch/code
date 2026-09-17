@@ -1299,15 +1299,78 @@
 
   function drawBullet(b, kind) {
     const x = px(b.x - camX), y = px(b.y);
-    const colors = { normal: '#5ef29a', berserker: '#ffcf4a', pyro: '#ff8a3d', frost: '#9fe8f5', fire: '#ff8a3d', lightning: '#d8c7ff', acid: '#8bc34a', dark: '#b090ff', pet: '#d8c7ff' };
-    ctx.fillStyle = colors[kind] || '#fff';
+    // Orient every bullet along its actual travel direction so shapes
+    // (the lightning zigzag, flame lick, ice shard point, etc.) read
+    // correctly no matter which way it's fired or aimed.
+    const angle = Math.atan2(b.vy, b.vx);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
     if (kind === 'lightning') {
-      ctx.fillRect(x - 6, y - 1, 4, 2);
-      ctx.fillRect(x - 2, y - 2, 4, 2);
-      ctx.fillRect(x + 2, y - 1, 4, 2);
+      ctx.strokeStyle = '#d8c7ff';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-10, 0); ctx.lineTo(-4, -4); ctx.lineTo(0, 3); ctx.lineTo(5, -4); ctx.lineTo(10, 0);
+      ctx.stroke();
+      ctx.fillStyle = '#f4e9ff';
+      ctx.beginPath(); ctx.arc(10, 0, 2.2, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === 'berserker') {
+      ctx.fillStyle = '#a85a1a';
+      ctx.beginPath(); ctx.ellipse(0, 0, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffcf4a';
+      ctx.beginPath(); ctx.ellipse(1, 0, 6, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff5cc';
+      ctx.beginPath(); ctx.ellipse(3, 0, 3, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === 'pyro' || kind === 'fire') {
+      ctx.fillStyle = 'rgba(255,138,61,0.55)';
+      ctx.beginPath(); ctx.moveTo(-5, -3); ctx.lineTo(-12, 0); ctx.lineTo(-5, 3); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#a24512';
+      ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ff8a3d';
+      ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffe27a';
+      ctx.beginPath(); ctx.arc(1.5, 0, 2.4, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === 'frost') {
+      ctx.fillStyle = '#2c7c8a';
+      ctx.beginPath();
+      ctx.moveTo(9, 0); ctx.lineTo(0, -5); ctx.lineTo(-9, 0); ctx.lineTo(0, 5);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#cdf6fb';
+      ctx.beginPath();
+      ctx.moveTo(5.5, 0); ctx.lineTo(0, -2.5); ctx.lineTo(-5.5, 0); ctx.lineTo(0, 2.5);
+      ctx.closePath(); ctx.fill();
+    } else if (kind === 'acid') {
+      ctx.fillStyle = 'rgba(139,195,74,0.5)';
+      ctx.beginPath(); ctx.moveTo(-5, -2); ctx.lineTo(-10, 0); ctx.lineTo(-5, 2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#4b6b1f';
+      ctx.beginPath(); ctx.ellipse(0, 0, 7, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8bc34a';
+      ctx.beginPath(); ctx.ellipse(1, 0, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#c8e6a0';
+      ctx.beginPath(); ctx.arc(2, -1, 1.8, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === 'dark') {
+      ctx.fillStyle = 'rgba(90,58,122,0.5)';
+      ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2a1a3a';
+      ctx.beginPath(); ctx.arc(0, 0, 6.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#b090ff';
+      ctx.beginPath(); ctx.arc(1.5, -1.5, 2.6, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === 'pet') {
+      ctx.fillStyle = '#5b3fa0';
+      ctx.beginPath(); ctx.ellipse(0, 0, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#d8c7ff';
+      ctx.beginPath(); ctx.ellipse(1, 0, 3, 1.6, 0, 0, Math.PI * 2); ctx.fill();
     } else {
-      ctx.fillRect(x - 3, y - 2, 6, 4);
+      // normal (player default)
+      ctx.fillStyle = '#2f8f5b';
+      ctx.beginPath(); ctx.ellipse(0, 0, 7.5, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#5ef29a';
+      ctx.beginPath(); ctx.ellipse(1, 0, 5, 1.9, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#eafff0';
+      ctx.beginPath(); ctx.arc(3, 0, 1.5, 0, Math.PI * 2); ctx.fill();
     }
+    ctx.restore();
   }
 
   function drawHazard(hz) {
