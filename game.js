@@ -27,7 +27,11 @@
   resize();
 
   function blit() {
-    const scale = Math.max(1, Math.floor(Math.min(screenW / VIEW_W, screenH / VIEW_H)));
+    // Fill as much of the available space as possible. An integer scale
+    // keeps pixels perfectly crisp but leaves large letterbox bars in most
+    // panel/window sizes, so use a fractional scale instead — still
+    // unsmoothed (blocky), just not locked to whole-number multiples.
+    const scale = Math.max(0.1, Math.min(screenW / VIEW_W, screenH / VIEW_H));
     const dw = VIEW_W * scale, dh = VIEW_H * scale;
     const dx = Math.floor((screenW - dw) / 2), dy = Math.floor((screenH - dh) / 2);
     sctx.imageSmoothingEnabled = false;
@@ -38,7 +42,10 @@
 
   // ---------- Audio ----------
   let actx = null;
-  function ensureAudio() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); }
+  function ensureAudio() {
+    try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (e) { /* audio isn't essential — never let it block the game from starting */ }
+  }
   function tone(freq, dur, type = 'square', gain = 0.15, glideTo = null) {
     if (!actx) return;
     const osc = actx.createOscillator();
@@ -127,11 +134,19 @@
     frost: { label: 'FROST', color: '#6bd9e8' },
   };
   const SPAWN_LIST = [
-    ['grunt', 3, 8], ['grunt', 9, 8], ['brute', 12, 8], ['grunt', 8, 6],
-    ['grunt', 19, 8], ['pyro', 24, 8], ['pyro', 21, 6], ['brute', 28, 8],
-    ['brute', 31, 8], ['grunt', 34, 7], ['grunt', 37, 8], ['frost', 42, 6],
-    ['grunt', 45, 8], ['frost', 49, 8], ['brute', 56, 8], ['pyro', 59, 6],
-    ['grunt', 61, 8], ['brute', 64, 8], ['pyro', 66, 8],
+    ['grunt', 3, 8], ['grunt', 5, 8], ['grunt', 9, 8], ['grunt', 11, 8],
+    ['brute', 12, 8], ['grunt', 8, 6],
+    ['grunt', 17, 8], ['grunt', 19, 8], ['brute', 18, 8],
+    ['pyro', 24, 8], ['pyro', 21, 6], ['grunt', 22, 6], ['grunt', 26, 8],
+    ['brute', 28, 8], ['grunt', 29, 8],
+    ['brute', 31, 8], ['grunt', 34, 7], ['grunt', 36, 8], ['grunt', 37, 8],
+    ['frost', 39, 8], ['frost', 42, 6], ['grunt', 43, 6],
+    ['brute', 44, 8], ['grunt', 45, 8], ['pyro', 47, 8],
+    ['grunt', 49, 8], ['frost', 50, 8], ['grunt', 51, 8],
+    ['brute', 54, 8], ['brute', 56, 8], ['frost', 57, 8],
+    ['pyro', 59, 6], ['grunt', 60, 6],
+    ['grunt', 61, 8], ['brute', 63, 8], ['brute', 64, 8],
+    ['pyro', 66, 8], ['pyro', 67, 8],
   ];
   const CHECKPOINT_COLS = [1, 19, 37, 56];
 
@@ -300,16 +315,42 @@
   }
 
   // ---------- Input ----------
-  window.addEventListener('keydown', (ev) => {
+  // Embedded/iframe viewers (like an Artifact preview) don't always hand
+  // keyboard focus to the page automatically, and a plain <canvas> isn't
+  // focusable by default — so make it focusable and aggressively (re)claim
+  // focus on any interaction, plus prevent the browser's default scroll
+  // behavior for the keys the game uses.
+  screenCanvas.tabIndex = 0;
+  screenCanvas.style.outline = 'none';
+  function claimFocus() { try { screenCanvas.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+  window.addEventListener('pointerdown', claimFocus);
+  window.addEventListener('touchstart', claimFocus, { passive: true });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) claimFocus(); });
+  claimFocus();
+
+  const GAME_KEYS = new Set([
+    'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
+    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'Digit1', 'Digit2', 'Digit3', 'Digit4',
+  ]);
+
+  function handleKeyDown(ev) {
     keys[ev.code] = true;
+    if (GAME_KEYS.has(ev.code)) ev.preventDefault();
     if (state !== 'playing') return;
     if (ev.code === 'Digit1') player.ammo = 'normal';
     if (ev.code === 'Digit2') player.ammo = 'berserker';
     if (ev.code === 'Digit3') player.ammo = 'pyromancer';
     if (ev.code === 'Digit4') player.ammo = 'frost';
     if (ev.code === 'Space' || ev.code === 'KeyW' || ev.code === 'ArrowUp') player.jumpBuffer = 0.12;
-  });
-  window.addEventListener('keyup', (ev) => { keys[ev.code] = false; });
+  }
+  function handleKeyUp(ev) {
+    keys[ev.code] = false;
+    if (GAME_KEYS.has(ev.code)) ev.preventDefault();
+  }
+  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keyup', handleKeyUp);
+  screenCanvas.addEventListener('keydown', handleKeyDown);
+  screenCanvas.addEventListener('keyup', handleKeyUp);
 
   function held(...codes) { return codes.some(c => keys[c]); }
 
@@ -424,9 +465,19 @@
       const facingPlayer = player.x < e.x ? -1 : 1;
 
       if (e.cfg.melee) {
-        e.vx = (e.vx >= 0 ? 1 : -1) * e.cfg.speed * e.speedMult;
-        if (e.x <= e.minX) { e.x = e.minX; e.vx = e.cfg.speed * e.speedMult; }
-        if (e.x >= e.maxX) { e.x = e.maxX; e.vx = -e.cfg.speed * e.speedMult; }
+        // Hunt the player when they're nearby and on roughly the same
+        // level; otherwise pace back and forth. Either way, stay clamped
+        // to this zombie's own platform/ground segment so it never
+        // wanders off an edge or into a pit.
+        const canSeePlayer = distToPlayer < 190 && Math.abs(e.y - player.y) < 40;
+        if (canSeePlayer) {
+          const toward = player.x < e.x ? -1 : 1;
+          e.vx = toward * e.cfg.speed * 1.15 * e.speedMult;
+        } else {
+          e.vx = (e.vx >= 0 ? 1 : -1) * e.cfg.speed * e.speedMult;
+        }
+        if (e.x <= e.minX) { e.x = e.minX; e.vx = Math.abs(e.vx); }
+        if (e.x >= e.maxX) { e.x = e.maxX; e.vx = -Math.abs(e.vx); }
         e.x += e.vx * dt;
         if (rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, player.x, player.y, player.w, player.h)) {
           hurtPlayer(e.cfg.dmg);
@@ -889,6 +940,7 @@
 
   function startGame() {
     ensureAudio();
+    claimFocus();
     resetRun();
     state = 'playing';
     startScreen.classList.add('hidden');
