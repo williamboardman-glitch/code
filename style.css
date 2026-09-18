@@ -35,8 +35,8 @@ html, body {
   position: fixed;
   inset: 0;
   display: flex;
-  align-items: center;
   justify-content: center;
+  overflow-y: auto;
   background: radial-gradient(ellipse at center, rgba(60, 120, 110, 0.55), rgba(5, 10, 12, 0.92));
   z-index: 10;
 }
@@ -44,6 +44,11 @@ html, body {
 .overlay.hidden { display: none; }
 
 .panel {
+  /* margin: auto (not align-items: center on .overlay) centers the panel
+     when it fits, but on a short phone viewport where the panel is taller
+     than the screen it lets the overlay's own scroll reach every part of
+     it (including the button at the bottom) instead of clipping it. */
+  margin: auto 0;
   max-width: 640px;
   width: 90%;
   background: var(--panel-bg);
