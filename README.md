@@ -14,6 +14,11 @@ outright. Every kill restocks +2 bullets, even a soulless shambler, so
 staying aggressive keeps you stocked; the shop's Ammo Cache also tops
 bullets back up to 100 (never down) alongside its usual soul refill.
 
+Beat the Arch Demon and that knife is upgraded permanently into the
+**Demon Knife**: instead of a stationary swipe it becomes a short forward
+dash-strike, cutting through everything in its path and setting each hit
+on fire (a damage-over-time burn), rather than just plain melee damage.
+
 ## Play
 
 Open `index.html` in a browser (or serve the folder with any static file
@@ -43,7 +48,7 @@ genuine chunky pixel-art look.
 | Shadow | Very low direct damage but very long range; its bolt hurls you toward it | Shadow soul | Pull shot: yanks nearby enemies together and primes your next shot to home in |
 | Imp | Small, fast, swarming melee — low health, decent bite | none | — |
 | The Guardian | Floor 2's boss (see below) | — | Drops the Shadow Helm on death (+10% damage) instead of a soul |
-| The Arch Demon | Floor 4's boss, alone on its whole floor (see below) | — | — |
+| The Arch Demon | Floor 4's boss, alone on its whole floor (see below) | — | Drops the Demon Knife on death — upgrades your bullets-out knife into a burning dash strike |
 
 Souls are consumed one per special shot; specials require harvesting the
 matching zombie type first. See [Bullets & the knife](#bullets--the-knife)
@@ -86,6 +91,11 @@ attacks, on top of the same channeled nova the Guardian uses (at 50% and
 
 Like the Guardian's arena, crossing into the Arch Demon's fight seals the
 way back until it's dead.
+
+Beating it grants the **Demon Knife**, a permanent upgrade to your
+bullets-out fallback weapon: instead of a stationary swipe it dashes you
+forward through anything in front of you, and every enemy it cuts is left
+burning.
 
 ## Wolf companion
 

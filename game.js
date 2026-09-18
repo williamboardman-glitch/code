@@ -94,6 +94,7 @@
     groan: () => { tone(90, 0.5, 'sawtooth', 0.12, 60); tone(140, 0.4, 'sawtooth', 0.08, 80); },
     advance: () => tone(440, 0.05, 'square', 0.08, 660),
     knife: () => tone(900, 0.05, 'square', 0.09, 400),
+    demonSlash: () => { tone(200, 0.09, 'sawtooth', 0.16, 60); noiseBurst(0.09, 0.12); },
   };
 
   // ---------- Boss music ----------
@@ -284,7 +285,7 @@
       // deaths wipe) so the Guardian's reward can survive a death that
       // doesn't put the boss back in play to be re-earned.
       homingNext: false, shadowHelm: false, helmDmgBonus: 1, knockX: 0, knockTimer: 0,
-      usedSpecialThisFloor: false, knifeSwing: 0,
+      usedSpecialThisFloor: false, knifeSwing: 0, demonKnife: false,
     };
   }
 
@@ -433,9 +434,10 @@
         spawnShockwave(e.x, e.y, 'rgba(167,139,250,0.9)', 90);
         addMessage(e.x, e.y - 30, "YOU CLAIM THE GUARDIAN'S SHADOW HELM", '#a78bfa');
       } else if (e.cfg.name === 'archdemon') {
+        player.demonKnife = true;
         spawnExplosionParticles(e.x, e.y, ['#ff5a1f', '#ffcf4a']);
         spawnShockwave(e.x, e.y, 'rgba(255,90,31,0.9)', 110);
-        addMessage(e.x, e.y - 30, 'THE ARCH DEMON FALLS', '#ff5a1f');
+        addMessage(e.x, e.y - 30, 'THE ARCH DEMON FALLS — YOU CLAIM THE DEMON KNIFE', '#ff5a1f');
       }
       sfx.win();
     }
@@ -573,16 +575,44 @@
 
   // Backup melee weapon once you're out of bullets — a short-range swipe
   // that can hit whatever's directly in front of (or above/below) you.
+  // Beating the Arch Demon upgrades it into the Demon Knife: instead of a
+  // stationary swipe, it's a short forward dash-strike that burns (DoT)
+  // everything it cuts through along the way.
   function knifeAttack() {
     player.fireCooldown = BASE_COOLDOWN;
     player.knifeSwing = 0.15;
     const dir = player.facing;
+    const ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
+    const dmg = BASE_DMG * player.dmgMult * player.helmDmgBonus;
+
+    if (player.demonKnife) {
+      const startX = player.x;
+      const dashDist = 50, stepSize = 8;
+      let remaining = dashDist;
+      while (remaining > 0) {
+        const step = Math.min(stepSize, remaining);
+        const testX = player.x + dir * step;
+        if (isSolidPixel(testX, player.y)) break;
+        player.x = testX;
+        remaining -= step;
+      }
+      sfx.demonSlash();
+      spawnHitParticles(player.x, ky, '#ff8a3d');
+      const loX = Math.min(startX, player.x) - 12, hiX = Math.max(startX, player.x) + 12;
+      for (const e of enemies) {
+        if (e.dead) continue;
+        if (e.x > loX && e.x < hiX && Math.abs(e.y - ky) < e.cfg.h / 2 + 14) {
+          applyDamage(e, dmg);
+          if (!e.dead) { e.burnTimer = 3; e.burnTick = 0.5; }
+        }
+      }
+      return;
+    }
+
     const range = 26;
     const kx = player.x + dir * (range / 2 + 4);
-    const ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
     sfx.knife();
     spawnHitParticles(kx, ky, '#e8e8e8');
-    const dmg = BASE_DMG * player.dmgMult * player.helmDmgBonus;
     for (const e of enemies) {
       if (e.dead) continue;
       if (rectsOverlap(kx, ky, range, range, e.x, e.y, e.cfg.w, e.cfg.h)) {
@@ -1710,13 +1740,15 @@
     }
     if (player.knifeSwing > 0) {
       const t = 1 - player.knifeSwing / 0.15;
-      const sx = 9 + t * 10, sy = gy - 8 + t * 16;
-      ctx.strokeStyle = 'rgba(232,232,232,0.9)';
-      ctx.lineWidth = 2;
+      const demon = player.demonKnife;
+      const swingRadius = demon ? 20 : 13;
+      const sx = (demon ? 12 : 9) + t * (demon ? 16 : 10), sy = gy - 8 + t * 16;
+      ctx.strokeStyle = demon ? 'rgba(255,120,40,0.9)' : 'rgba(232,232,232,0.9)';
+      ctx.lineWidth = demon ? 3 : 2;
       ctx.beginPath();
-      ctx.arc(6, gy, 13, -0.9 + t * 1.1, -0.2 + t * 1.1);
+      ctx.arc(6, gy, swingRadius, -0.9 + t * 1.1, -0.2 + t * 1.1);
       ctx.stroke();
-      ctx.fillStyle = '#d8d8d8';
+      ctx.fillStyle = demon ? '#ffcf4a' : '#d8d8d8';
       ctx.fillRect(sx, sy, 4, 2);
     }
     ctx.restore();
@@ -2236,7 +2268,7 @@
 
     // ammo slots
     const slots = [
-      { key: 'normal', label: '1', color: player.bullets > 0 ? '#5ef29a' : '#c9b98f', count: player.bullets > 0 ? player.bullets : 'KNIFE' },
+      { key: 'normal', label: '1', color: player.bullets > 0 ? '#5ef29a' : (player.demonKnife ? '#ff8a3d' : '#c9b98f'), count: player.bullets > 0 ? player.bullets : 'KNIFE' },
       { key: 'berserker', label: '2', color: SOUL_META.berserker.color, count: player.souls.berserker },
       { key: 'pyromancer', label: '3', color: SOUL_META.pyromancer.color, count: player.souls.pyromancer },
       { key: 'frost', label: '4', color: SOUL_META.frost.color, count: player.souls.frost },
