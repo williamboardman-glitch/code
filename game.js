@@ -93,6 +93,7 @@
     wave: () => tone(180, 0.6, 'sine', 0.05, 90),
     groan: () => { tone(90, 0.5, 'sawtooth', 0.12, 60); tone(140, 0.4, 'sawtooth', 0.08, 80); },
     advance: () => tone(440, 0.05, 'square', 0.08, 660),
+    knife: () => tone(900, 0.05, 'square', 0.09, 400),
   };
 
   // ---------- Boss music ----------
@@ -275,7 +276,7 @@
       x: 1 * TILE + TILE / 2, y: (ROWS - 1) * TILE - 13, vx: 0, vy: 0, w: 14, h: 24,
       onGround: false, facing: 1, aim: 0, // aim: -1 up, 0 horizontal, 1 down
       hp: 100, maxHp: 100, lives: 3, score: 0, kills: 0,
-      ammo: 'normal', souls: { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0 },
+      ammo: 'normal', bullets: 100, souls: { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0 },
       fireCooldown: 0, invuln: 0, coyote: 0, jumpBuffer: 0, jumpsUsed: 0, walkT: 0, hurtFlash: 0,
       shockedTimer: 0, blockMsgCooldown: 0, won: false,
       dmgMult: 1, armor: 0, upgrades: { damage: 0, vitality: 0, armor: 0 },
@@ -283,7 +284,7 @@
       // deaths wipe) so the Guardian's reward can survive a death that
       // doesn't put the boss back in play to be re-earned.
       homingNext: false, shadowHelm: false, helmDmgBonus: 1, knockX: 0, knockTimer: 0,
-      usedSpecialThisFloor: false,
+      usedSpecialThisFloor: false, knifeSwing: 0,
     };
   }
 
@@ -378,6 +379,7 @@
     player.upgrades = { damage: 0, vitality: 0, armor: 0 };
     player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0 };
     player.ammo = 'normal';
+    player.bullets = 100;
     player.lives = 3;
     player.hp = player.maxHp;
     // Only strip the Guardian's shadow helm (and the damage bonus it
@@ -414,6 +416,7 @@
     e.dead = true;
     player.score += e.cfg.points;
     player.kills++;
+    player.bullets += 2; // every kill restocks bullets, even a soulless shambler
     spawnDeathParticles(e.x, e.y, e.cfg.color);
     addMessage(e.x, e.y - 16, `+${e.cfg.points}`, '#dfeee4');
     if (e.cfg.soul) {
@@ -520,6 +523,10 @@
       sfx.empty();
       ammo = 'normal'; player.ammo = 'normal';
     }
+    if (ammo === 'normal' && player.bullets <= 0) {
+      knifeAttack();
+      return;
+    }
     player.fireCooldown = BASE_COOLDOWN;
     const dir = player.facing;
     let vx = 0, vy = 0;
@@ -539,8 +546,10 @@
     const homing = player.homingNext;
     player.homingNext = false;
     if (ammo === 'normal') {
+      player.bullets--;
       sfx.shot();
       pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'normal', dmg, homing });
+      if (player.bullets <= 0) addMessage(player.x, player.y - 24, 'OUT OF BULLETS', '#c9b98f');
     } else if (ammo === 'berserker') {
       player.souls.berserker--; sfx.heavyShot();
       pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'berserker', dmg: dmg * 3, homing });
@@ -559,6 +568,26 @@
     } else if (ammo === 'shadow') {
       player.souls.shadow--; sfx.frost();
       pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'shadow', dmg: dmg * 0.5, homing });
+    }
+  }
+
+  // Backup melee weapon once you're out of bullets — a short-range swipe
+  // that can hit whatever's directly in front of (or above/below) you.
+  function knifeAttack() {
+    player.fireCooldown = BASE_COOLDOWN;
+    player.knifeSwing = 0.15;
+    const dir = player.facing;
+    const range = 26;
+    const kx = player.x + dir * (range / 2 + 4);
+    const ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
+    sfx.knife();
+    spawnHitParticles(kx, ky, '#e8e8e8');
+    const dmg = BASE_DMG * player.dmgMult * player.helmDmgBonus;
+    for (const e of enemies) {
+      if (e.dead) continue;
+      if (rectsOverlap(kx, ky, range, range, e.x, e.y, e.cfg.w, e.cfg.h)) {
+        applyDamage(e, dmg);
+      }
     }
   }
 
@@ -696,6 +725,7 @@
     player.fireCooldown = Math.max(0, player.fireCooldown - dt);
     player.invuln = Math.max(0, player.invuln - dt);
     player.hurtFlash = Math.max(0, player.hurtFlash - dt);
+    player.knifeSwing = Math.max(0, player.knifeSwing - dt);
     player.coyote = Math.max(0, player.coyote - dt);
     player.jumpBuffer = Math.max(0, player.jumpBuffer - dt);
     player.shockedTimer = Math.max(0, player.shockedTimer - dt);
@@ -1257,7 +1287,7 @@
               const d = Math.hypot(o.x - b.x, o.y - b.y);
               // Horizontal only — enemies have no gravity/reattachment, so a
               // vertical nudge would leave them permanently off their row.
-              if (d < 70 && d > 1) { o.x += (b.x - o.x) * 0.35; }
+              if (d < 90 && d > 1) { o.x += (b.x - o.x) * 0.55; }
             }
             player.homingNext = true;
             spawnShockwave(b.x, b.y, 'rgba(122,95,201,0.8)', 40);
@@ -1294,9 +1324,9 @@
           // since vy is persistent physics state — repeatedly adding to it
           // every frame like vx would compound into an unbounded velocity.
           const dx = b.srcX - player.x, dy = b.srcY - player.y, d = Math.hypot(dx, dy) || 1;
-          player.knockX = (dx / d) * 320;
-          player.knockTimer = 0.4;
-          player.vy = Math.max(-MAX_FALL, Math.min(MAX_FALL, player.vy + (dy / d) * 160));
+          player.knockX = (dx / d) * 480;
+          player.knockTimer = 0.5;
+          player.vy = Math.max(-MAX_FALL, Math.min(MAX_FALL, player.vy + (dy / d) * 240));
           addMessage(player.x, player.y - 28, 'PULLED', '#8a6fd1');
         }
         spawnHitParticles(b.x, b.y, eBulletColors[b.kind] || '#fff');
@@ -1589,7 +1619,7 @@
     const bob = moving ? Math.sin(player.walkT * 12) * 2 : 0;
     const flash = player.hurtFlash > 0;
     const gunUp = player.aim === -1 ? -8 : player.aim === 1 ? 8 : 0;
-    const firing = player.fireCooldown > BASE_COOLDOWN - 0.05;
+    const firing = player.fireCooldown > BASE_COOLDOWN - 0.05 && player.knifeSwing <= 0;
 
     ctx.save();
     ctx.translate(x, y + bob);
@@ -1677,6 +1707,17 @@
       ctx.fillRect(fx - 3, fy, 8, 2);
       ctx.fillStyle = '#ffcf4a';
       ctx.fillRect(fx + 1, fy - 1, 4, 3);
+    }
+    if (player.knifeSwing > 0) {
+      const t = 1 - player.knifeSwing / 0.15;
+      const sx = 9 + t * 10, sy = gy - 8 + t * 16;
+      ctx.strokeStyle = 'rgba(232,232,232,0.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(6, gy, 13, -0.9 + t * 1.1, -0.2 + t * 1.1);
+      ctx.stroke();
+      ctx.fillStyle = '#d8d8d8';
+      ctx.fillRect(sx, sy, 4, 2);
     }
     ctx.restore();
   }
@@ -2195,7 +2236,7 @@
 
     // ammo slots
     const slots = [
-      { key: 'normal', label: '1', color: '#5ef29a', count: '∞' },
+      { key: 'normal', label: '1', color: player.bullets > 0 ? '#5ef29a' : '#c9b98f', count: player.bullets > 0 ? player.bullets : 'KNIFE' },
       { key: 'berserker', label: '2', color: SOUL_META.berserker.color, count: player.souls.berserker },
       { key: 'pyromancer', label: '3', color: SOUL_META.pyromancer.color, count: player.souls.pyromancer },
       { key: 'frost', label: '4', color: SOUL_META.frost.color, count: player.souls.frost },
@@ -2572,10 +2613,10 @@
       buy: (p) => { p.hp = p.maxHp; },
     },
     {
-      key: 'ammo', name: 'Ammo Cache', desc: '+1 soul of every special ammo type.',
+      key: 'ammo', name: 'Ammo Cache', desc: '+1 soul of every special ammo type, and tops up bullets to 100.',
       cost: () => scaledCost(50),
       canBuy: () => true,
-      buy: (p) => { for (const k of Object.keys(p.souls)) p.souls[k]++; },
+      buy: (p) => { for (const k of Object.keys(p.souls)) p.souls[k]++; p.bullets = Math.max(p.bullets, 100); },
     },
     {
       key: 'damage', name: 'Sharpened Rounds', desc: '+15% permanent damage.',

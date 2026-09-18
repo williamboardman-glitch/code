@@ -6,6 +6,14 @@ guarding them. Every clean kill leaves behind a soul you can load as special
 ammunition, and a wolf pup follows you the whole way, growing fiercer with
 every kill.
 
+## Bullets & the knife
+
+Normal ammo isn't infinite — you start each run with 100 bullets. Run out
+and shooting falls back to a short-range knife swing instead of failing
+outright. Every kill restocks +2 bullets, even a soulless shambler, so
+staying aggressive keeps you stocked; the shop's Ammo Cache also tops
+bullets back up to 100 (never down) alongside its usual soul refill.
+
 ## Play
 
 Open `index.html` in a browser (or serve the folder with any static file
@@ -32,13 +40,14 @@ genuine chunky pixel-art look.
 | Lightning Trooper | Stationary, fires a fast flat bolt | Lightning soul | Chain lightning: jumps between nearby enemies |
 | Acid Spitter | Stationary, lobs a corrosive glob | Acid soul | Corrosive shot: leaves a damaging puddle |
 | Shrieker | Support — buffs nearby melee zombies with haste | none | — |
-| Shadow | Very low direct damage but very long range; its bolt pulls you toward it | Shadow soul | Pull shot: yanks nearby enemies toward the hit and primes your next shot to home in |
+| Shadow | Very low direct damage but very long range; its bolt hurls you toward it | Shadow soul | Pull shot: yanks nearby enemies together and primes your next shot to home in |
 | Imp | Small, fast, swarming melee — low health, decent bite | none | — |
 | The Guardian | Floor 2's boss (see below) | — | Drops the Shadow Helm on death (+10% damage) instead of a soul |
 | The Arch Demon | Floor 4's boss, alone on its whole floor (see below) | — | — |
 
-Souls are consumed one per special shot — normal ammo is infinite, specials
-require harvesting the matching zombie type first.
+Souls are consumed one per special shot; specials require harvesting the
+matching zombie type first. See [Bullets & the knife](#bullets--the-knife)
+above for how normal ammo works.
 
 ## The Guardian
 
