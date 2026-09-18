@@ -26,12 +26,23 @@ server). No build step or dependencies. The whole game renders through a
 low-res virtual canvas scaled up with nearest-neighbor filtering for a
 genuine chunky pixel-art look.
 
+Before the game starts you're asked whether you're on a touchscreen device
+or a keyboard (with a best guess pre-filled based on your device) — pick
+one and the matching controls are ready to go.
+
 ## Controls
 
+**Keyboard**
 - **← → / A D** — move
 - **↑ / W** — jump (hold for a higher, longer jump — needed to clear the wider pits)
 - **Space / X / J** — shoot in the direction you're facing (hold ↑ or ↓ to aim vertically)
 - **1-7** — switch ammo
+- **R** — Wither (once per floor, unlocked by the Shadow Helm)
+
+**Mobile (on-screen controls)**
+- **D-pad** (bottom-left) — move / aim up-down / jump
+- **FIRE** (bottom-right) — shoot
+- **AMMO** — cycle through ammo types
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 ## Enemies & souls

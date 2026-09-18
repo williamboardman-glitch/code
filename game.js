@@ -12,6 +12,11 @@
   const shopScoreEl = document.getElementById('shopScore');
   const shopItemsEl = document.getElementById('shopItems');
   const shopContinueBtn = document.getElementById('shopContinueBtn');
+  const deviceScreen = document.getElementById('deviceScreen');
+  const deviceGuessEl = document.getElementById('deviceGuess');
+  const chooseMobileBtn = document.getElementById('chooseMobileBtn');
+  const chooseDesktopBtn = document.getElementById('chooseDesktopBtn');
+  const touchControls = document.getElementById('touchControls');
 
   // ---------- Virtual low-res buffer (gives the whole game its pixelated look) ----------
   const TILE = 30;
@@ -270,6 +275,8 @@
   // ---------- State ----------
   let state = 'start'; // start | cutscene | playing | shop | win | dead
   let keys = {};
+  let mobileControlsEnabled = false;
+  let touchControlsShown = false;
   let player, wolf, enemies, pBullets, eBullets, hazards, particles, messages, camX, respawn, elapsed, shake, levelBanner;
 
   function newPlayer() {
@@ -694,6 +701,14 @@
     'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7',
   ]);
 
+  // Single source of truth for the Digit1-7 ammo hotkeys, also reused by the
+  // on-screen ammo-cycle button so keyboard and touch never drift apart.
+  const DIGIT_AMMO = {
+    Digit1: 'normal', Digit2: 'berserker', Digit3: 'pyromancer',
+    Digit4: 'frost', Digit5: 'lightning', Digit6: 'acid', Digit7: 'shadow',
+  };
+  const AMMO_CYCLE = Object.values(DIGIT_AMMO);
+
   function handleKeyDown(ev) {
     keys[ev.code] = true;
     if (GAME_KEYS.has(ev.code)) ev.preventDefault();
@@ -702,13 +717,7 @@
       return;
     }
     if (state !== 'playing') return;
-    if (ev.code === 'Digit1') player.ammo = 'normal';
-    if (ev.code === 'Digit2') player.ammo = 'berserker';
-    if (ev.code === 'Digit3') player.ammo = 'pyromancer';
-    if (ev.code === 'Digit4') player.ammo = 'frost';
-    if (ev.code === 'Digit5') player.ammo = 'lightning';
-    if (ev.code === 'Digit6') player.ammo = 'acid';
-    if (ev.code === 'Digit7') player.ammo = 'shadow';
+    if (DIGIT_AMMO[ev.code]) player.ammo = DIGIT_AMMO[ev.code];
     if (ev.code === 'KeyW' || ev.code === 'ArrowUp') player.jumpBuffer = 0.12;
     if (ev.code === 'KeyR') useSpecialAttack();
   }
@@ -722,6 +731,82 @@
   screenCanvas.addEventListener('keyup', handleKeyUp);
 
   function held(...codes) { return codes.some(c => keys[c]); }
+
+  // ---------- Device choice & on-screen touch controls (mobile) ----------
+  function fakeKeyEvent(code) { return { code, preventDefault() {} }; }
+  function pressKey(code) { handleKeyDown(fakeKeyEvent(code)); }
+  function releaseKey(code) { handleKeyUp(fakeKeyEvent(code)); }
+
+  function bindHoldButton(el, code) {
+    // Release implicit touch pointer capture so a finger that slides from
+    // one D-pad button onto another (a normal quick-turn gesture) generates
+    // pointerenter/pointerleave on the buttons it crosses instead of being
+    // stuck reporting events for whichever button it first touched.
+    const start = (ev) => {
+      ev.preventDefault();
+      try { el.releasePointerCapture(ev.pointerId); } catch (e) { /* not captured */ }
+      pressKey(code);
+    };
+    const enter = (ev) => { if (ev.pressure > 0 || ev.buttons > 0) pressKey(code); };
+    const end = (ev) => { ev.preventDefault(); releaseKey(code); };
+    el.addEventListener('pointerdown', start);
+    el.addEventListener('pointerenter', enter);
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+    el.addEventListener('pointerleave', end);
+    el.addEventListener('contextmenu', (ev) => ev.preventDefault());
+  }
+
+  bindHoldButton(document.getElementById('tcLeft'), 'ArrowLeft');
+  bindHoldButton(document.getElementById('tcRight'), 'ArrowRight');
+  bindHoldButton(document.getElementById('tcUp'), 'ArrowUp');
+  bindHoldButton(document.getElementById('tcDown'), 'ArrowDown');
+  bindHoldButton(document.getElementById('tcShoot'), 'Space');
+
+  const tcWitherBtn = document.getElementById('tcWither');
+  tcWitherBtn.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    pressKey('KeyR');
+    releaseKey('KeyR');
+  });
+  tcWitherBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+  const tcAmmoBtn = document.getElementById('tcAmmo');
+  tcAmmoBtn.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    if (state !== 'playing') return;
+    const idx = AMMO_CYCLE.indexOf(player.ammo);
+    player.ammo = AMMO_CYCLE[(idx + 1) % AMMO_CYCLE.length];
+  });
+  tcAmmoBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+  const likelyMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  deviceGuessEl.textContent = `Looks like you're on ${likelyMobile ? 'a touchscreen device' : 'a computer'} — tap to confirm.`;
+
+  function chooseDevice(mobile) {
+    mobileControlsEnabled = mobile;
+    deviceScreen.classList.add('hidden');
+    startScreen.classList.remove('hidden');
+  }
+  chooseMobileBtn.addEventListener('click', () => chooseDevice(true));
+  chooseDesktopBtn.addEventListener('click', () => chooseDevice(false));
+
+  // Safety net: if a touch sequence gets interrupted by the OS (incoming
+  // call, app-switch gesture) without delivering pointerup/pointercancel to
+  // whatever on-screen button was held, don't leave that input stuck on.
+  function releaseHeldMoveKeys() {
+    releaseKey('ArrowLeft'); releaseKey('ArrowRight');
+    releaseKey('ArrowUp'); releaseKey('ArrowDown'); releaseKey('Space');
+  }
+  window.addEventListener('blur', releaseHeldMoveKeys);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) releaseHeldMoveKeys(); });
+
+  function syncTouchControls() {
+    const show = mobileControlsEnabled && state === 'playing';
+    if (show === touchControlsShown) return;
+    touchControlsShown = show;
+    touchControls.classList.toggle('hidden', !show);
+  }
 
   // ---------- Physics ----------
   function moveAndCollide(e, dt) {
@@ -2719,6 +2804,7 @@
     lastTime = now;
     if (state === 'playing' || state === 'win' || state === 'dead') { update(dt); render(); }
     else if (state === 'cutscene') { updateCutscene(dt); renderCutscene(); }
+    syncTouchControls();
     requestAnimationFrame(loop);
   }
 

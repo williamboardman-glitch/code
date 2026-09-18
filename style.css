@@ -25,6 +25,7 @@ html, body {
   display: block;
   width: 100vw;
   height: 100vh;
+  touch-action: none;
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
@@ -208,4 +209,93 @@ button:active { transform: translateY(0); }
 .shopBuyBtn:disabled:hover {
   box-shadow: none;
   transform: none;
+}
+
+.deviceGuess {
+  font-size: 0.85em;
+  color: #b9c2bd;
+  margin: -8px 0 18px;
+}
+
+.deviceChoices {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.deviceBtn {
+  font-size: 0.95em;
+}
+
+/* ---------- On-screen touch controls (mobile only) ---------- */
+.touchControls {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 16px 16px;
+  pointer-events: none;
+}
+
+.touchControls.hidden { display: none; }
+
+.tcBtn {
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  background: rgba(43, 29, 20, 0.6);
+  border: 2px solid rgba(255, 205, 60, 0.55);
+  color: var(--stone);
+  border-radius: 10px;
+  padding: 0;
+  font-size: 1.1em;
+  font-weight: bold;
+  box-shadow: none;
+}
+
+.tcBtn:active {
+  background: rgba(255, 205, 60, 0.35);
+  transform: none;
+}
+
+.tcDpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.tcMidRow {
+  display: flex;
+  gap: 6px;
+}
+
+.tcDpad .tcBtn {
+  width: 56px;
+  height: 56px;
+}
+
+.tcActions {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.tcActions .tcSmall {
+  width: 48px;
+  height: 48px;
+  font-size: 0.7em;
+}
+
+.tcActions .tcShoot {
+  width: 72px;
+  height: 72px;
+  font-size: 0.85em;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--gold), #d99a1f);
+  border-color: var(--ink);
 }

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Temple of Bones — Pixel Run & Gun</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -11,7 +11,19 @@
 
   <button id="skipCutsceneBtn" class="skipBtn hidden">SKIP ▶</button>
 
-  <div id="startScreen" class="overlay">
+  <div id="deviceScreen" class="overlay">
+    <div class="panel">
+      <h1>CHOOSE YOUR <span class="accent">CONTROLS</span></h1>
+      <p class="lore">Playing on a phone or tablet, or at a keyboard? Pick one so the right controls are ready before you begin.</p>
+      <p id="deviceGuess" class="deviceGuess"></p>
+      <div class="deviceChoices">
+        <button id="chooseMobileBtn" class="deviceBtn">📱 Touch / Mobile</button>
+        <button id="chooseDesktopBtn" class="deviceBtn">⌨️ Keyboard / Desktop</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="startScreen" class="overlay hidden">
     <div class="panel">
       <h1>TEMPLE <span class="accent">OF BONES</span></h1>
       <p class="lore">A sunken temple, cracked open after a thousand years — and the dead inside never stopped guarding it. Run, jump, and shoot your way through four floors — temple, dungeon, jungle, and finally Hell itself — to reach whatever's waiting at the bottom. You start with 100 bullets; run dry and you're down to a knife until your next kill — any kill, even a shambler — restocks two more. Every zombie you drop leaves a soul behind, and a soul loaded in your gun is not the same as a bullet. Floor two's exit is sealed behind the Guardian — walk into its arena and the way back shuts until one of you falls. Beat it, and you claim its shadow helm, which also unlocks Wither: a once-per-floor curse that halves a target's remaining health and the damage it deals. A wolf pup follows you from the start and grows fiercer with every kill, fully grown into Fenrir after 300. Hell belongs to one thing alone: the Arch Demon commands the entire floor, with no lesser zombies to hide behind. Beat it and your knife is reforged into the Demon Knife, trading its stationary swipe for a burning dash strike. Between floors, spend what you've looted at the supply cache — though it charges more the deeper you go.</p>
@@ -50,6 +62,22 @@
       <div id="shopScore" class="shopScore"></div>
       <div id="shopItems" class="shopItems"></div>
       <button id="shopContinueBtn">CONTINUE</button>
+    </div>
+  </div>
+
+  <div id="touchControls" class="touchControls hidden">
+    <div class="tcDpad">
+      <button id="tcUp" class="tcBtn tcUp" aria-label="Up / Jump">▲</button>
+      <div class="tcMidRow">
+        <button id="tcLeft" class="tcBtn tcLeft" aria-label="Left">◀</button>
+        <button id="tcDown" class="tcBtn tcDown" aria-label="Down">▼</button>
+        <button id="tcRight" class="tcBtn tcRight" aria-label="Right">▶</button>
+      </div>
+    </div>
+    <div class="tcActions">
+      <button id="tcWither" class="tcBtn tcSmall" aria-label="Wither">R</button>
+      <button id="tcAmmo" class="tcBtn tcSmall" aria-label="Switch ammo">AMMO</button>
+      <button id="tcShoot" class="tcBtn tcShoot" aria-label="Shoot">FIRE</button>
     </div>
   </div>
 
