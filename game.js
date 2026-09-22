@@ -17,6 +17,10 @@
   const chooseMobileBtn = document.getElementById('chooseMobileBtn');
   const chooseDesktopBtn = document.getElementById('chooseDesktopBtn');
   const touchControls = document.getElementById('touchControls');
+  const resumeScreen = document.getElementById('resumeScreen');
+  const resumeSummaryEl = document.getElementById('resumeSummary');
+  const resumeContinueBtn = document.getElementById('resumeContinueBtn');
+  const resumeNewGameBtn = document.getElementById('resumeNewGameBtn');
 
   // ---------- Virtual low-res buffer (gives the whole game its pixelated look) ----------
   const TILE = 30;
@@ -277,6 +281,7 @@
   let keys = {};
   let mobileControlsEnabled = false;
   let touchControlsShown = false;
+  let autosaveTimer = 0;
   let player, wolf, enemies, pBullets, eBullets, hazards, particles, messages, camX, respawn, elapsed, shake, levelBanner;
 
   function newPlayer() {
@@ -310,23 +315,30 @@
     bossArenaSealed = false;
   }
 
+  // Shared by goToLevel() and resumeSave(): resets a floor's transient state
+  // (enemies, projectiles, camera, wolf position, respawn point) and places
+  // the player at the given spot.
+  function enterLevelEntitiesAt(x, y) {
+    enemies = currentLevel().spawnList.map(([type, col, row]) => spawnEnemy(type, col, row));
+    pBullets = []; eBullets = []; hazards = []; particles = []; messages = [];
+    camX = 0;
+    bossArenaSealed = false;
+    player.x = x; player.y = y; player.vx = 0; player.vy = 0;
+    player.knockX = 0; player.knockTimer = 0;
+    if (wolf) { wolf.x = x - 14; wolf.y = y; } else { wolf = { x: x - 14, y, biteCooldown: 0 }; }
+    respawn = { x, y };
+  }
+
   function goToLevel(idx) {
     levelIndex = idx;
     buildMap();
-    enemies = currentLevel().spawnList.map(([type, col, row]) => spawnEnemy(type, col, row));
-    pBullets = []; eBullets = []; hazards = []; particles = [];
-    camX = 0;
-    bossArenaSealed = false;
     player.usedSpecialThisFloor = false;
-    player.x = 1 * TILE + TILE / 2; player.y = (ROWS - 1) * TILE - 13;
-    player.vx = 0; player.vy = 0;
-    player.knockX = 0; player.knockTimer = 0;
-    if (wolf) { wolf.x = player.x - 14; wolf.y = player.y; }
-    respawn = { x: player.x, y: player.y };
+    enterLevelEntitiesAt(1 * TILE + TILE / 2, (ROWS - 1) * TILE - 13);
     levelBanner = { text: `FLOOR ${idx + 1} — ${currentLevel().name.toUpperCase()}`, t: 3 };
     state = 'playing';
     sfx.checkpoint();
     if (currentLevel().theme === 'dungeon' || currentLevel().theme === 'hell') startBossMusic();
+    saveGame();
   }
 
   function spawnEnemy(typeKey, col, row) {
@@ -359,6 +371,7 @@
     // at the checkpoint instead of the seal's retreat-clamp immediately
     // snapping them back into the fight; walking back in reseals it.
     bossArenaSealed = false;
+    saveGame();
   }
 
   function loseLife(reason) {
@@ -367,6 +380,10 @@
     shakeScreen(10);
     if (player.lives <= 0) {
       state = 'dead';
+      // The last save was from before this death and still has full gear —
+      // clear it so reloading instead of pressing "Try Again" can't dodge
+      // the upgrade/soul wipe that's supposed to be the cost of dying.
+      clearSave();
       stopBossMusic();
       endTitle.innerHTML = `${currentLevel().name.toUpperCase()} <span class="accent">CLAIMS YOU</span>`;
       finalStats.textContent = `Score: ${player.score} — Kills: ${player.kills} — All shop gear is gone. You'll wake at the start of this floor.`;
@@ -732,6 +749,77 @@
 
   function held(...codes) { return codes.some(c => keys[c]); }
 
+  // ---------- Save / resume ----------
+  // Progress is saved at each checkpoint, floor transition, and respawn (plus
+  // a periodic autosave for score/kills/upgrades between checkpoints) so
+  // closing and reopening the page can offer to pick back up from there.
+  const SAVE_KEY = 'templeOfBones_save_v1';
+
+  function saveGame() {
+    if (state !== 'playing') return;
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        v: 1,
+        levelIndex,
+        mobileControlsEnabled,
+        respawn: { x: respawn.x, y: respawn.y },
+        player: {
+          hp: player.hp, maxHp: player.maxHp, lives: player.lives,
+          score: player.score, kills: player.kills,
+          ammo: player.ammo, bullets: player.bullets,
+          souls: { ...player.souls },
+          dmgMult: player.dmgMult, armor: player.armor,
+          upgrades: { ...player.upgrades },
+          shadowHelm: player.shadowHelm, helmDmgBonus: player.helmDmgBonus,
+          demonKnife: player.demonKnife,
+        },
+      }));
+    } catch (e) { /* storage unavailable/full — saving is a convenience, never block play */ }
+  }
+
+  function loadSave() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (
+        !data || data.v !== 1 || !LEVEL_DEFS[data.levelIndex] ||
+        !data.respawn || typeof data.respawn.x !== 'number' || typeof data.respawn.y !== 'number' ||
+        !data.player || typeof data.player !== 'object'
+      ) return null;
+      return data;
+    } catch (e) { return null; }
+  }
+
+  function clearSave() {
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
+  }
+
+  function resumeSave(save) {
+    ensureAudio();
+    claimFocus();
+    stopBossMusic();
+    levelIndex = save.levelIndex;
+    mobileControlsEnabled = !!save.mobileControlsEnabled;
+    buildMap();
+    player = newPlayer();
+    Object.assign(player, save.player);
+    player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, ...save.player.souls };
+    player.upgrades = { damage: 0, vitality: 0, armor: 0, ...save.player.upgrades };
+    elapsed = 0; shake = { t: 0, mag: 0 };
+    enterLevelEntitiesAt(save.respawn.x, save.respawn.y);
+    levelBanner = { text: `FLOOR ${levelIndex + 1} — ${currentLevel().name.toUpperCase()}`, t: 3 };
+    state = 'playing';
+    resumeScreen.classList.add('hidden');
+    deviceScreen.classList.add('hidden');
+    startScreen.classList.add('hidden');
+    gameOverScreen.classList.add('hidden');
+    shopScreen.classList.add('hidden');
+    skipCutsceneBtn.classList.add('hidden');
+    if (currentLevel().theme === 'dungeon' || currentLevel().theme === 'hell') startBossMusic();
+    sfx.checkpoint();
+  }
+
   // ---------- Device choice & on-screen touch controls (mobile) ----------
   function fakeKeyEvent(code) { return { code, preventDefault() {} }; }
   function pressKey(code) { handleKeyDown(fakeKeyEvent(code)); }
@@ -790,6 +878,33 @@
   }
   chooseMobileBtn.addEventListener('click', () => chooseDevice(true));
   chooseDesktopBtn.addEventListener('click', () => chooseDevice(false));
+
+  // On load, offer to resume a saved run instead of the usual device-choice
+  // screen — but only once there's actually a save to offer.
+  const pendingSave = loadSave();
+  if (pendingSave) {
+    const floorName = LEVEL_DEFS[pendingSave.levelIndex].name;
+    resumeSummaryEl.textContent = `Floor ${pendingSave.levelIndex + 1} — ${floorName} · Score ${pendingSave.player.score} · Kills ${pendingSave.player.kills}`;
+    resumeScreen.classList.remove('hidden');
+  } else {
+    deviceScreen.classList.remove('hidden');
+  }
+  resumeContinueBtn.addEventListener('click', () => {
+    try {
+      resumeSave(pendingSave);
+    } catch (e) {
+      // A corrupt/unexpectedly-shaped save shouldn't strand the player on
+      // a dead Continue button — fall back to a normal new game.
+      clearSave();
+      resumeScreen.classList.add('hidden');
+      deviceScreen.classList.remove('hidden');
+    }
+  });
+  resumeNewGameBtn.addEventListener('click', () => {
+    clearSave();
+    resumeScreen.classList.add('hidden');
+    deviceScreen.classList.remove('hidden');
+  });
 
   // Safety net: if a touch sequence gets interrupted by the OS (incoming
   // call, app-switch gesture) without delivering pointerup/pointercancel to
@@ -917,6 +1032,7 @@
       if (player.onGround && player.x >= cx && respawn.x < cx) {
         respawn = { x: cx, y: player.y };
         sfx.checkpoint();
+        saveGame();
         addMessage(player.x, player.y - 30, 'CHECKPOINT', '#ffcd3c');
       }
     }
@@ -940,6 +1056,7 @@
         else openShop(next);
       } else {
         state = 'win';
+        clearSave();
         endTitle.innerHTML = 'THE INFERNO <span class="accent">BOWS TO YOU</span>';
         finalStats.textContent = `Score: ${player.score} — Kills: ${player.kills} — Time: ${elapsed.toFixed(1)}s`;
         gameOverScreen.classList.remove('hidden');
@@ -2804,6 +2921,10 @@
     lastTime = now;
     if (state === 'playing' || state === 'win' || state === 'dead') { update(dt); render(); }
     else if (state === 'cutscene') { updateCutscene(dt); renderCutscene(); }
+    if (state === 'playing') {
+      autosaveTimer += dt;
+      if (autosaveTimer >= 10) { autosaveTimer = 0; saveGame(); }
+    }
     syncTouchControls();
     requestAnimationFrame(loop);
   }

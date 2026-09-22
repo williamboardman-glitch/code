@@ -30,6 +30,18 @@ Before the game starts you're asked whether you're on a touchscreen device
 or a keyboard (with a best guess pre-filled based on your device) — pick
 one and the matching controls are ready to go.
 
+## Saving & resuming
+
+Progress is saved to your browser automatically — at every checkpoint,
+floor transition, and respawn, plus a periodic autosave while playing.
+Close the tab (or the Claude Artifact) and come back later, and you're
+asked whether to continue that run (dropping you back at your last
+checkpoint, with your score, kills, and gear intact) or start a new game.
+Dying completely wipes the save along with your gear, same as it always
+has — reloading the page can't undo that. The save lives in your
+browser's local storage, so it's tied to that browser and device, not
+shared or synced anywhere.
+
 ## Controls
 
 **Keyboard**

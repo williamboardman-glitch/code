@@ -11,7 +11,19 @@
 
   <button id="skipCutsceneBtn" class="skipBtn hidden">SKIP ▶</button>
 
-  <div id="deviceScreen" class="overlay">
+  <div id="resumeScreen" class="overlay hidden">
+    <div class="panel">
+      <h1>WELCOME <span class="accent">BACK</span></h1>
+      <p class="lore">A saved run is waiting. Pick up right where you left off, or wipe it and start over.</p>
+      <p id="resumeSummary" class="deviceGuess"></p>
+      <div class="deviceChoices">
+        <button id="resumeContinueBtn" class="deviceBtn">▶ Continue</button>
+        <button id="resumeNewGameBtn" class="deviceBtn">New Game</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="deviceScreen" class="overlay hidden">
     <div class="panel">
       <h1>CHOOSE YOUR <span class="accent">CONTROLS</span></h1>
       <p class="lore">Playing on a phone or tablet, or at a keyboard? Pick one so the right controls are ready before you begin.</p>
