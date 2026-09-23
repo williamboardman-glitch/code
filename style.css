@@ -108,6 +108,7 @@ h1 .accent { color: var(--gold); }
 .swatch.lightning { background: #a78bfa; }
 .swatch.acid { background: #8bc34a; }
 .swatch.shadow { background: #8a6fd1; }
+.swatch.cactus { background: #4a8f3a; }
 
 .controls {
   display: grid;
@@ -287,18 +288,24 @@ button:active { transform: translateY(0); }
 .tcActions {
   display: flex;
   align-items: flex-end;
-  gap: 10px;
+  gap: 6px;
+}
+
+.tcSecondary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .tcActions .tcSmall {
-  width: 48px;
-  height: 48px;
-  font-size: 0.7em;
+  width: 46px;
+  height: 46px;
+  font-size: 0.65em;
 }
 
 .tcActions .tcShoot {
-  width: 72px;
-  height: 72px;
+  width: 70px;
+  height: 70px;
   font-size: 0.85em;
   color: var(--ink);
   background: linear-gradient(180deg, var(--gold), #d99a1f);

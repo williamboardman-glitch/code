@@ -192,6 +192,10 @@
     shrieker: { name: 'shrieker', color: '#c7c2b8', dark: '#6b675e', light: '#e8e4da', bone: '#2b2822', w: 14, h: 22, speed: 20, hp: 14, dmg: 4, soul: null, points: 20, melee: true, support: true },
     shadow: { name: 'shadow', color: '#241a33', dark: '#120c1c', light: '#4a3566', bone: '#0a0610', w: 15, h: 24, speed: 10, hp: 22, dmg: 3, soul: 'shadow', points: 34, ranged: true, fireRate: 3.0, projSpeed: 260, range: 340, spread: 0.05, projDmg: 3, kind: 'shadow', pull: true },
     imp: { name: 'imp', color: '#ff5a2e', dark: '#8a2508', light: '#ffb37a', bone: '#2a0a02', w: 13, h: 18, speed: 62, hp: 10, dmg: 10, soul: null, points: 12, melee: true },
+    // Rooted in place (speed: 0) — it never chases, just holds ground and
+    // spikes anything in range. Killing one drops a trap charge instead of
+    // a normal combat soul.
+    cactus: { name: 'cactus', color: '#4a8f3a', dark: '#2a5a1f', light: '#7fc464', bone: '#2a1f0a', w: 18, h: 26, speed: 0, hp: 34, dmg: 0, soul: 'trap', points: 32, ranged: true, fireRate: 2.2, projSpeed: 210, range: 240, spread: 0.12, projDmg: 10, kind: 'spike' },
     boss: {
       name: 'boss', displayName: 'THE GUARDIAN', color: '#2a1a3a', dark: '#150d1f', light: '#5a3a7a', bone: '#0a0610',
       w: 34, h: 44, speed: 30, hp: 520, dmg: 22, soul: null, points: 350, isBoss: true,
@@ -208,6 +212,15 @@
         summon_telegraph: 'rgba(180,60,180,0.8)',
       },
     },
+    demongod: {
+      name: 'demongod', displayName: 'THE DEMON GOD', color: '#3a0a4a', dark: '#1a0322', light: '#c04aff', bone: '#0a0113',
+      w: 46, h: 60, speed: 30, hp: 1400, dmg: 30, soul: null, points: 1200, isBoss: true,
+      hudColor: '#c04aff', novaRingColor: 'rgba(192,74,255,0.7)',
+      telegraphColors: {
+        charge_telegraph: 'rgba(255,90,60,0.8)', radial_telegraph: 'rgba(192,74,255,0.8)',
+        smite_telegraph: 'rgba(255,60,180,0.8)', summon_telegraph: 'rgba(180,60,180,0.8)',
+      },
+    },
   };
   const SOUL_META = {
     berserker: { label: 'HEAVY', color: '#c0392b' },
@@ -216,6 +229,7 @@
     lightning: { label: 'CHAIN', color: '#a78bfa' },
     acid: { label: 'ACID', color: '#8bc34a' },
     shadow: { label: 'PULL', color: '#8a6fd1' },
+    trap: { label: 'TRAP', color: '#ffcd3c' },
   };
   const LEVEL1_SPAWN = [
     ['grunt', 3, 8], ['grunt', 9, 8],
@@ -278,12 +292,35 @@
   const HELL_SPAWN = [
     ['archdemon', 64, 8],
   ];
+  const DESERT_SPAWN = [
+    ['grunt', 3, 8], ['cactus', 5, 8], ['grunt', 7, 8], ['brute', 9, 8],
+    ['cactus', 8, 6], ['grunt', 11, 8], ['lightning', 12, 8], ['cactus', 16, 8],
+    ['brute', 17, 8], ['shrieker', 18, 8], ['grunt', 19, 8],
+    ['cactus', 20, 6], ['imp', 22, 6], ['acid', 24, 8], ['brute', 26, 8],
+    ['cactus', 27, 8], ['shadow', 28, 8], ['grunt', 29, 8],
+    ['lightning', 30, 8], ['cactus', 31, 8], ['brute', 34, 7], ['cactus', 35, 7],
+    ['grunt', 36, 8], ['shrieker', 37, 8], ['acid', 39, 8], ['cactus', 40, 8],
+    ['brute', 41, 6], ['imp', 42, 6], ['lightning', 43, 6],
+    ['cactus', 44, 8], ['grunt', 45, 8], ['brute', 46, 8], ['shadow', 47, 8],
+    ['cactus', 48, 8], ['acid', 49, 8], ['grunt', 50, 8], ['lightning', 51, 8],
+    ['shrieker', 54, 8], ['brute', 55, 8], ['cactus', 56, 8], ['cactus', 57, 8],
+    ['shadow', 58, 6], ['imp', 59, 6], ['grunt', 60, 6],
+    ['brute', 61, 8], ['cactus', 62, 8], ['lightning', 63, 8], ['acid', 64, 8],
+    ['brute', 65, 8], ['cactus', 66, 8], ['shadow', 67, 8],
+  ];
+  // The Demon God's throne room is its alone, same as Hell's Arch Demon —
+  // the true final fight, with no lesser enemies to hide behind.
+  const THRONE_SPAWN = [
+    ['demongod', 64, 8],
+  ];
   const LEVEL_DEFS = [
     { theme: 'temple', name: 'Temple of Bones', spawnList: LEVEL1_SPAWN },
-    { theme: 'dungeon', name: 'The Dark Dungeon', spawnList: LEVEL2_SPAWN },
+    { theme: 'dungeon', name: 'The Dark Dungeon', spawnList: LEVEL2_SPAWN, hasBoss: true },
     { theme: 'jungle', name: 'The Dark Jungle', spawnList: LEVEL3_SPAWN },
     { theme: 'ice', name: 'The Frozen Temple', spawnList: ICE_SPAWN },
-    { theme: 'hell', name: 'The Burning Hell', spawnList: HELL_SPAWN },
+    { theme: 'hell', name: 'The Burning Hell', spawnList: HELL_SPAWN, hasBoss: true },
+    { theme: 'desert', name: 'The Cursed Desert', spawnList: DESERT_SPAWN },
+    { theme: 'throne', name: "The Demon God's Throne", spawnList: THRONE_SPAWN, hasBoss: true },
   ];
 
   const BASE_DMG = 16;
@@ -306,7 +343,7 @@
       x: 1 * TILE + TILE / 2, y: (ROWS - 1) * TILE - 13, vx: 0, vy: 0, w: 14, h: 24,
       onGround: false, facing: 1, aim: 0, // aim: -1 up, 0 horizontal, 1 down
       hp: 100, maxHp: 100, lives: 3, score: 0, kills: 0,
-      ammo: 'normal', bullets: 100, souls: { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0 },
+      ammo: 'normal', bullets: 100, souls: { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0 },
       fireCooldown: 0, invuln: 0, coyote: 0, jumpBuffer: 0, jumpsUsed: 0, walkT: 0, hurtFlash: 0,
       shockedTimer: 0, blockMsgCooldown: 0, won: false,
       dmgMult: 1, armor: 0, upgrades: { damage: 0, vitality: 0, armor: 0 },
@@ -314,7 +351,7 @@
       // deaths wipe) so the Guardian's reward can survive a death that
       // doesn't put the boss back in play to be re-earned.
       homingNext: false, shadowHelm: false, helmDmgBonus: 1, knockX: 0, knockTimer: 0,
-      usedSpecialThisFloor: false, knifeSwing: 0, demonKnife: false,
+      usedSpecialThisFloor: false, knifeSwing: 0, demonKnife: false, godDmgBonus: 1,
     };
   }
 
@@ -354,7 +391,7 @@
     levelBanner = { text: `FLOOR ${idx + 1} — ${currentLevel().name.toUpperCase()}`, t: 3 };
     state = 'playing';
     sfx.checkpoint();
-    if (currentLevel().theme === 'dungeon' || currentLevel().theme === 'hell') startBossMusic();
+    if (currentLevel().hasBoss) startBossMusic();
     saveGame();
   }
 
@@ -419,7 +456,7 @@
     player.armor = 0;
     player.maxHp = 100;
     player.upgrades = { damage: 0, vitality: 0, armor: 0 };
-    player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0 };
+    player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0 };
     player.ammo = 'normal';
     player.bullets = 100;
     player.lives = 3;
@@ -427,8 +464,10 @@
     // Only strip the Guardian's shadow helm (and the damage bonus it
     // carries) if this respawn puts the boss back in play (the dungeon
     // floor) — losing it on a later floor with no way to re-earn it would
-    // be an unrecoverable, unintended penalty.
+    // be an unrecoverable, unintended penalty. Same logic for the Demon
+    // God's own bonus on its throne floor.
     if (currentLevel().theme === 'dungeon') { player.shadowHelm = false; player.helmDmgBonus = 1; }
+    if (currentLevel().theme === 'throne') { player.godDmgBonus = 1; }
     player.homingNext = false;
     gameOverScreen.classList.add('hidden');
     goToLevel(levelIndex);
@@ -479,6 +518,11 @@
         spawnExplosionParticles(e.x, e.y, ['#ff5a1f', '#ffcf4a']);
         spawnShockwave(e.x, e.y, 'rgba(255,90,31,0.9)', 110);
         addMessage(e.x, e.y - 30, 'THE ARCH DEMON FALLS — YOU CLAIM THE DEMON KNIFE', '#ff5a1f');
+      } else if (e.cfg.name === 'demongod') {
+        player.godDmgBonus = 1.2;
+        spawnExplosionParticles(e.x, e.y, ['#c04aff', '#f0c8ff']);
+        spawnShockwave(e.x, e.y, 'rgba(192,74,255,0.9)', 130);
+        addMessage(e.x, e.y - 30, 'THE DEMON GOD FALLS — ITS POWER IS YOURS', '#c04aff');
       }
       sfx.win();
     }
@@ -545,6 +589,26 @@
     addMessage(target.x, target.y - target.cfg.h / 2 - 10, 'WITHERED', '#8a6fd1');
   }
 
+  // A stationary trap, dropped at the player's feet — earned by harvesting
+  // Cactus enemies instead of being loaded as a shot. Arms briefly, then
+  // detonates on the first enemy to walk over it.
+  function placeTrap() {
+    if (player.souls.trap <= 0) {
+      addMessage(player.x, player.y - 24, 'NO TRAPS', '#c9b98f');
+      sfx.empty();
+      return;
+    }
+    if (!player.onGround) {
+      addMessage(player.x, player.y - 24, 'MUST BE GROUNDED', '#c9b98f');
+      sfx.empty();
+      return;
+    }
+    player.souls.trap--;
+    hazards.push({ x: player.x, y: player.y + player.h / 2 - 2, radius: 16, life: 12, armed: 0.3, dmg: 40, kind: 'trap', triggered: false });
+    sfx.checkpoint();
+    addMessage(player.x, player.y - 24, 'TRAP SET', '#ffcd3c');
+  }
+
   function chainLightning(fromEnemy, dmg, excluded, jumpsLeft) {
     if (jumpsLeft <= 0) return;
     const target = findNearestEnemy(fromEnemy.x, fromEnemy.y, 90, excluded);
@@ -586,7 +650,7 @@
     const muzzleY = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
     spawnShellCasing(player.x - dir * 2, player.y - 6, dir);
 
-    const dmg = BASE_DMG * player.dmgMult * player.helmDmgBonus;
+    const dmg = BASE_DMG * player.dmgMult * player.helmDmgBonus * player.godDmgBonus;
     const homing = player.homingNext;
     player.homingNext = false;
     if (ammo === 'normal') {
@@ -625,7 +689,7 @@
     player.knifeSwing = 0.15;
     const dir = player.facing;
     const ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
-    const dmg = BASE_DMG * player.dmgMult * player.helmDmgBonus;
+    const dmg = BASE_DMG * player.dmgMult * player.helmDmgBonus * player.godDmgBonus;
 
     if (player.demonKnife) {
       const startX = player.x;
@@ -696,7 +760,7 @@
     spawnShockwave(x, y, 'rgba(180,150,255,0.9)', 60);
   }
 
-  // ---------- Hazards (acid puddles) ----------
+  // ---------- Hazards (acid puddles, player-placed traps) ----------
   function spawnAcidPuddle(x, y, dmgMult = 1) {
     spawnHitParticles(x, y, '#8bc34a');
     hazards.push({ x, y, radius: 20, life: 3, tick: 0.4, dmg: 5 * dmgMult });
@@ -704,6 +768,17 @@
   function updateHazards(dt) {
     for (const hz of hazards) {
       hz.life -= dt;
+      if (hz.kind === 'trap') {
+        if (hz.armed > 0) { hz.armed -= dt; continue; }
+        if (hz.triggered) continue;
+        const hit = enemies.find(e => !e.dead && Math.hypot(e.x - hz.x, e.y - hz.y) < hz.radius + e.cfg.w / 2);
+        if (hit) {
+          hz.triggered = true;
+          hz.life = 0;
+          explode(hz.x, hz.y, hz.radius * 1.5, hz.dmg, { palette: ['#ffcd3c', '#ff8a3d'], ringColor: 'rgba(255,205,60,0.85)' });
+        }
+        continue;
+      }
       hz.tick -= dt;
       if (Math.random() < dt * 4) {
         particles.push({ x: hz.x + (Math.random() - 0.5) * hz.radius, y: hz.y - 2, vx: 0, vy: -12, life: 0.3, color: '#a8d878', size: 2, grav: false });
@@ -733,7 +808,7 @@
 
   const GAME_KEYS = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
-    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8',
+    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
   ]);
 
   // Single source of truth for the Digit1-8 ammo hotkeys, also reused by the
@@ -757,6 +832,7 @@
     if (DIGIT_AMMO[ev.code]) player.ammo = DIGIT_AMMO[ev.code];
     if (ev.code === 'KeyW' || ev.code === 'ArrowUp') player.jumpBuffer = 0.12;
     if (ev.code === 'KeyR') useSpecialAttack();
+    if (ev.code === 'Digit9') placeTrap();
   }
   function handleKeyUp(ev) {
     keys[ev.code] = false;
@@ -791,7 +867,7 @@
           dmgMult: player.dmgMult, armor: player.armor,
           upgrades: { ...player.upgrades },
           shadowHelm: player.shadowHelm, helmDmgBonus: player.helmDmgBonus,
-          demonKnife: player.demonKnife,
+          demonKnife: player.demonKnife, godDmgBonus: player.godDmgBonus,
         },
       }));
     } catch (e) { /* storage unavailable/full — saving is a convenience, never block play */ }
@@ -824,7 +900,7 @@
     buildMap();
     player = newPlayer();
     Object.assign(player, save.player);
-    player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, ...save.player.souls };
+    player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0, ...save.player.souls };
     player.upgrades = { damage: 0, vitality: 0, armor: 0, ...save.player.upgrades };
     elapsed = 0; shake = { t: 0, mag: 0 };
     enterLevelEntitiesAt(save.respawn.x, save.respawn.y);
@@ -836,7 +912,7 @@
     gameOverScreen.classList.add('hidden');
     shopScreen.classList.add('hidden');
     skipCutsceneBtn.classList.add('hidden');
-    if (currentLevel().theme === 'dungeon' || currentLevel().theme === 'hell') startBossMusic();
+    if (currentLevel().hasBoss) startBossMusic();
     sfx.checkpoint();
   }
 
@@ -878,6 +954,14 @@
     releaseKey('KeyR');
   });
   tcWitherBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+  const tcTrapBtn = document.getElementById('tcTrap');
+  tcTrapBtn.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    pressKey('Digit9');
+    releaseKey('Digit9');
+  });
+  tcTrapBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
   const tcAmmoBtn = document.getElementById('tcAmmo');
   tcAmmoBtn.addEventListener('pointerdown', (ev) => {
@@ -1025,9 +1109,11 @@
 
     if (player.x < player.w / 2) player.x = player.w / 2;
 
-    // The Guardian's arena: cross into it and the way back seals shut
-    // until the boss is dead — no retreating from the fight.
-    if (currentLevel().theme === 'dungeon' || currentLevel().theme === 'hell') {
+    // Any boss floor's arena: cross into it and the way back seals shut
+    // until the boss is dead — no retreating from the fight. Driven by
+    // whether a live boss is actually present, not a hardcoded theme list,
+    // so it automatically covers every current and future boss floor.
+    if (currentLevel().hasBoss) {
       const boss = enemies.find(en => en.cfg.isBoss);
       if (boss && !boss.dead) {
         if (!bossArenaSealed && player.x >= BOSS_ARENA_START_COL * TILE) {
@@ -1077,7 +1163,7 @@
       } else {
         state = 'win';
         clearSave();
-        endTitle.innerHTML = 'THE INFERNO <span class="accent">BOWS TO YOU</span>';
+        endTitle.innerHTML = 'THE DEMON GOD <span class="accent">FALLS FOREVER</span>';
         finalStats.textContent = `Score: ${player.score} — Kills: ${player.kills} — Time: ${elapsed.toFixed(1)}s`;
         gameOverScreen.classList.remove('hidden');
         sfx.win();
@@ -1399,6 +1485,103 @@
     }
   }
 
+  const DEMONGOD_CHARGE_STATES = { telegraph: 'charge_telegraph', dash: 'charge', retarget: 'charge_retarget' };
+  const DEMONGOD_CHARGE = { count: 3, speed: 560, hitboxPad: 12, dmg: 26, shake: 8, dashTime: 0.16, retargetTime: 0.1, recoverTime: 0.5 };
+
+  const DEMONGOD_NOVA = {
+    channelTime: 1.3, radius: 170, dmg: 38, staggerTime: 1.5, staggerBonus: 1.5,
+    channelMsg: 'THE DEMON GOD CALLS THE VOID', hitMsg: 'UNMADE', color: '#c04aff',
+    palette: ['#c04aff', '#f0c8ff'], ringColor: 'rgba(192,74,255,0.95)',
+  };
+
+  // The true final boss, alone on its own throne floor. Cycles between four
+  // attacks — a triple charge, a full 360-degree burst of void bolts, a
+  // smite that marks and strikes wherever the player was standing when it
+  // began (so staying still is the mistake), and a call that raises a
+  // brute and shambler pair — on top of the shared channeled nova at half
+  // and a fifth health.
+  function updateDemonGodAI(e, dt) {
+    if (e.attackState !== 'charge' && rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, player.x, player.y, player.w, player.h)) {
+      hurtPlayer(e.cfg.dmg * e.weakDmgMult);
+    }
+
+    if (updateBossSharedStates(e, dt, DEMONGOD_NOVA)) return;
+    if (updateDashAttack(e, dt, DEMONGOD_CHARGE_STATES, DEMONGOD_CHARGE)) return;
+
+    if (e.attackState === 'idle') {
+      if (maybeTriggerNova(e, DEMONGOD_NOVA)) return;
+      const dist = player.x - e.x;
+      e.vx = Math.abs(dist) > 40 ? Math.sign(dist) * e.cfg.speed : 0;
+      e.x = Math.max(e.minX, Math.min(e.maxX, e.x + e.vx * dt));
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        const roll = Math.random();
+        if (roll < 0.25) { e.attackState = 'charge_telegraph'; e.attackTimer = 0.4; }
+        else if (roll < 0.5) { e.attackState = 'radial_telegraph'; e.attackTimer = 0.5; }
+        else if (roll < 0.78) { e.smiteX = player.x; e.smiteY = player.y; e.attackState = 'smite_telegraph'; e.attackTimer = 0.7; }
+        else { e.attackState = 'summon_telegraph'; e.attackTimer = 0.5; }
+      }
+      return;
+    }
+
+    if (e.attackState === 'radial_telegraph') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) { e.attackState = 'radial'; e.attackTimer = 0; }
+      return;
+    }
+    if (e.attackState === 'radial') {
+      const count = 12;
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2;
+        eBullets.push({ x: e.x, y: e.y, vx: Math.cos(angle) * 220, vy: Math.sin(angle) * 220, kind: 'void', dmg: 12 * e.weakDmgMult });
+      }
+      spawnShockwave(e.x, e.y, 'rgba(192,74,255,0.7)', 40);
+      sfx.groan();
+      e.attackState = 'recover'; e.attackTimer = 0.6;
+      return;
+    }
+
+    if (e.attackState === 'smite_telegraph') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) { e.attackState = 'smite'; e.attackTimer = 0.15; }
+      return;
+    }
+    if (e.attackState === 'smite') {
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        const radius = 70;
+        spawnShockwave(e.smiteX, e.smiteY, 'rgba(255,60,180,0.9)', radius);
+        shakeScreen(10);
+        sfx.explosion();
+        if (Math.hypot(player.x - e.smiteX, player.y - e.smiteY) < radius) {
+          hurtPlayer(24 * e.weakDmgMult);
+          addMessage(player.x, player.y - 28, 'SMITTEN', '#ff3bb4');
+        }
+        e.attackState = 'recover'; e.attackTimer = 0.5;
+      }
+      return;
+    }
+
+    if (e.attackState === 'summon_telegraph') {
+      e.vx = 0;
+      e.attackTimer -= dt;
+      if (e.attackTimer <= 0) {
+        const minCol = Math.floor(e.minX / TILE), maxCol = Math.floor(e.maxX / TILE);
+        const col = Math.round(e.x / TILE);
+        const row = ROWS - 1;
+        enemies.push(spawnEnemy('brute', Math.max(minCol, col - 2), row));
+        enemies.push(spawnEnemy('grunt', Math.min(maxCol, col + 2), row));
+        spawnExplosionParticles(e.x, e.y, ['#c04aff', '#f0c8ff']);
+        sfx.groan();
+        addMessage(e.x, e.y - 50, 'THE FALLEN RISE AGAIN', '#c04aff');
+        e.attackState = 'recover'; e.attackTimer = 0.6;
+      }
+      return;
+    }
+  }
+
   function updateEnemies(dt) {
     for (const e of enemies) {
       if (e.dead) continue;
@@ -1450,6 +1633,7 @@
 
       if (e.cfg.isBoss) {
         if (e.cfg.name === 'archdemon') updateArchDemonAI(e, dt);
+        else if (e.cfg.name === 'demongod') updateDemonGodAI(e, dt);
         else updateBossAI(e, dt);
       } else if (e.cfg.melee) {
         // Hunt the player when they're nearby and on roughly the same
@@ -1551,7 +1735,7 @@
     }
     pBullets = pBullets.filter(b => !b.dead && b.x > camX - 30 && b.x < camX + VIEW_W + 30 && b.y > -30 && b.y < VH + 30);
 
-    const eBulletColors = { fire: '#ff9d3d', frost: '#9fe8f5', lightning: '#d8c7ff', acid: '#8bc34a', dark: '#b090ff', shadow: '#8a6fd1' };
+    const eBulletColors = { fire: '#ff9d3d', frost: '#9fe8f5', lightning: '#d8c7ff', acid: '#8bc34a', dark: '#b090ff', shadow: '#8a6fd1', spike: '#7fc464', void: '#c04aff' };
     for (const b of eBullets) {
       if (b.grav) b.vy += 900 * dt;
       b.x += b.vx * dt; b.y += b.vy * dt;
@@ -1678,6 +1862,14 @@
       grad.addColorStop(0, '#03060e');
       grad.addColorStop(0.6, '#0b2030');
       grad.addColorStop(1, '#153a4a');
+    } else if (theme === 'desert') {
+      grad.addColorStop(0, '#180f28');
+      grad.addColorStop(0.55, '#4a2f3a');
+      grad.addColorStop(1, '#8a6a3a');
+    } else if (theme === 'throne') {
+      grad.addColorStop(0, '#05010a');
+      grad.addColorStop(0.55, '#1a0526');
+      grad.addColorStop(1, '#2a0a38');
     } else {
       grad.addColorStop(0, '#6be3d8');
       grad.addColorStop(0.6, '#8fedc9');
@@ -1710,6 +1902,18 @@
       ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 16, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = 'rgba(180,230,255,0.1)';
       ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 44, 0, Math.PI * 2); ctx.fill();
+    } else if (theme === 'desert') {
+      // dim, dust-choked sun
+      ctx.fillStyle = 'rgba(210,150,255,0.7)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 19, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(160,90,210,0.14)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 46, 0, Math.PI * 2); ctx.fill();
+    } else if (theme === 'throne') {
+      // a watching violet eye where a sun or moon should be
+      ctx.fillStyle = 'rgba(192,74,255,0.95)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 17, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(192,74,255,0.18)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 50, 0, Math.PI * 2); ctx.fill();
     } else {
       // sun
       ctx.fillStyle = '#fff3b0';
@@ -1718,7 +1922,7 @@
 
     // distant pillars / tree trunks / spires (parallax)
     const parallax = camX * 0.4;
-    ctx.fillStyle = theme === 'dungeon' ? 'rgba(20,15,30,0.6)' : theme === 'jungle' ? 'rgba(5,20,10,0.65)' : theme === 'hell' ? 'rgba(40,10,5,0.7)' : theme === 'ice' ? 'rgba(15,35,50,0.7)' : 'rgba(60,110,90,0.35)';
+    ctx.fillStyle = theme === 'dungeon' ? 'rgba(20,15,30,0.6)' : theme === 'jungle' ? 'rgba(5,20,10,0.65)' : theme === 'hell' ? 'rgba(40,10,5,0.7)' : theme === 'ice' ? 'rgba(15,35,50,0.7)' : theme === 'desert' ? 'rgba(60,40,30,0.6)' : theme === 'throne' ? 'rgba(20,5,30,0.75)' : 'rgba(60,110,90,0.35)';
     for (let i = -1; i < 8; i++) {
       const x = i * 140 - (parallax % 140);
       ctx.fillRect(px(x), VIEW_H - 160, 26, 160);
@@ -1734,6 +1938,14 @@
         ctx.moveTo(px(x), VIEW_H - 160); ctx.lineTo(px(x) + 13, VIEW_H - 130); ctx.lineTo(px(x) + 26, VIEW_H - 160);
         ctx.closePath(); ctx.fill();
         ctx.fillRect(px(x) - 6, VIEW_H - 176, 38, 16);
+      } else if (theme === 'desert') {
+        // rounded, wind-worn dune caps
+        ctx.beginPath(); ctx.ellipse(px(x) + 13, VIEW_H - 166, 24, 14, 0, 0, Math.PI * 2); ctx.fill();
+      } else if (theme === 'throne') {
+        // jagged obsidian spire
+        ctx.beginPath();
+        ctx.moveTo(px(x) + 13, VIEW_H - 210); ctx.lineTo(px(x) - 2, VIEW_H - 160); ctx.lineTo(px(x) + 28, VIEW_H - 160);
+        ctx.closePath(); ctx.fill();
       } else {
         ctx.fillRect(px(x) - 6, VIEW_H - 172, 38, 12);
       }
@@ -1760,6 +1972,22 @@
         const x = (i * 50 - (camX * 0.5 % 50)) + Math.sin(elapsed + i) * 6;
         const y = (elapsed * 18 + i * 33) % VIEW_H;
         ctx.fillStyle = 'rgba(220,245,255,0.75)';
+        ctx.fillRect(px(x), y, 2, 2);
+      }
+    } else if (theme === 'desert') {
+      // blowing cursed sand
+      for (let i = -1; i < 16; i++) {
+        const x = (i * 52 - (camX * 0.7 % 52) + elapsed * 40) % (VIEW_W + 60) - 30;
+        const y = VIEW_H * 0.25 + Math.sin(elapsed * 2 + i * 3) * 50 + (i % 5) * 20;
+        ctx.fillStyle = 'rgba(200,150,255,0.5)';
+        ctx.fillRect(px(x), y, 3, 1);
+      }
+    } else if (theme === 'throne') {
+      // rising violet embers
+      for (let i = -1; i < 16; i++) {
+        const x = (i * 55 - (camX * 0.6 % 55));
+        const y = VIEW_H - ((elapsed * 22 + i * 41) % VIEW_H);
+        ctx.fillStyle = `rgba(${180 + (i % 3) * 20},${60 + (i % 3) * 20},255,0.7)`;
         ctx.fillRect(px(x), y, 2, 2);
       }
     } else if (theme === 'jungle') {
@@ -1798,13 +2026,15 @@
     const jungle = theme === 'jungle';
     const hell = theme === 'hell';
     const ice = theme === 'ice';
-    const arenaBoss = (dungeon || hell) ? enemies.find(e => e.cfg.isBoss) : null;
+    const desert = theme === 'desert';
+    const throne = theme === 'throne';
+    const arenaBoss = currentLevel().hasBoss ? enemies.find(e => e.cfg.isBoss) : null;
     const arenaRgb = hexToRgbTriplet((arenaBoss && arenaBoss.cfg.hudColor) || '#a78bfa');
-    const topColor = dungeon ? '#4a4258' : jungle ? '#3a4a2a' : hell ? '#3a1408' : ice ? '#3a5a68' : '#f2d99b';
-    const sideColor = dungeon ? '#241f30' : jungle ? '#1c2814' : hell ? '#1a0a04' : ice ? '#16262e' : '#c9a361';
-    const edgeColor = dungeon ? 'rgba(10,8,16,0.5)' : jungle ? 'rgba(5,10,5,0.5)' : hell ? 'rgba(0,0,0,0.6)' : ice ? 'rgba(5,15,20,0.6)' : 'rgba(120,85,40,0.35)';
-    const highlightColor = dungeon ? 'rgba(167,139,250,0.15)' : jungle ? 'rgba(140,255,120,0.12)' : hell ? 'rgba(255,120,40,0.25)' : ice ? 'rgba(200,240,255,0.3)' : 'rgba(255,255,255,0.25)';
-    const glyphColor = dungeon ? 'rgba(167,139,250,0.35)' : jungle ? 'rgba(140,255,120,0.35)' : hell ? 'rgba(255,120,40,0.5)' : ice ? 'rgba(180,230,255,0.4)' : 'rgba(120,85,40,0.5)';
+    const topColor = dungeon ? '#4a4258' : jungle ? '#3a4a2a' : hell ? '#3a1408' : ice ? '#3a5a68' : desert ? '#a68a4a' : throne ? '#2a0a38' : '#f2d99b';
+    const sideColor = dungeon ? '#241f30' : jungle ? '#1c2814' : hell ? '#1a0a04' : ice ? '#16262e' : desert ? '#5a4a26' : throne ? '#150420' : '#c9a361';
+    const edgeColor = dungeon ? 'rgba(10,8,16,0.5)' : jungle ? 'rgba(5,10,5,0.5)' : hell ? 'rgba(0,0,0,0.6)' : ice ? 'rgba(5,15,20,0.6)' : desert ? 'rgba(40,25,10,0.5)' : throne ? 'rgba(5,0,10,0.6)' : 'rgba(120,85,40,0.35)';
+    const highlightColor = dungeon ? 'rgba(167,139,250,0.15)' : jungle ? 'rgba(140,255,120,0.12)' : hell ? 'rgba(255,120,40,0.25)' : ice ? 'rgba(200,240,255,0.3)' : desert ? 'rgba(200,140,255,0.25)' : throne ? 'rgba(192,74,255,0.3)' : 'rgba(255,255,255,0.25)';
+    const glyphColor = dungeon ? 'rgba(167,139,250,0.35)' : jungle ? 'rgba(140,255,120,0.35)' : hell ? 'rgba(255,120,40,0.5)' : ice ? 'rgba(180,230,255,0.4)' : desert ? 'rgba(180,100,255,0.4)' : throne ? 'rgba(192,74,255,0.5)' : 'rgba(120,85,40,0.5)';
 
     const c0 = Math.max(0, Math.floor(camX / TILE) - 1);
     const c1 = Math.min(COLS - 1, Math.ceil((camX + VIEW_W) / TILE) + 1);
@@ -1818,7 +2048,7 @@
         ctx.fillStyle = edgeColor;
         ctx.fillRect(x, y + TILE - 4, TILE, 4);
         ctx.fillRect(x, y, 2, TILE);
-        const inArena = (dungeon || hell) && c >= BOSS_ARENA_START_COL;
+        const inArena = currentLevel().hasBoss && c >= BOSS_ARENA_START_COL;
         if (topExposed) {
           ctx.fillStyle = inArena ? `rgba(${arenaRgb},${0.25 + Math.sin(elapsed * 3 + c) * 0.1})` : highlightColor;
           ctx.fillRect(x, y, TILE, 3);
@@ -1841,12 +2071,12 @@
     for (let c = c0; c <= c1; c++) {
       if (map[ROWS - 1][c] === 1 && c % 8 === 4) {
         const x = px(c * TILE - camX) + TILE / 2, y = (ROWS - 1) * TILE;
-        ctx.fillStyle = dungeon ? '#3a3448' : jungle ? '#3a2f1a' : hell ? '#2a1006' : ice ? '#22404c' : '#8a5a2a';
+        ctx.fillStyle = dungeon ? '#3a3448' : jungle ? '#3a2f1a' : hell ? '#2a1006' : ice ? '#22404c' : desert ? '#4a3a1a' : throne ? '#241030' : '#8a5a2a';
         ctx.fillRect(x - 2, y - 14, 4, 14);
         const flick = 6 + Math.sin(elapsed * 12 + c) * 2;
-        ctx.fillStyle = dungeon ? '#a78bfa' : jungle ? '#5cffa0' : hell ? '#ff5a1f' : ice ? '#6bd9e8' : '#ff8a3d';
+        ctx.fillStyle = dungeon ? '#a78bfa' : jungle ? '#5cffa0' : hell ? '#ff5a1f' : ice ? '#6bd9e8' : desert ? '#c04aff' : throne ? '#c04aff' : '#ff8a3d';
         ctx.beginPath(); ctx.arc(x, y - 16, flick / 2, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = dungeon ? '#e0d4ff' : jungle ? '#c8ffdd' : hell ? '#ffd24a' : ice ? '#e0faff' : '#ffe27a';
+        ctx.fillStyle = dungeon ? '#e0d4ff' : jungle ? '#c8ffdd' : hell ? '#ffd24a' : ice ? '#e0faff' : desert ? '#f0c8ff' : throne ? '#f0c8ff' : '#ffe27a';
         ctx.beginPath(); ctx.arc(x, y - 16, flick / 4, 0, Math.PI * 2); ctx.fill();
       }
     }
@@ -1894,6 +2124,22 @@
       ctx.fillStyle = 'rgba(200,240,255,0.7)';
       ctx.beginPath(); ctx.moveTo(gx + 3, gy - 34); ctx.lineTo(gx + 7, gy - 44); ctx.lineTo(gx + 11, gy - 34); ctx.closePath(); ctx.fill();
       ctx.beginPath(); ctx.moveTo(gx + TILE - 11, gy - 34); ctx.lineTo(gx + TILE - 7, gy - 44); ctx.lineTo(gx + TILE - 3, gy - 34); ctx.closePath(); ctx.fill();
+    } else if (desert) {
+      ctx.fillStyle = '#3a2a10';
+      ctx.fillRect(gx, gy - 34, TILE, 34);
+      const pulse = 7 + Math.sin(elapsed * 4) * 3;
+      ctx.fillStyle = 'rgba(200,140,255,0.8)';
+      ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 20, pulse, pulse * 1.3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f4dcff';
+      ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 20, pulse * 0.4, pulse * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+    } else if (throne) {
+      ctx.fillStyle = '#0c0214';
+      ctx.fillRect(gx, gy - 40, TILE, 40);
+      const pulse = 9 + Math.sin(elapsed * 4.5) * 3;
+      ctx.fillStyle = 'rgba(192,74,255,0.85)';
+      ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 22, pulse, pulse * 1.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f4dcff';
+      ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 22, pulse * 0.4, pulse * 0.6, 0, 0, Math.PI * 2); ctx.fill();
     } else {
       ctx.fillStyle = '#d9c07a';
       ctx.fillRect(gx, gy - 34, TILE, 34);
@@ -2212,6 +2458,22 @@
       ctx.fillRect(2, -hh + 2, 2, 2);
       ctx.fillStyle = col(c.dark);
       ctx.fillRect(hw - 1, hh - 10, 6, 2 + Math.sin(e.walkT * 8) * 2);
+    } else if (c.name === 'cactus') {
+      // cactus: a stout rooted plant bristling with spikes and two stubby arms
+      ctx.fillStyle = col(c.color);
+      ctx.fillRect(-hw + 2, -hh + 4, c.w - 4, c.h - 10);
+      ctx.fillStyle = col(c.light);
+      ctx.fillRect(-hw + 2, -hh + 4, 3, c.h - 10);
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(-hw - 3, -hh + 10, 5, 10);
+      ctx.fillRect(hw - 2, -hh + 6, 5, 10);
+      ctx.fillStyle = col(c.bone);
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(-hw + 3 + i * 4, -hh + 2 + (i % 2) * 3, 1, 3);
+      }
+      ctx.fillStyle = col('#c62828');
+      ctx.fillRect(-3, -hh + 8, 2, 2);
+      ctx.fillRect(2, -hh + 8, 2, 2);
     } else if (c.name === 'boss') {
       // the guardian: hulking dark knight with a jagged crown and burning eyes
       ctx.fillStyle = col(c.color);
@@ -2260,6 +2522,30 @@
         ctx.fillStyle = 'rgba(255,140,20,0.7)';
         ctx.fillRect(-hw - 2, -hh + 12, 3, 6);
         ctx.fillRect(hw - 1, -hh + 8, 3, 6);
+      }
+    } else if (c.name === 'demongod') {
+      // the demon god: a towering violet horror crowned with void-light
+      ctx.fillStyle = col(c.color);
+      ctx.fillRect(-hw, -hh + 16, c.w, c.h - 28);
+      ctx.fillStyle = col(c.light);
+      ctx.fillRect(-hw, -hh + 16, 7, c.h - 28);
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(-hw + 5, -hh, c.w - 10, 18);
+      // crown of horns
+      ctx.fillStyle = col(c.bone);
+      ctx.beginPath(); ctx.moveTo(-hw + 6, -hh - 2); ctx.lineTo(-hw - 4, -hh - 20); ctx.lineTo(-hw + 10, -hh - 6); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(0, -hh - 2); ctx.lineTo(0, -hh - 24); ctx.lineTo(6, -hh - 4); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(hw - 6, -hh - 2); ctx.lineTo(hw + 4, -hh - 20); ctx.lineTo(hw - 10, -hh - 6); ctx.closePath(); ctx.fill();
+      // three unblinking eyes
+      ctx.fillStyle = col('#f0c8ff');
+      ctx.fillRect(-11, -hh + 7, 5, 4);
+      ctx.fillRect(-2, -hh + 4, 5, 4);
+      ctx.fillRect(7, -hh + 7, 5, 4);
+      // void wisps
+      if (Math.sin(e.walkT * 6) > 0) {
+        ctx.fillStyle = 'rgba(192,74,255,0.55)';
+        ctx.fillRect(-hw - 4, -hh + 14, 4, 14);
+        ctx.fillRect(hw, -hh + 10, 4, 14);
       }
     }
 
@@ -2312,6 +2598,18 @@
       ctx.strokeRect(-hw - 3, -hh - 3, c.w + 6, c.h + 6);
     }
     ctx.restore();
+
+    // The Demon God's smite marks the ground it's about to strike — drawn
+    // in world space at the locked target, not attached to the boss itself.
+    if ((e.attackState === 'smite_telegraph' || e.attackState === 'smite') && e.smiteX != null) {
+      const mx = px(e.smiteX - camX), my = px(e.smiteY);
+      const pulse = 0.4 + Math.sin(elapsed * 16) * 0.3;
+      ctx.strokeStyle = `rgba(255,60,180,${pulse})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(mx, my, 35, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     const barW = c.w;
     const pct = Math.max(0, e.hp / e.maxHp);
@@ -2389,6 +2687,18 @@
       ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#e0d4ff';
       ctx.beginPath(); ctx.arc(1.5, -1, 1.6, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === 'spike') {
+      ctx.fillStyle = '#2a5a1f';
+      ctx.beginPath(); ctx.moveTo(-8, -2); ctx.lineTo(8, 0); ctx.lineTo(-8, 2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#7fc464';
+      ctx.beginPath(); ctx.moveTo(-6, -1); ctx.lineTo(6, 0); ctx.lineTo(-6, 1); ctx.closePath(); ctx.fill();
+    } else if (kind === 'void') {
+      ctx.fillStyle = 'rgba(192,74,255,0.4)';
+      ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3a0a4a';
+      ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f0c8ff';
+      ctx.beginPath(); ctx.arc(1, -1, 2, 0, Math.PI * 2); ctx.fill();
     } else {
       // normal (player default)
       ctx.fillStyle = '#2f8f5b';
@@ -2403,6 +2713,18 @@
 
   function drawHazard(hz) {
     const x = px(hz.x - camX), y = px(hz.y);
+    if (hz.kind === 'trap') {
+      const armed = hz.armed <= 0;
+      ctx.fillStyle = '#3a3428';
+      ctx.beginPath();
+      ctx.ellipse(x, y, hz.radius * 0.5, hz.radius * 0.22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = armed ? (Math.sin(elapsed * 14) > 0 ? '#ff3b30' : '#7a1a12') : '#ffcd3c';
+      ctx.beginPath();
+      ctx.arc(x, y - 2, 3, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
     const pct = Math.max(0, hz.life / 3);
     ctx.globalAlpha = 0.55 * pct;
     ctx.fillStyle = '#6b9c3a';
@@ -2540,6 +2862,7 @@
       { key: 'acid', label: '6', color: SOUL_META.acid.color, count: player.souls.acid },
       { key: 'shadow', label: '7', color: SOUL_META.shadow.color, count: player.souls.shadow },
       { key: 'knife', label: '8', color: player.demonKnife ? '#ff8a3d' : '#c9b98f', count: 'KNIFE' },
+      { key: 'trap', label: '9', color: player.souls.trap > 0 ? SOUL_META.trap.color : '#c9b98f', count: player.souls.trap },
     ];
     let sx = VIEW_W / 2 - (slots.length * 34) / 2;
     const sy = VIEW_H - 22;
@@ -2898,7 +3221,7 @@
   // Prices climb the deeper you go, on top of the existing per-purchase
   // escalation, so gear bought outside the temple actually costs more.
   let shopNextLevel = 0;
-  const SHOP_FLOOR_MULT = { 1: 1.2, 2: 1.7, 3: 2.1, 4: 2.6 };
+  const SHOP_FLOOR_MULT = { 1: 1.2, 2: 1.7, 3: 2.1, 4: 2.6, 5: 3.1, 6: 3.7 };
   function shopCostMult() { return SHOP_FLOOR_MULT[shopNextLevel] || 1; }
   function scaledCost(base) { return Math.round((base * shopCostMult()) / 5) * 5; }
 
@@ -2910,7 +3233,7 @@
       buy: (p) => { p.hp = p.maxHp; },
     },
     {
-      key: 'ammo', name: 'Ammo Cache', desc: '+1 soul of every special ammo type, and tops up bullets to 100.',
+      key: 'ammo', name: 'Ammo Cache', desc: '+1 soul of every special ammo type, +1 trap charge, and tops up bullets to 100.',
       cost: () => scaledCost(50),
       canBuy: () => true,
       buy: (p) => { for (const k of Object.keys(p.souls)) p.souls[k]++; p.bullets = Math.max(p.bullets, 100); },

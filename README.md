@@ -1,10 +1,10 @@
 # Temple of Bones
 
-A pixel-art 2D run-and-gun platformer. Jump across five crumbling floors —
-temple, dungeon, jungle, a frozen temple, and finally Hell itself — and gun
-down whatever's guarding them. Every clean kill leaves behind a soul you can
-load as special ammunition, and a wolf pup follows you the whole way, growing
-fiercer with every kill.
+A pixel-art 2D run-and-gun platformer. Jump across seven crumbling floors —
+temple, dungeon, jungle, a frozen temple, Hell itself, a cursed desert, and
+finally the Demon God's own throne — and gun down whatever's guarding them.
+Every clean kill leaves behind a soul you can load as special ammunition, and
+a wolf pup follows you the whole way, growing fiercer with every kill.
 
 ## Bullets & the knife
 
@@ -21,6 +21,14 @@ on fire (a damage-over-time burn), rather than just plain melee damage.
 
 The knife isn't just a last resort, either — key **8** switches to it
 manually anytime, bullets or not.
+
+## Traps
+
+Cacti — rooted, spike-throwing plants found on the Cursed Desert — drop a
+trap charge instead of a normal combat soul. Press **9** while grounded to
+plant one at your feet: it arms after a beat, then detonates on the first
+enemy to walk over it for a solid burst of damage. It's a resource, not a
+weapon mode — no aiming, no ammo switch, just drop and walk away.
 
 ## Play
 
@@ -53,12 +61,14 @@ shared or synced anywhere.
 - **Space / X / J** — shoot in the direction you're facing (hold ↑ or ↓ to aim vertically)
 - **1-7** — switch ammo
 - **8** — switch to the knife manually (works anytime, not just when out of bullets)
+- **9** — place a trap (requires a trap charge, and being on the ground)
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 **Mobile (on-screen controls)**
 - **D-pad** (bottom-left) — move / aim up-down / jump
 - **FIRE** (bottom-right) — shoot
-- **AMMO** — cycle through ammo types
+- **AMMO** — cycle through ammo types (including the knife)
+- **TRAP** — place a trap (requires a trap charge, and being on the ground)
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 ## Enemies & souls
@@ -74,8 +84,10 @@ shared or synced anywhere.
 | Shrieker | Support — buffs nearby melee zombies with haste | none | — |
 | Shadow | Very low direct damage but very long range; its bolt hurls you toward it | Shadow soul | Pull shot: yanks nearby enemies together and primes your next shot to home in |
 | Imp | Small, fast, swarming melee — low health, decent bite | none | — |
+| Cactus | Rooted in place, throws spike volleys | Trap charge | Place a trap with key 9 (see [Traps](#traps)) |
 | The Guardian | Floor 2's boss (see below) | — | Drops the Shadow Helm on death (+10% damage) instead of a soul |
 | The Arch Demon | Floor 5's boss, alone on its whole floor (see below) | — | Drops the Demon Knife on death — upgrades your bullets-out knife into a burning dash strike |
+| The Demon God | Floor 7's boss, the true final fight (see below) | — | Grants a permanent +20% damage bonus on death |
 
 Souls are consumed one per special shot; specials require harvesting the
 matching zombie type first. See [Bullets & the knife](#bullets--the-knife)
@@ -131,6 +143,29 @@ bullets-out fallback weapon: instead of a stationary swipe it dashes you
 forward through anything in front of you, and every enemy it cuts is left
 burning.
 
+## The Cursed Desert
+
+Floor 6 — no boss here either, just the hardest lineup of lesser enemies in
+the game, led by Cactus plants that never move but never stop shooting.
+This is where trap charges start piling up, so it's worth planting a few on
+the way through rather than saving them all for later.
+
+## The Demon God
+
+The true final boss, alone on its own throne floor at the very end. It has
+1400 HP and cycles between four attacks, on top of the same channeled nova
+the other two bosses use (at 50% and 20% HP) —
+
+- **Godsplit charge** — three fast dashes through your position
+- **Radial judgment** — a full 360-degree burst of void bolts
+- **Smite** — marks wherever you're standing the instant it begins the move,
+  then strikes there after a beat; staying still is what gets you killed
+- **Summon** — raises a brute and a shambler to flank you
+
+Like the other two arenas, crossing into the fight seals the way back until
+it's dead. Beating it grants a permanent +20% damage bonus and ends the run
+— reach the end of its floor to win.
+
 ## Wolf companion
 
 A wolf pup starts at your side from the first floor and levels up purely
@@ -143,11 +178,11 @@ Alpha Wolf → **Fenrir**, fully grown at 300 kills.
 
 Between floors, spend your score at the supply cache on healing, ammo
 refills, and permanent damage/health/armor upgrades. Prices climb both with
-repeated purchases of the same upgrade and with how deep you are — the
-dungeon, jungle, frozen temple, and Hell caches all charge more than the
-temple's, and Hell's is the steepest of all.
+repeated purchases of the same upgrade and with how deep you are — every
+floor's cache after the temple's charges more than the last, and the Demon
+God's throne is the steepest of all.
 
 You have 3 lives and respawn at the last torch-lit checkpoint you passed.
 Falling into a pit costs a life instantly, however much HP you have left.
 Losing all 3 lives sends you back to the start of the current floor and
-wipes every shop upgrade. Reach the end of Hell to win.
+wipes every shop upgrade. Reach the end of the Demon God's throne to win.
