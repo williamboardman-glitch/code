@@ -2002,15 +2002,18 @@
     if (player.knifeSwing > 0) {
       const t = 1 - player.knifeSwing / 0.15;
       const demon = player.demonKnife;
-      const swingRadius = demon ? 40 : 26;
-      const sx = (demon ? 26 : 19) + t * (demon ? 32 : 20), sy = gy - 15 + t * 30;
+      // Plain knife stays at its original size — only the Demon Knife
+      // (the Arch Demon's reward) gets the bigger, showier slash.
+      const swingRadius = demon ? 55 : 13;
+      const sx = (demon ? 33 : 9) + t * (demon ? 44 : 10), sy = gy - (demon ? 22 : 8) + t * (demon ? 44 : 16);
+      const tipW = demon ? 11 : 4, tipH = demon ? 6 : 2;
       ctx.strokeStyle = demon ? 'rgba(255,120,40,0.9)' : 'rgba(232,232,232,0.9)';
-      ctx.lineWidth = demon ? 6 : 5;
+      ctx.lineWidth = demon ? 8 : 2;
       ctx.beginPath();
       ctx.arc(6, gy, swingRadius, -0.9 + t * 1.1, -0.2 + t * 1.1);
       ctx.stroke();
       ctx.fillStyle = demon ? '#ffcf4a' : '#d8d8d8';
-      ctx.fillRect(sx, sy, 9, 5);
+      ctx.fillRect(sx, sy, tipW, tipH);
     }
     ctx.restore();
   }
