@@ -258,6 +258,22 @@
     ['brute', 61, 8], ['brute', 62, 8], ['acid', 63, 8], ['brute', 64, 8],
     ['acid', 65, 8], ['grunt', 66, 8], ['frost', 67, 8], ['shadow', 61, 6],
   ];
+  const ICE_SPAWN = [
+    ['grunt', 3, 8], ['frost', 5, 8], ['grunt', 7, 8], ['brute', 9, 8],
+    ['frost', 8, 6], ['grunt', 11, 8], ['lightning', 12, 8], ['frost', 16, 8],
+    ['brute', 17, 8], ['shrieker', 18, 8], ['grunt', 19, 8],
+    ['frost', 20, 6], ['imp', 22, 6], ['acid', 24, 8], ['brute', 26, 8],
+    ['frost', 27, 8], ['shadow', 28, 8], ['grunt', 29, 8],
+    ['lightning', 30, 8], ['frost', 31, 8], ['brute', 34, 7], ['frost', 35, 7],
+    ['grunt', 36, 8], ['shrieker', 37, 8], ['acid', 39, 8], ['frost', 40, 8],
+    ['brute', 41, 6], ['imp', 42, 6], ['lightning', 43, 6],
+    ['frost', 44, 8], ['grunt', 45, 8], ['brute', 46, 8], ['shadow', 47, 8],
+    ['frost', 48, 8], ['acid', 49, 8], ['grunt', 50, 8], ['lightning', 51, 8],
+    ['shrieker', 54, 8], ['brute', 55, 8], ['frost', 56, 8], ['frost', 57, 8],
+    ['shadow', 58, 6], ['imp', 59, 6], ['grunt', 60, 6],
+    ['brute', 61, 8], ['frost', 62, 8], ['lightning', 63, 8], ['acid', 64, 8],
+    ['brute', 65, 8], ['frost', 66, 8], ['shadow', 67, 8],
+  ];
   // Hell belongs to the Arch Demon alone — no lesser zombies share its floor.
   const HELL_SPAWN = [
     ['archdemon', 64, 8],
@@ -266,6 +282,7 @@
     { theme: 'temple', name: 'Temple of Bones', spawnList: LEVEL1_SPAWN },
     { theme: 'dungeon', name: 'The Dark Dungeon', spawnList: LEVEL2_SPAWN },
     { theme: 'jungle', name: 'The Dark Jungle', spawnList: LEVEL3_SPAWN },
+    { theme: 'ice', name: 'The Frozen Temple', spawnList: ICE_SPAWN },
     { theme: 'hell', name: 'The Burning Hell', spawnList: HELL_SPAWN },
   ];
 
@@ -544,6 +561,7 @@
   function shoot() {
     if (player.fireCooldown > 0 || player.shockedTimer > 0) return;
     let ammo = player.ammo;
+    if (ammo === 'knife') { knifeAttack(); return; }
     if (ammo !== 'normal' && player.souls[ammo] <= 0) {
       addMessage(player.x, player.y - 24, 'NO SOULS', '#c9b98f');
       sfx.empty();
@@ -715,14 +733,16 @@
 
   const GAME_KEYS = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
-    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7',
+    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8',
   ]);
 
-  // Single source of truth for the Digit1-7 ammo hotkeys, also reused by the
+  // Single source of truth for the Digit1-8 ammo hotkeys, also reused by the
   // on-screen ammo-cycle button so keyboard and touch never drift apart.
+  // Digit8 ('knife') is a manual switch to melee, distinct from the
+  // automatic fallback that kicks in when normal bullets run out.
   const DIGIT_AMMO = {
     Digit1: 'normal', Digit2: 'berserker', Digit3: 'pyromancer',
-    Digit4: 'frost', Digit5: 'lightning', Digit6: 'acid', Digit7: 'shadow',
+    Digit4: 'frost', Digit5: 'lightning', Digit6: 'acid', Digit7: 'shadow', Digit8: 'knife',
   };
   const AMMO_CYCLE = Object.values(DIGIT_AMMO);
 
@@ -1654,6 +1674,10 @@
       grad.addColorStop(0, '#1a0503');
       grad.addColorStop(0.55, '#4a1206');
       grad.addColorStop(1, '#7a2a0a');
+    } else if (theme === 'ice') {
+      grad.addColorStop(0, '#03060e');
+      grad.addColorStop(0.6, '#0b2030');
+      grad.addColorStop(1, '#153a4a');
     } else {
       grad.addColorStop(0, '#6be3d8');
       grad.addColorStop(0.6, '#8fedc9');
@@ -1680,6 +1704,12 @@
       ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 20, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = 'rgba(255,40,10,0.15)';
       ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 48, 0, Math.PI * 2); ctx.fill();
+    } else if (theme === 'ice') {
+      // pale frozen moon
+      ctx.fillStyle = 'rgba(220,245,255,0.9)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 16, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(180,230,255,0.1)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 44, 0, Math.PI * 2); ctx.fill();
     } else {
       // sun
       ctx.fillStyle = '#fff3b0';
@@ -1688,7 +1718,7 @@
 
     // distant pillars / tree trunks / spires (parallax)
     const parallax = camX * 0.4;
-    ctx.fillStyle = theme === 'dungeon' ? 'rgba(20,15,30,0.6)' : theme === 'jungle' ? 'rgba(5,20,10,0.65)' : theme === 'hell' ? 'rgba(40,10,5,0.7)' : 'rgba(60,110,90,0.35)';
+    ctx.fillStyle = theme === 'dungeon' ? 'rgba(20,15,30,0.6)' : theme === 'jungle' ? 'rgba(5,20,10,0.65)' : theme === 'hell' ? 'rgba(40,10,5,0.7)' : theme === 'ice' ? 'rgba(15,35,50,0.7)' : 'rgba(60,110,90,0.35)';
     for (let i = -1; i < 8; i++) {
       const x = i * 140 - (parallax % 140);
       ctx.fillRect(px(x), VIEW_H - 160, 26, 160);
@@ -1698,6 +1728,12 @@
         ctx.beginPath();
         ctx.moveTo(px(x) + 13, VIEW_H - 200); ctx.lineTo(px(x), VIEW_H - 160); ctx.lineTo(px(x) + 26, VIEW_H - 160);
         ctx.closePath(); ctx.fill();
+      } else if (theme === 'ice') {
+        // hanging icicle spikes off the pillar cap
+        ctx.beginPath();
+        ctx.moveTo(px(x), VIEW_H - 160); ctx.lineTo(px(x) + 13, VIEW_H - 130); ctx.lineTo(px(x) + 26, VIEW_H - 160);
+        ctx.closePath(); ctx.fill();
+        ctx.fillRect(px(x) - 6, VIEW_H - 176, 38, 16);
       } else {
         ctx.fillRect(px(x) - 6, VIEW_H - 172, 38, 12);
       }
@@ -1716,6 +1752,14 @@
         const x = (i * 55 - (camX * 0.6 % 55));
         const y = VIEW_H - ((elapsed * 26 + i * 41) % VIEW_H);
         ctx.fillStyle = `rgba(255,${110 + (i % 3) * 30},40,0.7)`;
+        ctx.fillRect(px(x), y, 2, 2);
+      }
+    } else if (theme === 'ice') {
+      // falling snow
+      for (let i = -1; i < 16; i++) {
+        const x = (i * 50 - (camX * 0.5 % 50)) + Math.sin(elapsed + i) * 6;
+        const y = (elapsed * 18 + i * 33) % VIEW_H;
+        ctx.fillStyle = 'rgba(220,245,255,0.75)';
         ctx.fillRect(px(x), y, 2, 2);
       }
     } else if (theme === 'jungle') {
@@ -1753,13 +1797,14 @@
     const dungeon = theme === 'dungeon';
     const jungle = theme === 'jungle';
     const hell = theme === 'hell';
+    const ice = theme === 'ice';
     const arenaBoss = (dungeon || hell) ? enemies.find(e => e.cfg.isBoss) : null;
     const arenaRgb = hexToRgbTriplet((arenaBoss && arenaBoss.cfg.hudColor) || '#a78bfa');
-    const topColor = dungeon ? '#4a4258' : jungle ? '#3a4a2a' : hell ? '#3a1408' : '#f2d99b';
-    const sideColor = dungeon ? '#241f30' : jungle ? '#1c2814' : hell ? '#1a0a04' : '#c9a361';
-    const edgeColor = dungeon ? 'rgba(10,8,16,0.5)' : jungle ? 'rgba(5,10,5,0.5)' : hell ? 'rgba(0,0,0,0.6)' : 'rgba(120,85,40,0.35)';
-    const highlightColor = dungeon ? 'rgba(167,139,250,0.15)' : jungle ? 'rgba(140,255,120,0.12)' : hell ? 'rgba(255,120,40,0.25)' : 'rgba(255,255,255,0.25)';
-    const glyphColor = dungeon ? 'rgba(167,139,250,0.35)' : jungle ? 'rgba(140,255,120,0.35)' : hell ? 'rgba(255,120,40,0.5)' : 'rgba(120,85,40,0.5)';
+    const topColor = dungeon ? '#4a4258' : jungle ? '#3a4a2a' : hell ? '#3a1408' : ice ? '#3a5a68' : '#f2d99b';
+    const sideColor = dungeon ? '#241f30' : jungle ? '#1c2814' : hell ? '#1a0a04' : ice ? '#16262e' : '#c9a361';
+    const edgeColor = dungeon ? 'rgba(10,8,16,0.5)' : jungle ? 'rgba(5,10,5,0.5)' : hell ? 'rgba(0,0,0,0.6)' : ice ? 'rgba(5,15,20,0.6)' : 'rgba(120,85,40,0.35)';
+    const highlightColor = dungeon ? 'rgba(167,139,250,0.15)' : jungle ? 'rgba(140,255,120,0.12)' : hell ? 'rgba(255,120,40,0.25)' : ice ? 'rgba(200,240,255,0.3)' : 'rgba(255,255,255,0.25)';
+    const glyphColor = dungeon ? 'rgba(167,139,250,0.35)' : jungle ? 'rgba(140,255,120,0.35)' : hell ? 'rgba(255,120,40,0.5)' : ice ? 'rgba(180,230,255,0.4)' : 'rgba(120,85,40,0.5)';
 
     const c0 = Math.max(0, Math.floor(camX / TILE) - 1);
     const c1 = Math.min(COLS - 1, Math.ceil((camX + VIEW_W) / TILE) + 1);
@@ -1790,22 +1835,24 @@
         }
       }
     }
-    // torches (fire in the temple/dungeon, glowing fungus in the jungle)
+    // torches (fire in the temple/dungeon, glowing fungus in the jungle,
+    // a cold blue ice-shard glow in the frozen temple)
     ctx.font = '10px monospace';
     for (let c = c0; c <= c1; c++) {
       if (map[ROWS - 1][c] === 1 && c % 8 === 4) {
         const x = px(c * TILE - camX) + TILE / 2, y = (ROWS - 1) * TILE;
-        ctx.fillStyle = dungeon ? '#3a3448' : jungle ? '#3a2f1a' : hell ? '#2a1006' : '#8a5a2a';
+        ctx.fillStyle = dungeon ? '#3a3448' : jungle ? '#3a2f1a' : hell ? '#2a1006' : ice ? '#22404c' : '#8a5a2a';
         ctx.fillRect(x - 2, y - 14, 4, 14);
         const flick = 6 + Math.sin(elapsed * 12 + c) * 2;
-        ctx.fillStyle = dungeon ? '#a78bfa' : jungle ? '#5cffa0' : hell ? '#ff5a1f' : '#ff8a3d';
+        ctx.fillStyle = dungeon ? '#a78bfa' : jungle ? '#5cffa0' : hell ? '#ff5a1f' : ice ? '#6bd9e8' : '#ff8a3d';
         ctx.beginPath(); ctx.arc(x, y - 16, flick / 2, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = dungeon ? '#e0d4ff' : jungle ? '#c8ffdd' : hell ? '#ffd24a' : '#ffe27a';
+        ctx.fillStyle = dungeon ? '#e0d4ff' : jungle ? '#c8ffdd' : hell ? '#ffd24a' : ice ? '#e0faff' : '#ffe27a';
         ctx.beginPath(); ctx.arc(x, y - 16, flick / 4, 0, Math.PI * 2); ctx.fill();
       }
     }
     // goal marker: an altar in the temple, a dark rift in the dungeon,
-    // a vine-choked shrine in the jungle, a lava gate in hell
+    // a vine-choked shrine in the jungle, a lava gate in hell, a frozen
+    // shrine in the ice temple
     const gx = px(GOAL_COL * TILE - camX);
     const gy = (ROWS - 1) * TILE;
     if (dungeon) {
@@ -1835,6 +1882,18 @@
       ctx.fillStyle = 'rgba(30,90,40,0.8)';
       ctx.fillRect(gx + 2, gy - 34, 3, 30);
       ctx.fillRect(gx + TILE - 5, gy - 30, 3, 26);
+    } else if (ice) {
+      ctx.fillStyle = '#0e222c';
+      ctx.fillRect(gx, gy - 34, TILE, 34);
+      const pulse = 7 + Math.sin(elapsed * 3.5) * 3;
+      ctx.fillStyle = 'rgba(160,230,255,0.8)';
+      ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 20, pulse, pulse * 1.3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f0fcff';
+      ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 20, pulse * 0.4, pulse * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+      // flanking icicles
+      ctx.fillStyle = 'rgba(200,240,255,0.7)';
+      ctx.beginPath(); ctx.moveTo(gx + 3, gy - 34); ctx.lineTo(gx + 7, gy - 44); ctx.lineTo(gx + 11, gy - 34); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(gx + TILE - 11, gy - 34); ctx.lineTo(gx + TILE - 7, gy - 44); ctx.lineTo(gx + TILE - 3, gy - 34); ctx.closePath(); ctx.fill();
     } else {
       ctx.fillStyle = '#d9c07a';
       ctx.fillRect(gx, gy - 34, TILE, 34);
@@ -2477,6 +2536,7 @@
       { key: 'lightning', label: '5', color: SOUL_META.lightning.color, count: player.souls.lightning },
       { key: 'acid', label: '6', color: SOUL_META.acid.color, count: player.souls.acid },
       { key: 'shadow', label: '7', color: SOUL_META.shadow.color, count: player.souls.shadow },
+      { key: 'knife', label: '8', color: player.demonKnife ? '#ff8a3d' : '#c9b98f', count: 'KNIFE' },
     ];
     let sx = VIEW_W / 2 - (slots.length * 34) / 2;
     const sy = VIEW_H - 22;
@@ -2835,7 +2895,7 @@
   // Prices climb the deeper you go, on top of the existing per-purchase
   // escalation, so gear bought outside the temple actually costs more.
   let shopNextLevel = 0;
-  const SHOP_FLOOR_MULT = { 1: 1.2, 2: 1.7, 3: 2.4 };
+  const SHOP_FLOOR_MULT = { 1: 1.2, 2: 1.7, 3: 2.1, 4: 2.6 };
   function shopCostMult() { return SHOP_FLOOR_MULT[shopNextLevel] || 1; }
   function scaledCost(base) { return Math.round((base * shopCostMult()) / 5) * 5; }
 

@@ -1,10 +1,10 @@
 # Temple of Bones
 
-A pixel-art 2D run-and-gun platformer. Jump across four crumbling floors —
-temple, dungeon, jungle, and finally Hell itself — and gun down whatever's
-guarding them. Every clean kill leaves behind a soul you can load as special
-ammunition, and a wolf pup follows you the whole way, growing fiercer with
-every kill.
+A pixel-art 2D run-and-gun platformer. Jump across five crumbling floors —
+temple, dungeon, jungle, a frozen temple, and finally Hell itself — and gun
+down whatever's guarding them. Every clean kill leaves behind a soul you can
+load as special ammunition, and a wolf pup follows you the whole way, growing
+fiercer with every kill.
 
 ## Bullets & the knife
 
@@ -18,6 +18,9 @@ Beat the Arch Demon and that knife is upgraded permanently into the
 **Demon Knife**: instead of a stationary swipe it becomes a short forward
 dash-strike, cutting through everything in its path and setting each hit
 on fire (a damage-over-time burn), rather than just plain melee damage.
+
+The knife isn't just a last resort, either — key **8** switches to it
+manually anytime, bullets or not.
 
 ## Play
 
@@ -49,6 +52,7 @@ shared or synced anywhere.
 - **↑ / W** — jump (hold for a higher, longer jump — needed to clear the wider pits)
 - **Space / X / J** — shoot in the direction you're facing (hold ↑ or ↓ to aim vertically)
 - **1-7** — switch ammo
+- **8** — switch to the knife manually (works anytime, not just when out of bullets)
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 **Mobile (on-screen controls)**
@@ -71,7 +75,7 @@ shared or synced anywhere.
 | Shadow | Very low direct damage but very long range; its bolt hurls you toward it | Shadow soul | Pull shot: yanks nearby enemies together and primes your next shot to home in |
 | Imp | Small, fast, swarming melee — low health, decent bite | none | — |
 | The Guardian | Floor 2's boss (see below) | — | Drops the Shadow Helm on death (+10% damage) instead of a soul |
-| The Arch Demon | Floor 4's boss, alone on its whole floor (see below) | — | Drops the Demon Knife on death — upgrades your bullets-out knife into a burning dash strike |
+| The Arch Demon | Floor 5's boss, alone on its whole floor (see below) | — | Drops the Demon Knife on death — upgrades your bullets-out knife into a burning dash strike |
 
 Souls are consumed one per special shot; specials require harvesting the
 matching zombie type first. See [Bullets & the knife](#bullets--the-knife)
@@ -97,6 +101,13 @@ The helm also unlocks **Wither** (press **R**), a once-per-floor curse on
 the nearest enemy in range: it permanently halves that target's remaining
 health pool and every point of damage it deals for the rest of the floor.
 It won't land on a target with hyperarmor (e.g. the Guardian mid-nova).
+
+## The Frozen Temple
+
+Floor 4, right before Hell — a dark, ice-choked ruin with no boss of its
+own, but the heaviest lineup of Frost Priests in the game plus the usual
+mix of shamblers, brutes, and a few imps thrown in. Treat it as the last
+gauntlet before the Arch Demon: stock up at the shop beforehand.
 
 ## The Arch Demon
 
@@ -133,7 +144,8 @@ Alpha Wolf → **Fenrir**, fully grown at 300 kills.
 Between floors, spend your score at the supply cache on healing, ammo
 refills, and permanent damage/health/armor upgrades. Prices climb both with
 repeated purchases of the same upgrade and with how deep you are — the
-dungeon, jungle, and Hell caches all charge more than the temple's.
+dungeon, jungle, frozen temple, and Hell caches all charge more than the
+temple's, and Hell's is the steepest of all.
 
 You have 3 lives and respawn at the last torch-lit checkpoint you passed.
 Falling into a pit costs a life instantly, however much HP you have left.
