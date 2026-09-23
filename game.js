@@ -2002,15 +2002,15 @@
     if (player.knifeSwing > 0) {
       const t = 1 - player.knifeSwing / 0.15;
       const demon = player.demonKnife;
-      const swingRadius = demon ? 28 : 18;
-      const sx = (demon ? 17 : 13) + t * (demon ? 22 : 14), sy = gy - 11 + t * 22;
+      const swingRadius = demon ? 40 : 26;
+      const sx = (demon ? 26 : 19) + t * (demon ? 32 : 20), sy = gy - 15 + t * 30;
       ctx.strokeStyle = demon ? 'rgba(255,120,40,0.9)' : 'rgba(232,232,232,0.9)';
-      ctx.lineWidth = demon ? 4 : 3;
+      ctx.lineWidth = demon ? 6 : 5;
       ctx.beginPath();
       ctx.arc(6, gy, swingRadius, -0.9 + t * 1.1, -0.2 + t * 1.1);
       ctx.stroke();
       ctx.fillStyle = demon ? '#ffcf4a' : '#d8d8d8';
-      ctx.fillRect(sx, sy, 6, 3);
+      ctx.fillRect(sx, sy, 9, 5);
     }
     ctx.restore();
   }
