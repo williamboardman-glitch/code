@@ -1158,13 +1158,14 @@
         }
       } else if (levelIndex + 1 < LEVEL_DEFS.length) {
         const next = levelIndex + 1;
-        if (LEVEL_DEFS[next].theme === 'hell') playCutscene(HELL_CUTSCENE, () => openShop(next));
+        const nextCutscene = FLOOR_CUTSCENES[LEVEL_DEFS[next].theme];
+        if (nextCutscene) playCutscene(nextCutscene, () => openShop(next));
         else openShop(next);
       } else {
         state = 'win';
         clearSave();
         endTitle.innerHTML = 'THE DEMON GOD <span class="accent">FALLS FOREVER</span>';
-        finalStats.textContent = `Score: ${player.score} — Kills: ${player.kills} — Time: ${elapsed.toFixed(1)}s`;
+        finalStats.textContent = `A king who buried his family under a throne finally gets to lie down beside them. Score: ${player.score} — Kills: ${player.kills} — Time: ${elapsed.toFixed(1)}s`;
         gameOverScreen.classList.remove('hidden');
         sfx.win();
       }
@@ -2936,16 +2937,67 @@
     { type: 'boat', boatX: 0.58, islandScale: 0.85, speaker: 'HUNTER', text: 'The map better be right this time.' },
     { type: 'arrive', speaker: 'HUNTER', text: "...Door's already broken open. Someone beat me here." },
     { type: 'arrive', speaker: 'HUNTER', text: 'Or something did.' },
+    { type: 'arrive', speaker: 'HUNTER', text: 'Carvings on the door frame — a king, and a crown split clean in two. Somebody wanted this story told, even buried this deep.' },
     { type: 'zombie', speaker: 'HUNTER', text: 'Right. Guess the old stories were true after all.' },
   ];
-  // Plays between the jungle and the hell floor — the ground gives way to a
+
+  // The story told across the run: a king who bargained with something
+  // nameless to save his kingdom, and lost himself long before he lost his
+  // family to what he'd let in. Each floor's cutscene peels back one more
+  // layer of it, ending where the throne room finally puts a face to the
+  // thing that's been hunting the hunter the whole way down.
+  const DUNGEON_CUTSCENE = [
+    { type: 'arrive', speaker: 'HUNTER', text: "A vault sealed longer than anyone alive remembers. Whoever built it didn't want it opened again." },
+    { type: 'vision', tint: 'peace', figures: ['king', 'queen', 'child'], speaker: 'INSCRIPTION', text: "'Here reigned a king who loved his family above his own crown.' Carved deep. Like someone needed it to survive." },
+    { type: 'zombie', speaker: 'HUNTER', text: "Whatever's waiting down here, it isn't him. Not anymore." },
+  ];
+  const JUNGLE_CUTSCENE = [
+    { type: 'vision', tint: 'war', figures: ['king', 'throne'], speaker: 'VISION', text: 'A war came for the kingdom. Sickness, or soldiers — the stone never says which. Only that the king begged the dark for strength enough to save his people.' },
+    { type: 'arrive', speaker: 'HUNTER', text: 'Begging the dark never ends the way you want it to.' },
+    { type: 'zombie', speaker: 'HUNTER', text: "Something answered him, though. Something's still answering." },
+  ];
+  const ICE_CUTSCENE = [
+    { type: 'vision', tint: 'ritual', figures: ['king', 'demon'], speaker: 'VISION', text: 'This is where he made the bargain. The cold kept the memory whole — a king on his knees, and something vast leaning down to listen.' },
+    { type: 'vision', tint: 'ritual', figures: ['demon'], speaker: '???', text: 'POWER ENOUGH TO SAVE THEM ALL. ALL YOU MUST GIVE ME IS ROOM.' },
+    { type: 'arrive', speaker: 'HUNTER', text: "Room. Not a price. Not a warning. Just — room." },
+  ];
+  // Plays between the frozen temple and hell — the ground gives way to a
   // fiery portal and something drags the hunter down before the shop screen.
+  // The story lands its worst beat here: what the king actually did with the
+  // power he was given, before the fall itself takes over the scene.
   const HELL_CUTSCENE = [
+    { type: 'vision', tint: 'madness', figures: ['demon', 'queen', 'child'], speaker: 'VISION', text: "It wore his crown when it happened. His hands did it. He didn't even hear them scream over whatever was screaming inside him." },
+    { type: 'vision', tint: 'grief', figures: ['fallen', 'fallen'], speaker: 'VISION', text: "When he could see again, there was no power left worth having. Only what he'd spent it on." },
+    { type: 'arrive', speaker: 'HUNTER', text: "...Gods. That's not a monster waiting down there. That's a man who never stopped falling." },
     { type: 'ground', speaker: 'HUNTER', text: "Ground's warm down here. Warmer than it should be." },
     { type: 'crack', speaker: 'HUNTER', text: "...That's not warmth. That's a crack splitting open." },
     { type: 'devil', speaker: '???', text: 'FOOLISH MORTAL. YOU HAVE DUG FAR ENOUGH.' },
     { type: 'devil', speaker: 'HUNTER', text: 'Wait — !' },
   ];
+  const DESERT_CUTSCENE = [
+    { type: 'vision', tint: 'grief', figures: ['king'], speaker: 'VISION', text: "The land felt it happen. Everything that grew here curled up and died rather than watch. It's been dying ever since." },
+    { type: 'zombie', speaker: 'HUNTER', text: "Everything I've been putting down since the temple — they're not monsters. They're his people. He wouldn't even let them rest." },
+    { type: 'arrive', speaker: 'HUNTER', text: "Grief doesn't stay grief forever. Eventually it just becomes weather." },
+  ];
+  const THRONE_CUTSCENE = [
+    { type: 'vision', tint: 'void', figures: ['demon', 'throne'], speaker: 'VISION', text: "He built himself a throne over the grave he made and never got up again. Call that a god if you want. It's really just a man who ran out of ways to stop hurting." },
+    { type: 'arrive', speaker: 'HUNTER', text: "I've killed a lot of things to get here. This one, I don't think I get to feel good about." },
+    { type: 'arrive', speaker: 'HUNTER', text: "Doesn't mean I stop walking." },
+  ];
+  // Looked up by the theme of the floor being entered, not stored directly
+  // on LEVEL_DEFS — those entries are built before these consts exist.
+  const FLOOR_CUTSCENES = {
+    dungeon: DUNGEON_CUTSCENE, jungle: JUNGLE_CUTSCENE, ice: ICE_CUTSCENE,
+    hell: HELL_CUTSCENE, desert: DESERT_CUTSCENE, throne: THRONE_CUTSCENE,
+  };
+  const VISION_PALETTES = {
+    peace: ['#3a3020', '#6a5838', '#8a7048'],
+    war: ['#2a1414', '#4a1e18', '#5a2a1a'],
+    ritual: ['#1a0a2a', '#3a1650', '#4a2068'],
+    madness: ['#2a0505', '#5a0a0a', '#7a1010'],
+    grief: ['#0a0a14', '#1a1a2a', '#20202e'],
+    void: ['#05010a', '#1a0526', '#2a0a38'],
+  };
   const CUTSCENE_CPS = 30;
   let cutsceneBeat = 0, cutsceneChars = 0, cutsceneIdleT = 0, cutsceneT = 0;
   let activeCutscene = CUTSCENE, cutsceneOnEnd = null;
@@ -2989,6 +3041,12 @@
     if (cutsceneChars < beat.text.length) {
       const prevChars = cutsceneChars;
       if (prevChars === 0 && beat.type === 'zombie') sfx.groan();
+      // Skip the very first beat of a cutscene — initCutscene() already
+      // plays its own opening cue there, and this would double up on it.
+      if (prevChars === 0 && beat.type === 'vision' && cutsceneBeat > 0) {
+        if (beat.tint === 'madness' || beat.tint === 'void' || beat.tint === 'ritual' || beat.tint === 'grief') sfx.groan();
+        else sfx.wave();
+      }
       cutsceneChars = Math.min(beat.text.length, cutsceneChars + CUTSCENE_CPS * dt);
       if (Math.floor(cutsceneChars / 3) > Math.floor(prevChars / 3)) sfx.blip();
     } else {
@@ -3049,6 +3107,45 @@
     }
     ctx.fillStyle = '#0a0a08';
     ctx.fillRect(-14, 4, 28, 26);
+    ctx.restore();
+  }
+
+  // Simple silhouette figures for the backstory 'vision' cutscene beats —
+  // a king, his queen and child, the throne he built, what's left of them
+  // after, and the thing he became.
+  function drawVisionFigure(x, y, kind) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = 'rgba(8,6,8,0.92)';
+    if (kind === 'king') {
+      ctx.fillRect(-7, -34, 14, 34);
+      ctx.beginPath(); ctx.arc(0, -38, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(-8, -46, 16, 4);
+      ctx.fillRect(-6, -51, 3, 6); ctx.fillRect(-1.5, -53, 3, 8); ctx.fillRect(3, -51, 3, 6);
+    } else if (kind === 'queen') {
+      ctx.beginPath();
+      ctx.moveTo(-9, 0); ctx.lineTo(-5, -30); ctx.lineTo(5, -30); ctx.lineTo(9, 0);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, -34, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(-5, -41, 10, 3);
+    } else if (kind === 'child') {
+      ctx.fillRect(-4, -18, 8, 18);
+      ctx.beginPath(); ctx.arc(0, -21, 4, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === 'throne') {
+      ctx.fillRect(-14, -40, 28, 40);
+      ctx.fillRect(-16, -46, 4, 46);
+      ctx.fillRect(12, -46, 4, 46);
+    } else if (kind === 'fallen') {
+      ctx.fillRect(-10, -6, 20, 6);
+      ctx.beginPath(); ctx.arc(-8, -6, 4, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === 'demon') {
+      ctx.fillRect(-9, -44, 18, 44);
+      ctx.beginPath(); ctx.arc(0, -48, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-6, -52); ctx.lineTo(-13, -68); ctx.lineTo(-3, -54); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(6, -52); ctx.lineTo(13, -68); ctx.lineTo(3, -54); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,60,40,0.9)';
+      ctx.fillRect(-4.5, -50, 3, 3); ctx.fillRect(1.5, -50, 3, 3);
+    }
     ctx.restore();
   }
 
@@ -3145,6 +3242,30 @@
 
       ctx.fillStyle = `rgba(255,60,20,${beat.type === 'devil' ? 0.15 : 0.05})`;
       ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    } else if (beat.type === 'vision') {
+      // A dark, era-tinted flashback tableau for the backstory beats —
+      // simple silhouettes against a mood-graded sky, no hunter on screen.
+      const [c0, c1, c2] = VISION_PALETTES[beat.tint] || VISION_PALETTES.grief;
+      const grad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+      grad.addColorStop(0, c0); grad.addColorStop(0.55, c1); grad.addColorStop(1, c2);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, horizon + 70, VIEW_W, VIEW_H - horizon - 70);
+
+      const figs = beat.figures || [];
+      const spacing = VIEW_W / (figs.length + 1);
+      figs.forEach((fig, i) => drawVisionFigure(spacing * (i + 1), horizon + 68, fig));
+
+      if (beat.tint === 'madness' || beat.tint === 'grief' || beat.tint === 'void') {
+        for (let i = 0; i < 10; i++) {
+          const mx = (i * 53 + cutsceneT * 20) % VIEW_W;
+          const my = horizon + 10 + Math.sin(i + cutsceneT) * 20;
+          ctx.fillStyle = 'rgba(200,40,30,0.4)';
+          ctx.fillRect(mx, my, 2, 2);
+        }
+      }
     } else {
       const grad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
       grad.addColorStop(0, '#3a2a4a');

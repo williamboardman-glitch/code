@@ -6,6 +6,14 @@ finally the Demon God's own throne — and gun down whatever's guarding them.
 Every clean kill leaves behind a soul you can load as special ammunition, and
 a wolf pup follows you the whole way, growing fiercer with every kill.
 
+## Story
+
+A cutscene plays on the way into every floor from the dungeon onward,
+piecing together — one carving, one vision, one whispered word at a time —
+what actually happened here: a king, a bargain with something that shouldn't
+have been bargained with, and exactly what he became. It builds to the
+throne room at the very end. Better experienced in order than spoiled here.
+
 ## Bullets & the knife
 
 Normal ammo isn't infinite — you start each run with 100 bullets. Run out
