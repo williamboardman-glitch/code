@@ -186,6 +186,29 @@ button:active { transform: translateY(0); }
   padding: 8px 12px;
 }
 
+.shopItemIcon {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--stone-dark);
+  border-radius: 4px;
+}
+
+.shopItemIcon svg {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+}
+
+.shopItemInfo {
+  flex: 1;
+  min-width: 0;
+}
+
 .shopItemName {
   font-weight: bold;
   color: var(--stone);

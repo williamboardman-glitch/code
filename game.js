@@ -3346,6 +3346,15 @@
   function shopCostMult() { return SHOP_FLOOR_MULT[shopNextLevel] || 1; }
   function scaledCost(base) { return Math.round((base * shopCostMult()) / 5) * 5; }
 
+  // Small pixel-art icons for the shop rows, drawn as plain inline SVG
+  // (no image assets/network requests, matching the rest of the game).
+  const SHOP_ICONS = {
+    heal: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="2" y="4" width="12" height="9" fill="#e8e0c8"/><rect x="2" y="4" width="12" height="9" fill="none" stroke="#2b1d14"/><rect x="6" y="6" width="4" height="5" fill="#c0392b"/><rect x="4" y="8" width="8" height="1" fill="#c0392b"/></svg>',
+    ammo: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="5" y="2" width="6" height="4" fill="#8a5a2a"/><rect x="4" y="6" width="8" height="7" fill="#d9b64a"/><rect x="4" y="13" width="8" height="1" fill="#a67f2e"/></svg>',
+    damage: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><polygon points="6,1 10,1 8,4" fill="#d8d8d8"/><rect x="7" y="4" width="2" height="5" fill="#d8d8d8"/><rect x="7" y="4" width="1" height="5" fill="#fff"/><rect x="4" y="9" width="8" height="2" fill="#8a5a2a"/><rect x="6" y="11" width="4" height="4" fill="#5a3a1a"/></svg>',
+    vitality: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="3" y="3" width="3" height="3" fill="#c0392b"/><rect x="10" y="3" width="3" height="3" fill="#c0392b"/><rect x="2" y="5" width="12" height="4" fill="#c0392b"/><rect x="3" y="9" width="10" height="2" fill="#c0392b"/><rect x="5" y="11" width="6" height="2" fill="#c0392b"/><rect x="7" y="13" width="2" height="1" fill="#c0392b"/></svg>',
+    armor: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="4" y="2" width="8" height="6" fill="#8a94a0"/><rect x="5" y="8" width="6" height="3" fill="#8a94a0"/><rect x="6" y="11" width="4" height="2" fill="#8a94a0"/><rect x="7" y="13" width="2" height="1" fill="#8a94a0"/><rect x="6" y="4" width="4" height="4" fill="#5a6470"/></svg>',
+  };
   const SHOP_ITEMS = [
     {
       key: 'heal', name: 'Field Medic', desc: 'Refill your health to full.',
@@ -3396,6 +3405,9 @@
       const afford = player.score >= cost;
       const row = document.createElement('div');
       row.className = 'shopItem';
+      const icon = document.createElement('div');
+      icon.className = 'shopItemIcon';
+      icon.innerHTML = SHOP_ICONS[item.key] || '';
       const info = document.createElement('div');
       info.className = 'shopItemInfo';
       info.innerHTML = `<div class="shopItemName">${item.name}</div><div class="shopItemDesc">${item.desc}</div>`;
@@ -3410,6 +3422,7 @@
         sfx.checkpoint();
         renderShopUI();
       });
+      row.appendChild(icon);
       row.appendChild(info);
       row.appendChild(btn);
       shopItemsEl.appendChild(row);
