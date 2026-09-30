@@ -104,6 +104,7 @@
     advance: () => tone(440, 0.05, 'square', 0.08, 660),
     knife: () => tone(900, 0.05, 'square', 0.09, 400),
     demonSlash: () => { tone(200, 0.09, 'sawtooth', 0.16, 60); noiseBurst(0.09, 0.12); },
+    slide: () => noiseBurst(0.14, 0.1),
   };
 
   // ---------- Boss music ----------
@@ -329,6 +330,9 @@
   const MOVE_SPEED = 150;
   const JUMP_VELOCITY = -480;
   const MAX_FALL = 620;
+  const SLIDE_SPEED = 260;
+  const SLIDE_DURATION = 0.3;
+  const SLIDE_COOLDOWN = 0.55; // > SLIDE_DURATION so the slide's invuln can't be chained into permanent i-frames
 
   // ---------- State ----------
   let state = 'start'; // start | cutscene | playing | shop | win | dead
@@ -352,6 +356,7 @@
       // doesn't put the boss back in play to be re-earned.
       homingNext: false, shadowHelm: false, helmDmgBonus: 1, knockX: 0, knockTimer: 0,
       usedSpecialThisFloor: false, knifeSwing: 0, demonKnife: false, godDmgBonus: 1,
+      slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
     };
   }
 
@@ -609,6 +614,21 @@
     addMessage(player.x, player.y - 24, 'TRAP SET', '#ffcd3c');
   }
 
+  // A quick, free ground dash — no resource cost, just a cooldown — that
+  // covers distance fast and makes the player briefly invulnerable, useful
+  // for closing gaps or diving straight through incoming fire. Grounded only
+  // so it can't be chained into extra air distance like a third jump.
+  function trySlide() {
+    if (state !== 'playing') return;
+    if (!player.onGround || player.slideTimer > 0 || player.slideCooldown > 0) return;
+    player.slideTimer = SLIDE_DURATION;
+    player.slideCooldown = SLIDE_COOLDOWN;
+    player.slideDir = player.facing;
+    player.slideDustTimer = 0;
+    player.invuln = Math.max(player.invuln, SLIDE_DURATION);
+    sfx.slide();
+  }
+
   function chainLightning(fromEnemy, dmg, excluded, jumpsLeft) {
     if (jumpsLeft <= 0) return;
     const target = findNearestEnemy(fromEnemy.x, fromEnemy.y, 90, excluded);
@@ -831,6 +851,7 @@
     if (state !== 'playing') return;
     if (DIGIT_AMMO[ev.code]) player.ammo = DIGIT_AMMO[ev.code];
     if (ev.code === 'KeyW' || ev.code === 'ArrowUp') player.jumpBuffer = 0.12;
+    if (ev.code === 'ArrowDown' || ev.code === 'KeyS') trySlide();
     if (ev.code === 'KeyR') useSpecialAttack();
     if (ev.code === 'Digit9') placeTrap();
   }
@@ -1063,14 +1084,31 @@
     player.coyote = Math.max(0, player.coyote - dt);
     player.jumpBuffer = Math.max(0, player.jumpBuffer - dt);
     player.shockedTimer = Math.max(0, player.shockedTimer - dt);
+    player.slideTimer = Math.max(0, player.slideTimer - dt);
+    player.slideCooldown = Math.max(0, player.slideCooldown - dt);
+    // Leaving the ground (walking off a ledge) ends the slide immediately —
+    // otherwise its forced speed, locked aim, and invulnerability would carry
+    // into the air for the rest of its duration, turning it into free extra
+    // air distance and i-frames over a pit or incoming attack.
+    if (player.slideTimer > 0 && !player.onGround) player.slideTimer = 0;
 
     const left = held('ArrowLeft', 'KeyA'), right = held('ArrowRight', 'KeyD');
     const up = held('ArrowUp', 'KeyW'), down = held('ArrowDown', 'KeyS');
-    if (left && !right) { player.vx = -MOVE_SPEED; player.facing = -1; }
+    const sliding = player.slideTimer > 0;
+    if (sliding) { player.vx = player.slideDir * SLIDE_SPEED; }
+    else if (left && !right) { player.vx = -MOVE_SPEED; player.facing = -1; }
     else if (right && !left) { player.vx = MOVE_SPEED; player.facing = 1; }
     else player.vx = 0;
 
-    player.aim = up ? -1 : (down && !player.onGround ? 1 : 0);
+    player.aim = sliding ? 0 : up ? -1 : (down && !player.onGround ? 1 : 0);
+
+    if (sliding) {
+      player.slideDustTimer -= dt;
+      if (player.slideDustTimer <= 0) {
+        player.slideDustTimer = 0.05;
+        particles.push({ x: player.x - player.slideDir * 6, y: player.y + player.h / 2 - 2, vx: -player.slideDir * 30, vy: -10, life: 0.25, color: '#cbb98f', size: 2, grav: true });
+      }
+    }
 
     if (player.onGround) { player.coyote = 0.09; player.jumpsUsed = 0; }
     if (player.jumpBuffer > 0 && (player.coyote > 0 || player.jumpsUsed < 2)) {
@@ -2158,10 +2196,14 @@
     const flash = player.hurtFlash > 0;
     const gunUp = player.aim === -1 ? -8 : player.aim === 1 ? 8 : 0;
     const firing = player.fireCooldown > BASE_COOLDOWN - 0.05 && player.knifeSwing <= 0;
+    const sliding = player.slideTimer > 0;
 
     ctx.save();
     ctx.translate(x, y + bob);
     ctx.scale(dir, 1);
+    // Sliding pivots the whole sprite forward around the feet (rather than
+    // the torso) so it reads as diving low into the dash instead of floating.
+    if (sliding) { ctx.translate(0, 13); ctx.rotate(-0.5); ctx.translate(0, -13); }
 
     const legSwing = moving ? Math.sin(player.walkT * 12) * 4 : 0;
     const armSwing = moving ? Math.sin(player.walkT * 12 + Math.PI) * 2 : 0;

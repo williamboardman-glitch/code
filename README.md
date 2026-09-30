@@ -66,6 +66,7 @@ shared or synced anywhere.
 **Keyboard**
 - **← → / A D** — move
 - **↑ / W** — jump (hold for a higher, longer jump — needed to clear the wider pits)
+- **↓ / S** — slide (grounded only): a quick burst of speed in the direction you're facing, with brief invulnerability — good for closing distance or diving through incoming fire. Short cooldown between slides, and walking off a ledge mid-slide cancels it.
 - **Space / X / J** — shoot in the direction you're facing (hold ↑ or ↓ to aim vertically)
 - **1-7** — switch ammo
 - **8** — switch to the knife manually (works anytime, not just when out of bullets)
@@ -73,7 +74,7 @@ shared or synced anywhere.
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 **Mobile (on-screen controls)**
-- **D-pad** (bottom-left) — move / aim up-down / jump
+- **D-pad** (bottom-left) — move / aim up-down / jump / slide (down, while grounded)
 - **FIRE** (bottom-right) — shoot
 - **AMMO** — cycle through ammo types (including the knife)
 - **TRAP** — place a trap (requires a trap charge, and being on the ground)
