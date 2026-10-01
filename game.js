@@ -8,6 +8,11 @@
   const startBtn = document.getElementById('startBtn');
   const restartBtn = document.getElementById('restartBtn');
   const skipCutsceneBtn = document.getElementById('skipCutsceneBtn');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsScreen = document.getElementById('settingsScreen');
+  const volumeSlider = document.getElementById('volumeSlider');
+  const muteBtn = document.getElementById('muteBtn');
+  const settingsCloseBtn = document.getElementById('settingsCloseBtn');
   const shopScreen = document.getElementById('shopScreen');
   const shopScoreEl = document.getElementById('shopScore');
   const shopItemsEl = document.getElementById('shopItems');
@@ -60,9 +65,35 @@
 
   // ---------- Audio ----------
   let actx = null;
+  let masterGain = null;
+  const SETTINGS_KEY = 'templeOfBones_settings_v1';
+  function loadAudioSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return { volume: 0.7, muted: false };
+      const d = JSON.parse(raw);
+      return {
+        volume: typeof d.volume === 'number' ? Math.min(1, Math.max(0, d.volume)) : 0.7,
+        muted: !!d.muted,
+      };
+    } catch (e) { return { volume: 0.7, muted: false }; }
+  }
+  function saveAudioSettings() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(audioSettings)); } catch (e) { /* ignore */ }
+  }
+  const audioSettings = loadAudioSettings();
+  function applyAudioSettings() {
+    if (masterGain) masterGain.gain.value = audioSettings.muted ? 0 : audioSettings.volume;
+  }
   function ensureAudio() {
-    try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); }
-    catch (e) { /* audio isn't essential — never let it block the game from starting */ }
+    try {
+      if (!actx) {
+        actx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = actx.createGain();
+        masterGain.gain.value = audioSettings.muted ? 0 : audioSettings.volume;
+        masterGain.connect(actx.destination);
+      }
+    } catch (e) { /* audio isn't essential — never let it block the game from starting */ }
   }
   function tone(freq, dur, type = 'square', gain = 0.15, glideTo = null) {
     if (!actx) return;
@@ -73,7 +104,7 @@
     if (glideTo) osc.frequency.exponentialRampToValueAtTime(glideTo, actx.currentTime + dur);
     g.gain.setValueAtTime(gain, actx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + dur);
-    osc.connect(g).connect(actx.destination);
+    osc.connect(g).connect(masterGain);
     osc.start(); osc.stop(actx.currentTime + dur);
   }
   function noiseBurst(dur = 0.3, gain = 0.25) {
@@ -86,7 +117,7 @@
     src.buffer = nb;
     const g = actx.createGain();
     g.gain.setValueAtTime(gain, actx.currentTime);
-    src.connect(g).connect(actx.destination);
+    src.connect(g).connect(masterGain);
     src.start();
   }
   const sfx = {
@@ -401,13 +432,16 @@
   const SLIDE_SPEED = 260;
   const SLIDE_DURATION = 0.3;
   const SLIDE_COOLDOWN = 0.55; // > SLIDE_DURATION so the slide's invuln can't be chained into permanent i-frames
+  const ENEMY_DEATH_ANIM = 0.3; // brief collapse+fade instead of vanishing outright
+  const PLAYER_DEATH_ANIM = 1.0; // topple+fade before the game-over screen cuts in
 
   // ---------- State ----------
-  let state = 'start'; // start | cutscene | playing | shop | win | dead
+  let state = 'start'; // start | cutscene | playing | shop | win | dead | dying
   let keys = {};
   let mobileControlsEnabled = false;
   let touchControlsShown = false;
   let autosaveTimer = 0;
+  let settingsOpen = false;
   let player, wolf, enemies, pBullets, eBullets, hazards, particles, messages, camX, respawn, elapsed, shake, levelBanner;
 
   function newPlayer() {
@@ -426,6 +460,7 @@
       homingNext: false, shadowHelm: false, helmDmgBonus: 1, knockX: 0, knockTimer: 0,
       usedSpecialThisFloor: false, knifeSwing: 0, demonKnife: false, godDmgBonus: 1,
       slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
+      deathTimer: 0,
     };
   }
 
@@ -476,7 +511,7 @@
     const e = {
       cfg, x: col * TILE + TILE / 2, y, vx: cfg.speed, vy: 0,
       minX: ext.minCol * TILE + cfg.w / 2 + 2, maxX: (ext.maxCol + 1) * TILE - cfg.w / 2 - 2,
-      hp: cfg.hp, maxHp: cfg.hp, dead: false, hitFlash: 0, walkT: Math.random() * 10,
+      hp: cfg.hp, maxHp: cfg.hp, dead: false, deathTimer: 0, hitFlash: 0, walkT: Math.random() * 10,
       shootTimer: 1 + Math.random() * (cfg.fireRate || 1),
       slowTimer: 0, burnTimer: 0, burnTick: 0, acidTimer: 0, acidTick: 0, speedMult: 1,
       hasteTimer: 0, hasteMult: 1, shriekTimer: 1.5 + Math.random(),
@@ -507,7 +542,12 @@
     sfx.death();
     shakeScreen(10);
     if (player.lives <= 0) {
-      state = 'dead';
+      // Play a short topple-and-fade animation (updatePlayer/drawPlayer)
+      // before cutting to the game-over screen, instead of an instant cut.
+      state = 'dying';
+      player.deathTimer = PLAYER_DEATH_ANIM;
+      player.vy = -200;
+      player.vx = -player.facing * 80;
       // The last save was from before this death and still has full gear —
       // clear it so reloading instead of pressing "Try Again" can't dodge
       // the upgrade/soul wipe that's supposed to be the cost of dying.
@@ -515,7 +555,6 @@
       stopBossMusic();
       endTitle.innerHTML = `${currentLevel().name.toUpperCase()} <span class="accent">CLAIMS YOU</span>`;
       finalStats.textContent = `Score: ${player.score} — Kills: ${player.kills} — All shop gear is gone. You'll wake at the start of this floor.`;
-      gameOverScreen.classList.remove('hidden');
     } else {
       respawnPlayer();
     }
@@ -570,6 +609,7 @@
 
   function killEnemy(e) {
     e.dead = true;
+    e.deathTimer = ENEMY_DEATH_ANIM;
     player.score += e.cfg.points;
     player.kills++;
     player.bullets += 2; // every kill restocks bullets, even a soulless shambler
@@ -990,6 +1030,7 @@
   };
 
   function handleKeyDown(ev) {
+    if (settingsOpen) return; // let the settings panel's own controls (e.g. the volume slider) handle keys
     keys[ev.code] = true;
     if (GAME_KEYS.has(ev.code)) ev.preventDefault();
     if (state === 'cutscene') {
@@ -1174,6 +1215,43 @@
   chooseMobileBtn.addEventListener('click', () => chooseDevice(true));
   chooseDesktopBtn.addEventListener('click', () => chooseDevice(false));
 
+  // ---------- Settings (sound) ----------
+  volumeSlider.value = Math.round(audioSettings.volume * 100);
+  muteBtn.textContent = audioSettings.muted ? '🔇 Unmute' : '🔊 Mute';
+  // Tracks whether opening Settings is the thing that silenced the boss
+  // track, so closing it only resumes music that was actually playing
+  // (rather than ever starting it up on a non-boss floor).
+  let settingsPausedBossMusic = false;
+  settingsBtn.addEventListener('click', () => {
+    ensureAudio();
+    settingsOpen = true;
+    settingsScreen.classList.remove('hidden');
+    if (bossMusicTimer) { stopBossMusic(); settingsPausedBossMusic = true; }
+  });
+  settingsCloseBtn.addEventListener('click', () => {
+    settingsOpen = false;
+    settingsScreen.classList.add('hidden');
+    claimFocus();
+    if (settingsPausedBossMusic) { settingsPausedBossMusic = false; startBossMusic(); }
+  });
+  volumeSlider.addEventListener('input', () => {
+    audioSettings.volume = volumeSlider.value / 100;
+    if (audioSettings.volume > 0 && audioSettings.muted) {
+      audioSettings.muted = false;
+      muteBtn.textContent = '🔊 Mute';
+    }
+    applyAudioSettings();
+  });
+  // Persist only once the user finishes dragging, rather than on every
+  // 'input' tick (which can fire dozens of times per drag).
+  volumeSlider.addEventListener('change', () => saveAudioSettings());
+  muteBtn.addEventListener('click', () => {
+    audioSettings.muted = !audioSettings.muted;
+    muteBtn.textContent = audioSettings.muted ? '🔇 Unmute' : '🔊 Mute';
+    applyAudioSettings();
+    saveAudioSettings();
+  });
+
   // On load, offer to resume a saved run instead of the usual device-choice
   // screen — but only once there's actually a save to offer.
   const pendingSave = loadSave();
@@ -1247,6 +1325,21 @@
   }
 
   function updatePlayer(dt) {
+    if (player.deathTimer > 0) {
+      // Frozen controls, just gravity/knockback settling and the death
+      // animation's own countdown (drawPlayer), until it's time to show
+      // the game-over screen.
+      player.deathTimer = Math.max(0, player.deathTimer - dt);
+      player.hurtFlash = Math.max(0, player.hurtFlash - dt);
+      player.vy = Math.min(MAX_FALL, player.vy + GRAVITY * dt);
+      player.vx *= Math.exp(-4 * dt);
+      moveAndCollide(player, dt);
+      if (player.deathTimer <= 0) {
+        state = 'dead';
+        gameOverScreen.classList.remove('hidden');
+      }
+      return;
+    }
     player.fireCooldown = Math.max(0, player.fireCooldown - dt);
     player.invuln = Math.max(0, player.invuln - dt);
     player.hurtFlash = Math.max(0, player.hurtFlash - dt);
@@ -1351,8 +1444,10 @@
       }
     }
 
-    // fell into a pit
-    if (player.y > VH + 40) { loseLife('fell'); return; }
+    // fell into a pit — gated on 'playing' (matching the goal check below)
+    // so this can't keep re-firing loseLife() every frame once the player
+    // is already dead/dying and sitting below the pit threshold.
+    if (player.y > VH + 40 && state === 'playing') { loseLife('fell'); return; }
 
     // goal
     if (player.x >= GOAL_COL * TILE && state === 'playing') {
@@ -1793,7 +1888,11 @@
 
   function updateEnemies(dt) {
     for (const e of enemies) {
-      if (e.dead) continue;
+      if (e.dead) {
+        if (e.deathTimer > 0) e.deathTimer -= dt;
+        e.hitFlash = Math.max(0, e.hitFlash - dt); // let the on-hit white flash fade instead of freezing for the whole collapse
+        continue;
+      }
       e.hitFlash = Math.max(0, e.hitFlash - dt);
       e.walkT += dt;
       if (e.slowTimer > 0) { e.slowTimer -= dt; if (e.slowTimer <= 0) e.speedMult = 1; }
@@ -2397,10 +2496,15 @@
 
   function drawPlayer() {
     const x = px(player.x - camX), y = px(player.y);
-    if (player.invuln > 0 && Math.floor(elapsed * 20) % 2 === 0) return;
+    const dying = player.deathTimer > 0;
+    if (!dying && player.invuln > 0 && Math.floor(elapsed * 20) % 2 === 0) return;
     const dir = player.facing;
-    const moving = player.onGround && player.vx !== 0;
-    const bob = moving ? Math.sin(player.walkT * 12) * 2 : 0;
+    const moving = !dying && player.onGround && player.vx !== 0;
+    // A slow breathing sway while standing still (grounded, not moving) so
+    // idle isn't a completely frozen pose — the walk cycle already covers
+    // motion while actually moving.
+    const idleBob = (!dying && player.onGround) ? Math.sin(elapsed * 2.2) * 1 : 0;
+    const bob = dying ? 0 : (moving ? Math.sin(player.walkT * 12) * 2 : idleBob);
     const flash = player.hurtFlash > 0;
     const gunUp = player.aim === -1 ? -8 : player.aim === 1 ? 8 : 0;
     const firing = player.fireCooldown > BASE_COOLDOWN - 0.05 && player.knifeSwing <= 0;
@@ -2409,9 +2513,19 @@
     ctx.save();
     ctx.translate(x, y + bob);
     ctx.scale(dir, 1);
-    // Sliding pivots the whole sprite forward around the feet (rather than
-    // the torso) so it reads as diving low into the dash instead of floating.
-    if (sliding) { ctx.translate(0, 13); ctx.rotate(-0.5); ctx.translate(0, -13); }
+    if (dying) {
+      // Topple over and fade out instead of an instant cut to the
+      // game-over screen — pivots around the feet like the slide lean.
+      const t = 1 - player.deathTimer / PLAYER_DEATH_ANIM;
+      ctx.globalAlpha = Math.max(0.15, 1 - t * 0.85);
+      ctx.translate(0, 13 * t);
+      ctx.rotate(1.4 * t);
+    } else if (sliding) {
+      // Sliding pivots the whole sprite forward around the feet (rather
+      // than the torso) so it reads as diving low into the dash instead of
+      // floating.
+      ctx.translate(0, 13); ctx.rotate(-0.5); ctx.translate(0, -13);
+    }
 
     const legSwing = moving ? Math.sin(player.walkT * 12) * 4 : 0;
     const armSwing = moving ? Math.sin(player.walkT * 12 + Math.PI) * 2 : 0;
@@ -2518,7 +2632,7 @@
   function drawWolf(w) {
     const cfg = WOLF_STAGES[wolfStage()];
     const x = px(w.x - camX), y = px(w.y);
-    const bob = w.moving ? Math.sin(elapsed * 10) * 1.5 : 0;
+    const bob = w.moving ? Math.sin(elapsed * 10) * 1.5 : Math.sin(elapsed * 2) * 0.6;
     const facing = w.facing || 1;
     ctx.save();
     ctx.translate(x, y + bob);
@@ -2553,7 +2667,7 @@
   }
 
   function drawEnemy(e) {
-    if (e.dead) return;
+    if (e.dead && e.deathTimer <= 0) return;
     const c = e.cfg;
     const x = px(e.x - camX), y = px(e.y);
     const flash = e.hitFlash > 0;
@@ -2563,6 +2677,14 @@
 
     ctx.save();
     ctx.translate(x, y);
+    if (e.dead) {
+      // Brief collapse-and-fade instead of vanishing outright — the kill's
+      // particle burst (spawnDeathParticles) already fired in killEnemy().
+      const t = 1 - e.deathTimer / ENEMY_DEATH_ANIM;
+      ctx.globalAlpha = Math.max(0, 1 - t);
+      ctx.translate(0, hh * t * 0.6);
+      ctx.rotate((Math.floor(e.x) % 2 === 0 ? 1 : -1) * 1.3 * t);
+    }
 
     // legs (shared base)
     ctx.fillStyle = col(c.dark);
@@ -3755,9 +3877,11 @@
   function loop(now) {
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
-    if (state === 'playing' || state === 'win' || state === 'dead') { update(dt); render(); }
-    else if (state === 'cutscene') { updateCutscene(dt); renderCutscene(); }
-    if (state === 'playing') {
+    if (!settingsOpen) {
+      if (state === 'playing' || state === 'win' || state === 'dead' || state === 'dying') { update(dt); render(); }
+      else if (state === 'cutscene') { updateCutscene(dt); renderCutscene(); }
+    }
+    if (state === 'playing' && !settingsOpen) {
       autosaveTimer += dt;
       if (autosaveTimer >= 10) { autosaveTimer = 0; saveGame(); }
     }

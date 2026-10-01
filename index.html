@@ -10,6 +10,21 @@
   <canvas id="game"></canvas>
 
   <button id="skipCutsceneBtn" class="skipBtn hidden">SKIP ▶</button>
+  <button id="settingsBtn" class="settingsBtn" aria-label="Settings">⚙</button>
+
+  <div id="settingsScreen" class="overlay hidden">
+    <div class="panel">
+      <h1>SETTINGS</h1>
+      <div class="settingsRow">
+        <label for="volumeSlider">Volume</label>
+        <input type="range" id="volumeSlider" min="0" max="100" value="70">
+      </div>
+      <div class="settingsRow">
+        <button id="muteBtn" class="deviceBtn">🔊 Mute</button>
+      </div>
+      <button id="settingsCloseBtn">CLOSE</button>
+    </div>
+  </div>
 
   <div id="resumeScreen" class="overlay hidden">
     <div class="panel">

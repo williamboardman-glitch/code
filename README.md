@@ -64,6 +64,11 @@ Before the game starts you're asked whether you're on a touchscreen device
 or a keyboard (with a best guess pre-filled based on your device) — pick
 one and the matching controls are ready to go.
 
+The ⚙ button (top-right, visible everywhere — menus, cutscenes, and
+mid-run) opens Settings: a volume slider and a mute toggle, saved to your
+browser and applied immediately to every sound effect and the boss music.
+Opening it pauses the game for as long as it's open.
+
 ## Saving & resuming
 
 Progress is saved to your browser automatically — at every checkpoint,

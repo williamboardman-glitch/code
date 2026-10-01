@@ -160,6 +160,53 @@ button:active { transform: translateY(0); }
 
 .skipBtn.hidden { display: none; }
 
+#settingsScreen {
+  /* Must outrank every other overlay (all z-index: 10) since Settings can
+     be opened from on top of any of them (device choice, shop, game over). */
+  z-index: 30;
+}
+
+.settingsBtn {
+  /* Top-right (left of the skip button) rather than top-left, which is
+     where the canvas HUD draws the lives/HP bar — a fixed DOM button there
+     would sit on top of them for the whole run. */
+  position: fixed;
+  top: 16px;
+  right: 96px;
+  z-index: 20;
+  background: rgba(10, 8, 16, 0.55);
+  color: #ead9b8;
+  border: 2px solid rgba(255, 205, 60, 0.6);
+  padding: 6px 12px;
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+.settingsBtn:hover {
+  box-shadow: 0 0 12px rgba(255, 205, 60, 0.5);
+}
+
+.settingsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+.settingsRow label {
+  color: #ead9b8;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.settingsRow input[type="range"] {
+  flex: 1;
+  max-width: 220px;
+  accent-color: var(--gold);
+}
+
 .shopScore {
   font-weight: bold;
   color: var(--gold);
