@@ -185,6 +185,10 @@
   ];
   const GOAL_COL = 68;
   const LEVEL_CHECKPOINTS = [1, 19, 37, 56];
+  // The Dark Jungle's overgrown patches — slow the player while standing in
+  // them. Kept well clear of every gap so a slowed run-up never turns an
+  // already-safe jump into a missed one.
+  const JUNGLE_SLOW_ZONES = [[4, 7], [45, 48]];
 
   let levelIndex = 0;
   // The Guardian's boss room: once you walk past this column while it's
@@ -446,7 +450,7 @@
 
   function newPlayer() {
     return {
-      x: 1 * TILE + TILE / 2, y: (ROWS - 1) * TILE - 13, vx: 0, vy: 0, w: 14, h: 24,
+      x: 1 * TILE + TILE / 2, y: (ROWS - 1) * TILE - 13, vx: 0, vy: 0, groundVx: 0, w: 14, h: 24,
       onGround: false, facing: 1, aim: 0, // aim: -1 up, 0 horizontal, 1 down
       hp: 100, maxHp: 100, lives: 3, score: 0, kills: 0,
       ammo: 'normal', bullets: 100, souls: { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0 },
@@ -472,6 +476,7 @@
     wolf = { x: player.x - 14, y: player.y, biteCooldown: 0 };
     enemies = currentLevel().spawnList.map(([type, col, row]) => spawnEnemy(type, col, row));
     pBullets = []; eBullets = []; hazards = []; particles = []; messages = [];
+    spawnFloorHazards();
     camX = 0; elapsed = 0; shake = { t: 0, mag: 0 };
     levelBanner = { text: '', t: 0 };
     respawn = { x: player.x, y: player.y };
@@ -484,9 +489,10 @@
   function enterLevelEntitiesAt(x, y) {
     enemies = currentLevel().spawnList.map(([type, col, row]) => spawnEnemy(type, col, row));
     pBullets = []; eBullets = []; hazards = []; particles = []; messages = [];
+    spawnFloorHazards();
     camX = 0;
     bossArenaSealed = false;
-    player.x = x; player.y = y; player.vx = 0; player.vy = 0;
+    player.x = x; player.y = y; player.vx = 0; player.vy = 0; player.groundVx = 0;
     player.knockX = 0; player.knockTimer = 0;
     if (wolf) { wolf.x = x - 14; wolf.y = y; } else { wolf = { x: x - 14, y, biteCooldown: 0 }; }
     respawn = { x, y };
@@ -527,7 +533,7 @@
   }
 
   function respawnPlayer() {
-    player.x = respawn.x; player.y = respawn.y; player.vx = 0; player.vy = 0;
+    player.x = respawn.x; player.y = respawn.y; player.vx = 0; player.vy = 0; player.groundVx = 0;
     player.hp = player.maxHp; player.invuln = 1.5;
     player.knockX = 0; player.knockTimer = 0;
     // Unseal the arena so a checkpoint respawn actually leaves the player
@@ -960,10 +966,23 @@
     spawnShockwave(x, y, 'rgba(180,150,255,0.9)', 60);
   }
 
-  // ---------- Hazards (acid puddles, player-placed traps) ----------
+  // ---------- Hazards (acid puddles, player-placed traps, floor hazards) ----------
   function spawnAcidPuddle(x, y, dmgMult = 1) {
     spawnHitParticles(x, y, '#8bc34a');
     hazards.push({ x, y, radius: 20, life: 3, tick: 0.4, dmg: 5 * dmgMult });
+  }
+  // Permanent, floor-specific ground hazards placed once on entering a
+  // level (not tied to any enemy) — currently just Hell's lava pools along
+  // its otherwise-empty walk in to the Arch Demon.
+  function spawnFloorHazards() {
+    if (currentLevel().theme === 'hell') {
+      for (const col of [10, 22, 38, 47, 58]) {
+        hazards.push({
+          x: col * TILE + TILE / 2, y: (ROWS - 1) * TILE - 6,
+          radius: 14, life: Infinity, tick: 0.5, dmg: 6, kind: 'lava',
+        });
+      }
+    }
   }
   function updateHazards(dt) {
     for (const hz of hazards) {
@@ -980,12 +999,13 @@
         continue;
       }
       hz.tick -= dt;
+      const emberColor = hz.kind === 'lava' ? '#ffb347' : '#a8d878';
       if (Math.random() < dt * 4) {
-        particles.push({ x: hz.x + (Math.random() - 0.5) * hz.radius, y: hz.y - 2, vx: 0, vy: -12, life: 0.3, color: '#a8d878', size: 2, grav: false });
+        particles.push({ x: hz.x + (Math.random() - 0.5) * hz.radius, y: hz.y - 2, vx: 0, vy: -12, life: 0.3, color: emberColor, size: 2, grav: false });
       }
       if (hz.tick <= 0 && Math.hypot(player.x - hz.x, player.y - hz.y) < hz.radius + player.w / 2) {
         hurtPlayer(hz.dmg);
-        addMessage(player.x, player.y - 28, `-${hz.dmg}`, '#8bc34a');
+        addMessage(player.x, player.y - 28, `-${hz.dmg}`, emberColor);
         hz.tick = 0.5;
       }
     }
@@ -1375,10 +1395,40 @@
     const left = held('ArrowLeft', 'KeyA'), right = held('ArrowRight', 'KeyD');
     const up = held('ArrowUp', 'KeyW'), down = held('ArrowDown', 'KeyS');
     const sliding = player.slideTimer > 0;
-    if (sliding) { player.vx = player.slideDir * SLIDE_SPEED; }
-    else if (left && !right) { player.vx = -MOVE_SPEED; player.facing = -1; }
-    else if (right && !left) { player.vx = MOVE_SPEED; player.facing = 1; }
-    else player.vx = 0;
+    // The Frozen Temple's floor is slippery — ease toward the target speed
+    // instead of snapping to it, so stopping or turning around takes a
+    // moment of coasting instead of being instant. Top speed is unchanged
+    // (still MOVE_SPEED), so existing gap widths stay just as crossable.
+    const icy = currentLevel().theme === 'ice' && player.onGround;
+    // player.groundVx is the clean, input-derived component of player.vx —
+    // kept separate from knockback (added to vx itself, below) so easing
+    // toward it on ice can't partially re-absorb last frame's knockback and
+    // compound it frame over frame instead of letting knockX decay on its own.
+    if (sliding) {
+      player.vx = player.slideDir * SLIDE_SPEED;
+      player.groundVx = player.vx;
+    } else {
+      const targetVx = left && !right ? -MOVE_SPEED : (right && !left ? MOVE_SPEED : 0);
+      if (targetVx !== 0) player.facing = Math.sign(targetVx);
+      if (icy) {
+        player.groundVx += (targetVx - player.groundVx) * Math.min(1, 7 * dt);
+        // Snap the last sliver of coast to a hard stop — otherwise vx only
+        // asymptotically approaches 0 and never reads as exactly stopped,
+        // leaving the walk animation running in place indefinitely.
+        if (targetVx === 0 && Math.abs(player.groundVx) < 2) player.groundVx = 0;
+      } else {
+        player.groundVx = targetVx;
+      }
+      // The Dark Jungle's overgrown patches slow ordinary ground movement —
+      // not sliding through them (that's meant to power through terrain),
+      // and only at true ground level, not the shared row-6/7 platforms
+      // overlapping the same columns (which have no overgrowth drawn on them).
+      if (player.onGround && player.y > (ROWS - 2) * TILE && currentLevel().theme === 'jungle') {
+        const col = Math.floor(player.x / TILE);
+        if (JUNGLE_SLOW_ZONES.some(([a, b]) => col >= a && col <= b)) player.groundVx *= 0.55;
+      }
+      player.vx = player.groundVx;
+    }
 
     player.aim = sliding ? 0 : up ? -1 : (down && !player.onGround ? 1 : 0);
 
@@ -2414,6 +2464,15 @@
           ctx.fillStyle = glyphColor;
           ctx.fillRect(x + TILE / 2 - 2, y + 8, 4, 10);
         }
+        // thick overgrowth marking the Dark Jungle's slow patches
+        if (jungle && topExposed && r === ROWS - 1 && JUNGLE_SLOW_ZONES.some(([a, b]) => c >= a && c <= b)) {
+          ctx.fillStyle = 'rgba(30,90,40,0.65)';
+          ctx.fillRect(x, y - 4, TILE, 4);
+          ctx.fillStyle = 'rgba(60,160,70,0.5)';
+          ctx.fillRect(x + 4, y - 7, 3, 7);
+          ctx.fillRect(x + 14, y - 9, 3, 9);
+          ctx.fillRect(x + 23, y - 6, 3, 6);
+        }
       }
     }
     // torches (fire in the temple/dungeon, glowing fungus in the jungle,
@@ -3123,6 +3182,14 @@
       ctx.fill();
       return;
     }
+    if (hz.kind === 'lava') {
+      const pulse = 0.55 + Math.sin(elapsed * 3 + hz.x) * 0.15;
+      ctx.fillStyle = `rgba(255,80,20,${pulse})`;
+      ctx.beginPath(); ctx.ellipse(x, y, hz.radius, hz.radius * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(255,200,60,${pulse * 0.8})`;
+      ctx.beginPath(); ctx.ellipse(x, y, hz.radius * 0.5, hz.radius * 0.18, 0, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
     const pct = Math.max(0, hz.life / 3);
     ctx.globalAlpha = 0.55 * pct;
     ctx.fillStyle = '#6b9c3a';
@@ -3179,6 +3246,34 @@
       ctx.fillRect(x - p.size / 2, y - p.size / 2, p.size, p.size);
     }
     ctx.globalAlpha = 1;
+  }
+
+  // Full-scene effects that read as part of the floor itself rather than
+  // any one entity — the Bone Crypt's gloom and the Cursed Desert's blowing
+  // sand. Drawn after everything else but before the HUD, so it darkens/
+  // obscures gameplay without touching the readouts on top of it.
+  function drawThemeOverlay() {
+    const theme = currentLevel().theme;
+    if (theme === 'crypt') {
+      // A torch-lit pool of visibility around the player, pitch dark beyond it.
+      const cx = px(player.x - camX), cy = px(player.y);
+      const grad = ctx.createRadialGradient(cx, cy, 45, cx, cy, 210);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.8)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    } else if (theme === 'desert') {
+      // Drifting sandstorm bands sweeping across the whole view.
+      for (let i = -1; i < 5; i++) {
+        const x = ((i * 160 - (camX * 0.9 + elapsed * 90)) % (VIEW_W + 320) + VIEW_W + 320) % (VIEW_W + 320) - 160;
+        const grad = ctx.createLinearGradient(x, 0, x + 160, 0);
+        grad.addColorStop(0, 'rgba(210,170,255,0)');
+        grad.addColorStop(0.5, 'rgba(210,170,255,0.16)');
+        grad.addColorStop(1, 'rgba(210,170,255,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, 0, 160, VIEW_H);
+      }
+    }
   }
 
   // A row of every fused shot the player currently has charges for — icon
@@ -3365,6 +3460,7 @@
     for (const b of pBullets) drawBullet(b, b.kind);
     for (const b of eBullets) drawBullet(b, b.kind);
     for (const p of particles) drawParticle(p);
+    drawThemeOverlay();
     drawHUD();
     if (player.hurtFlash > 0) {
       ctx.fillStyle = `rgba(180,20,20,${player.hurtFlash * 0.4})`;

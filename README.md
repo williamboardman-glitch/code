@@ -150,17 +150,28 @@ the nearest enemy in range: it permanently halves that target's remaining
 health pool and every point of damage it deals for the rest of the floor.
 It won't land on a target with hyperarmor (e.g. the Guardian mid-nova).
 
+## The Dark Jungle
+
+Floor 3 — thick overgrowth patches near the start and the midpoint slow you
+down while you're standing in them (grounded only; sliding powers straight
+through, and it doesn't touch you mid-jump). Otherwise just a mixed lineup
+of shamblers, brutes, and the game's first ranged casters.
+
 ## The Frozen Temple
 
 Floor 4, right before Hell — a dark, ice-choked ruin with no boss of its
 own, but the heaviest lineup of Frost Priests in the game plus the usual
-mix of shamblers, brutes, and a few imps thrown in. Treat it as the last
-gauntlet before the Arch Demon: stock up at the shop beforehand.
+mix of shamblers, brutes, and a few imps thrown in. The floor itself is
+slippery: letting go of a direction coasts for a moment instead of
+stopping dead, so leave a little extra room near the pits. Treat it as the
+last gauntlet before the Arch Demon: stock up at the shop beforehand.
 
 ## The Arch Demon
 
 Hell is its floor and its floor alone — no lesser zombies share it, just a
-long, empty walk in before the fight. It has 900 HP and cycles between five
+long walk in past a handful of permanent lava pools (periodic burn damage
+while you're standing in one) before the fight. It has 900 HP and cycles
+between five
 attacks, on top of the same channeled nova the Guardian uses (at 50% and
 20% HP) —
 
@@ -182,7 +193,8 @@ burning.
 ## The Cursed Desert
 
 Floor 6 — no boss here either, just a brutal lineup of lesser enemies led
-by Cactus plants that never move but never stop shooting. This is where
+by Cactus plants that never move but never stop shooting, under a
+sandstorm that sweeps hazy bands across the whole floor. This is where
 trap charges start piling up, so it's worth planting a few on the way
 through rather than saving them all for later.
 
@@ -191,8 +203,10 @@ through rather than saving them all for later.
 Floor 7, right before the throne — the mass grave the king built his power
 on, and the hardest lineup of lesser enemies in the game: every zombie type
 that's hunted you so far, all in one floor, with no boss of its own to
-break it up. Treat it as the last gauntlet before the Demon God: stock up
-and craft any fused shots you've been saving for beforehand.
+break it up. The gloom here is real: visibility shrinks to a small circle
+around you, pitch dark beyond it. Treat it as the last gauntlet before the
+Demon God: stock up and craft any fused shots you've been saving for
+beforehand.
 
 ## The Demon God
 
