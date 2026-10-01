@@ -1,10 +1,11 @@
 # Temple of Bones
 
-A pixel-art 2D run-and-gun platformer. Jump across seven crumbling floors —
-temple, dungeon, jungle, a frozen temple, Hell itself, a cursed desert, and
-finally the Demon God's own throne — and gun down whatever's guarding them.
-Every clean kill leaves behind a soul you can load as special ammunition, and
-a wolf pup follows you the whole way, growing fiercer with every kill.
+A pixel-art 2D run-and-gun platformer. Jump across eight crumbling floors —
+temple, dungeon, jungle, a frozen temple, Hell itself, a cursed desert, a
+bone crypt, and finally the Demon God's own throne — and gun down whatever's
+guarding them. Every clean kill leaves behind a soul you can load as special
+ammunition, and a wolf pup follows you the whole way, growing fiercer with
+every kill.
 
 ## Story
 
@@ -37,6 +38,17 @@ trap charge instead of a normal combat soul. Press **9** while grounded to
 plant one at your feet: it arms after a beat, then detonates on the first
 enemy to walk over it for a solid burst of damage. It's a resource, not a
 weapon mode — no aiming, no ammo switch, just drop and walk away.
+
+## Soul Fusion
+
+The supply cache between floors can fuse two of your souls into one: spend
+3 of each to craft 3 charges of a shot that carries **both** souls' on-hit
+effects at once. Berserker + Lightning hits as hard as the heavy shot and
+still chains to nearby enemies; Acid + Pyromancer leaves a burning,
+corrosive puddle; and so on for all 15 pairings of the 6 combat souls.
+Fused shots load into their own slot, separate from the regular ammo row —
+press **0** (or the mobile **FUSE** button) to cycle through whichever ones
+you've crafted.
 
 ## Play
 
@@ -71,6 +83,7 @@ shared or synced anywhere.
 - **1-7** — switch ammo
 - **8** — switch to the knife manually (works anytime, not just when out of bullets)
 - **9** — place a trap (requires a trap charge, and being on the ground)
+- **0** — cycle fused shots (see [Soul Fusion](#soul-fusion))
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 **Mobile (on-screen controls)**
@@ -78,6 +91,7 @@ shared or synced anywhere.
 - **FIRE** (bottom-right) — shoot
 - **AMMO** — cycle through ammo types (including the knife)
 - **TRAP** — place a trap (requires a trap charge, and being on the ground)
+- **FUSE** — cycle fused shots (see [Soul Fusion](#soul-fusion))
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 ## Enemies & souls
@@ -96,7 +110,7 @@ shared or synced anywhere.
 | Cactus | Rooted in place, throws spike volleys | Trap charge | Place a trap with key 9 (see [Traps](#traps)) |
 | The Guardian | Floor 2's boss (see below) | — | Drops the Shadow Helm on death (+10% damage) instead of a soul |
 | The Arch Demon | Floor 5's boss, alone on its whole floor (see below) | — | Drops the Demon Knife on death — upgrades your bullets-out knife into a burning dash strike |
-| The Demon God | Floor 7's boss, the true final fight (see below) | — | Grants a permanent +20% damage bonus on death |
+| The Demon God | Floor 8's boss, the true final fight (see below) | — | Grants a permanent +20% damage bonus on death |
 
 Souls are consumed one per special shot; specials require harvesting the
 matching zombie type first. See [Bullets & the knife](#bullets--the-knife)
@@ -154,10 +168,18 @@ burning.
 
 ## The Cursed Desert
 
-Floor 6 — no boss here either, just the hardest lineup of lesser enemies in
-the game, led by Cactus plants that never move but never stop shooting.
-This is where trap charges start piling up, so it's worth planting a few on
-the way through rather than saving them all for later.
+Floor 6 — no boss here either, just a brutal lineup of lesser enemies led
+by Cactus plants that never move but never stop shooting. This is where
+trap charges start piling up, so it's worth planting a few on the way
+through rather than saving them all for later.
+
+## The Bone Crypt
+
+Floor 7, right before the throne — the mass grave the king built his power
+on, and the hardest lineup of lesser enemies in the game: every zombie type
+that's hunted you so far, all in one floor, with no boss of its own to
+break it up. Treat it as the last gauntlet before the Demon God: stock up
+and craft any fused shots you've been saving for beforehand.
 
 ## The Demon God
 
@@ -186,10 +208,12 @@ Alpha Wolf → **Fenrir**, fully grown at 300 kills.
 ## Shop
 
 Between floors, spend your score at the supply cache on healing, ammo
-refills, and permanent damage/health/armor upgrades. Prices climb both with
-repeated purchases of the same upgrade and with how deep you are — every
-floor's cache after the temple's charges more than the last, and the Demon
-God's throne is the steepest of all.
+refills, and permanent damage/health/armor upgrades — or roll out the
+Combine Souls panel to fuse your souls together (see
+[Soul Fusion](#soul-fusion)). Prices climb both with repeated purchases of
+the same upgrade and with how deep you are — every floor's cache after the
+temple's charges more than the last, and the Demon God's throne is the
+steepest of all.
 
 You have 3 lives and respawn at the last torch-lit checkpoint you passed.
 Falling into a pit costs a life instantly, however much HP you have left.

@@ -38,7 +38,7 @@
   <div id="startScreen" class="overlay hidden">
     <div class="panel">
       <h1>TEMPLE <span class="accent">OF BONES</span></h1>
-      <p class="lore">A sunken temple, cracked open after a thousand years — and the dead inside never stopped guarding it. Run, jump, and shoot your way through seven floors — temple, dungeon, jungle, a frozen temple, Hell itself, a cursed desert, and finally the Demon God's own throne — to reach whatever's waiting at the bottom. You start with 100 bullets; run dry and you're down to a knife until your next kill — any kill, even a shambler — restocks two more, or switch to the knife on purpose anytime with key 8. Every zombie you drop leaves a soul behind, and a soul loaded in your gun is not the same as a bullet. Floor two's exit is sealed behind the Guardian — walk into its arena and the way back shuts until one of you falls. Beat it, and you claim its shadow helm, which also unlocks Wither: a once-per-floor curse that halves a target's remaining health and the damage it deals. A wolf pup follows you from the start and grows fiercer with every kill, fully grown into Fenrir after 300. Hell belongs to one thing alone: the Arch Demon commands the entire floor, with no lesser zombies to hide behind. Beat it and your knife is reforged into the Demon Knife, trading its stationary swipe for a burning dash strike. Past Hell, a cursed desert's rooted Cacti drop trap charges instead of souls — plant one with key 9 and let it do the work. At the very end, the Demon God waits alone on its own throne, and falling it for good grants a permanent damage boost and ends the run. Between floors, spend what you've looted at the supply cache — though it charges more the deeper you go.</p>
+      <p class="lore">A sunken temple, cracked open after a thousand years — and the dead inside never stopped guarding it. Run, jump, and shoot your way through eight floors — temple, dungeon, jungle, a frozen temple, Hell itself, a cursed desert, a bone crypt, and finally the Demon God's own throne — to reach whatever's waiting at the bottom. You start with 100 bullets; run dry and you're down to a knife until your next kill — any kill, even a shambler — restocks two more, or switch to the knife on purpose anytime with key 8. Every zombie you drop leaves a soul behind, and a soul loaded in your gun is not the same as a bullet — the supply cache between floors can even fuse two souls together into a single shot that carries both their effects. Floor two's exit is sealed behind the Guardian — walk into its arena and the way back shuts until one of you falls. Beat it, and you claim its shadow helm, which also unlocks Wither: a once-per-floor curse that halves a target's remaining health and the damage it deals. A wolf pup follows you from the start and grows fiercer with every kill, fully grown into Fenrir after 300. Hell belongs to one thing alone: the Arch Demon commands the entire floor, with no lesser zombies to hide behind. Beat it and your knife is reforged into the Demon Knife, trading its stationary swipe for a burning dash strike. Past Hell, a cursed desert's rooted Cacti drop trap charges instead of souls — plant one with key 9 and let it do the work. Beyond the desert lies the crypt where the king buried everyone he destroyed — the hardest lineup of lesser horrors in the game. At the very end, the Demon God waits alone on its own throne, and falling it for good grants a permanent damage boost and ends the run. Between floors, spend what you've looted at the supply cache — though it charges more the deeper you go.</p>
       <div class="soulKeyLegend">
         <div class="legendRow"><span class="swatch grunt"></span> Shambler — fodder, no soul</div>
         <div class="legendRow"><span class="swatch brute"></span> Brute — soul loads a <b>heavy 3x-damage shot</b></div>
@@ -57,6 +57,7 @@
         <div><b>Ammo:</b> Keys 1-7</div>
         <div><b>Knife:</b> Key 8 (switch to melee anytime, not just when out of bullets)</div>
         <div><b>Trap:</b> Key 9 (requires a trap charge and being grounded)</div>
+        <div><b>Fused shot:</b> Key 0 (cycles fused shots crafted at the supply cache)</div>
         <div><b>Wither:</b> R (once per floor, unlocked by the Shadow Helm)</div>
       </div>
       <button id="startBtn">ENTER THE TEMPLE</button>
@@ -77,6 +78,12 @@
       <p class="lore">Spend what you looted before the next floor. Prices climb the more you lean on one upgrade, and steeper again the deeper you go.</p>
       <div id="shopScore" class="shopScore"></div>
       <div id="shopItems" class="shopItems"></div>
+      <div id="comboToggle" class="comboToggle">⚗ COMBINE SOULS ▾</div>
+      <div id="comboPanel" class="comboPanel collapsed">
+        <p class="comboHint">Fuse two souls (3 of each) into 3 charges of a shot that carries both their effects.</p>
+        <div id="comboSoulCounts" class="comboSoulCounts"></div>
+        <div id="comboItems" class="comboItems"></div>
+      </div>
       <button id="shopContinueBtn">CONTINUE</button>
     </div>
   </div>
@@ -94,6 +101,7 @@
       <div class="tcSecondary">
         <button id="tcWither" class="tcBtn tcSmall" aria-label="Wither">R</button>
         <button id="tcTrap" class="tcBtn tcSmall" aria-label="Place trap">TRAP</button>
+        <button id="tcCombo" class="tcBtn tcSmall" aria-label="Switch fused shot">FUSE</button>
       </div>
       <button id="tcAmmo" class="tcBtn tcSmall" aria-label="Switch ammo">AMMO</button>
       <button id="tcShoot" class="tcBtn tcShoot" aria-label="Shoot">FIRE</button>

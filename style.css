@@ -240,6 +240,135 @@ button:active { transform: translateY(0); }
   transform: none;
 }
 
+/* ---------- Soul fusion panel (rolls out below the shop list) ---------- */
+.comboToggle {
+  cursor: pointer;
+  text-align: center;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: var(--gold);
+  padding: 8px;
+  margin-bottom: 8px;
+  border: 1px solid var(--stone-dark);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  user-select: none;
+}
+
+.comboToggle:hover {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.comboPanel {
+  overflow: hidden;
+  max-height: 2000px;
+  opacity: 1;
+  margin-bottom: 18px;
+  transition: max-height 0.35s ease, opacity 0.25s ease, margin-bottom 0.35s ease;
+}
+
+.comboPanel.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+}
+
+.comboHint {
+  font-size: 0.8em;
+  color: #b9c2bd;
+  margin: 0 0 10px;
+  text-align: left;
+}
+
+.comboSoulCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 0.78em;
+}
+
+.comboSoulChip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #ead9b8;
+}
+
+.comboSoulChip .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.comboItems {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.comboItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--stone-dark);
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+.comboItemIcon {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--stone-dark);
+  border-radius: 4px;
+}
+
+.comboItemIcon svg {
+  width: 22px;
+  height: 22px;
+  image-rendering: pixelated;
+}
+
+.comboItemInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.comboItemName {
+  font-weight: bold;
+  color: var(--stone);
+  font-size: 0.85em;
+}
+
+.comboItemDesc {
+  color: #b9c2bd;
+  font-size: 0.72em;
+}
+
+.comboItemCount {
+  font-size: 0.72em;
+  color: #8a9a8a;
+  margin-top: 2px;
+}
+
+.comboBuyBtn {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  font-size: 0.75em;
+  min-width: 72px;
+}
+
 .deviceGuess {
   font-size: 0.85em;
   color: #b9c2bd;

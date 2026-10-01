@@ -12,6 +12,10 @@
   const shopScoreEl = document.getElementById('shopScore');
   const shopItemsEl = document.getElementById('shopItems');
   const shopContinueBtn = document.getElementById('shopContinueBtn');
+  const comboToggleEl = document.getElementById('comboToggle');
+  const comboPanelEl = document.getElementById('comboPanel');
+  const comboSoulCountsEl = document.getElementById('comboSoulCounts');
+  const comboItemsEl = document.getElementById('comboItems');
   const deviceScreen = document.getElementById('deviceScreen');
   const deviceGuessEl = document.getElementById('deviceGuess');
   const chooseMobileBtn = document.getElementById('chooseMobileBtn');
@@ -232,6 +236,44 @@
     shadow: { label: 'PULL', color: '#8a6fd1' },
     trap: { label: 'TRAP', color: '#ffcd3c' },
   };
+
+  // ---------- Soul fusion (combining two souls into a fused shot) ----------
+  // Every pair of the 6 combat souls (trap isn't a shot, so it's excluded)
+  // can be fused in the shop into a shot that carries both components'
+  // on-hit effects at once — e.g. berserker+lightning hits hard AND chains.
+  const SOUL_KEYS = ['berserker', 'pyromancer', 'frost', 'lightning', 'acid', 'shadow'];
+  const SOUL_NAMES = {
+    berserker: 'Berserker', pyromancer: 'Pyromancer', frost: 'Frost',
+    lightning: 'Lightning', acid: 'Acid', shadow: 'Shadow',
+  };
+  const TRAIT_DMG = { berserker: 3, pyromancer: 1, frost: 0.7, lightning: 1.2, acid: 0.75, shadow: 0.5 };
+  const TRAIT_PHRASE = {
+    berserker: 'heavy damage', pyromancer: 'fire blast + burn', frost: 'freezing AoE slow',
+    lightning: 'chain lightning', acid: 'corrosive puddle', shadow: 'pull + homing',
+  };
+  const COMBO_COST = 3;
+  const COMBO_YIELD = 3;
+  // Every unordered pair of souls, e.g. "berserker+lightning" — generated
+  // once so the shop panel, HUD, and ammo-cycling all agree on the same
+  // fixed list and canonical key order.
+  const COMBO_LIST = [];
+  for (let i = 0; i < SOUL_KEYS.length; i++) {
+    for (let j = i + 1; j < SOUL_KEYS.length; j++) COMBO_LIST.push(`${SOUL_KEYS[i]}+${SOUL_KEYS[j]}`);
+  }
+  // A simple diagonal two-tone badge (plus a white fusion spark) built from
+  // the pair's own soul colors — covers all 15 combos without needing a
+  // bespoke hand-drawn icon for each one.
+  function comboIconSVG(colorA, colorB) {
+    return `<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><polygon points="0,0 16,0 0,16" fill="${colorA}"/><polygon points="16,0 16,16 0,16" fill="${colorB}"/><rect x="6" y="6" width="4" height="4" fill="#fff"/></svg>`;
+  }
+  function tryCombine(a, b) {
+    if (player.souls[a] < COMBO_COST || player.souls[b] < COMBO_COST) return;
+    player.souls[a] -= COMBO_COST;
+    player.souls[b] -= COMBO_COST;
+    const key = `${a}+${b}`;
+    player.combos[key] = (player.combos[key] || 0) + COMBO_YIELD;
+    sfx.checkpoint();
+  }
   const LEVEL1_SPAWN = [
     ['grunt', 3, 8], ['grunt', 9, 8],
     ['brute', 12, 8], ['grunt', 8, 6],
@@ -314,6 +356,25 @@
   const THRONE_SPAWN = [
     ['demongod', 64, 8],
   ];
+  // The mass grave the king built his throne over — the hardest mix of
+  // lesser enemies in the game, one last gauntlet of everything that's
+  // hunted the player so far before the throne room itself.
+  const CRYPT_SPAWN = [
+    ['grunt', 3, 8], ['shadow', 5, 8], ['grunt', 7, 8], ['brute', 9, 8],
+    ['lightning', 8, 6], ['grunt', 11, 8], ['acid', 12, 8], ['frost', 16, 8],
+    ['brute', 17, 8], ['shrieker', 18, 8], ['imp', 19, 8],
+    ['cactus', 20, 6], ['imp', 22, 6], ['pyro', 24, 8], ['brute', 26, 8],
+    ['shadow', 27, 8], ['grunt', 28, 8], ['lightning', 29, 8],
+    ['acid', 30, 8], ['cactus', 31, 8], ['brute', 34, 7], ['frost', 35, 7],
+    ['grunt', 36, 8], ['shrieker', 37, 8], ['shadow', 39, 8], ['acid', 40, 8],
+    ['brute', 41, 6], ['imp', 42, 6], ['lightning', 43, 6],
+    ['cactus', 44, 8], ['grunt', 45, 8], ['brute', 46, 8], ['pyro', 47, 8],
+    ['frost', 48, 8], ['acid', 49, 8], ['grunt', 50, 8], ['lightning', 51, 8],
+    ['shrieker', 54, 8], ['brute', 55, 8], ['shadow', 56, 8], ['cactus', 57, 8],
+    ['imp', 58, 6], ['imp', 59, 6], ['grunt', 60, 6],
+    ['brute', 61, 8], ['lightning', 62, 8], ['acid', 63, 8], ['frost', 64, 8],
+    ['brute', 65, 8], ['shadow', 66, 8], ['pyro', 67, 8],
+  ];
   const LEVEL_DEFS = [
     { theme: 'temple', name: 'Temple of Bones', spawnList: LEVEL1_SPAWN },
     { theme: 'dungeon', name: 'The Dark Dungeon', spawnList: LEVEL2_SPAWN, hasBoss: true },
@@ -321,6 +382,7 @@
     { theme: 'ice', name: 'The Frozen Temple', spawnList: ICE_SPAWN },
     { theme: 'hell', name: 'The Burning Hell', spawnList: HELL_SPAWN, hasBoss: true },
     { theme: 'desert', name: 'The Cursed Desert', spawnList: DESERT_SPAWN },
+    { theme: 'crypt', name: 'The Bone Crypt', spawnList: CRYPT_SPAWN },
     { theme: 'throne', name: "The Demon God's Throne", spawnList: THRONE_SPAWN, hasBoss: true },
   ];
 
@@ -348,6 +410,7 @@
       onGround: false, facing: 1, aim: 0, // aim: -1 up, 0 horizontal, 1 down
       hp: 100, maxHp: 100, lives: 3, score: 0, kills: 0,
       ammo: 'normal', bullets: 100, souls: { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0 },
+      combos: {},
       fireCooldown: 0, invuln: 0, coyote: 0, jumpBuffer: 0, jumpsUsed: 0, walkT: 0, hurtFlash: 0,
       shockedTimer: 0, blockMsgCooldown: 0, won: false,
       dmgMult: 1, armor: 0, upgrades: { damage: 0, vitality: 0, armor: 0 },
@@ -462,6 +525,7 @@
     player.maxHp = 100;
     player.upgrades = { damage: 0, vitality: 0, armor: 0 };
     player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0 };
+    player.combos = {};
     player.ammo = 'normal';
     player.bullets = 100;
     player.lives = 3;
@@ -629,6 +693,21 @@
     sfx.slide();
   }
 
+  // Cycles ammo through whichever fused combos the player currently has
+  // charges for (key 0 / the mobile FUSE button) — separate from the
+  // Digit1-8 base-ammo row since combos are crafted, not fixed slots.
+  function cycleComboAmmo() {
+    const owned = COMBO_LIST.filter(k => (player.combos[k] || 0) > 0);
+    if (owned.length === 0) {
+      addMessage(player.x, player.y - 24, 'NO FUSED SHOTS', '#c9b98f');
+      sfx.empty();
+      return;
+    }
+    const curKey = player.ammo.startsWith('combo:') ? player.ammo.slice(6) : null;
+    const idx = owned.indexOf(curKey);
+    player.ammo = 'combo:' + owned[(idx + 1) % owned.length];
+  }
+
   function chainLightning(fromEnemy, dmg, excluded, jumpsLeft) {
     if (jumpsLeft <= 0) return;
     const target = findNearestEnemy(fromEnemy.x, fromEnemy.y, 90, excluded);
@@ -638,6 +717,48 @@
     excluded.push(target);
     chainLightning(target, dmg * 0.7, excluded, jumpsLeft - 1);
   }
+
+  // Fused ammo carries both souls' on-hit traits at once (main damage is
+  // already applied by the caller) — e.g. berserker+lightning hits hard
+  // AND chains, acid+pyromancer leaves a puddle AND splashes burning fire.
+  function applyComboEffects(b, primaryEnemy) {
+    const parts = [b.comboA, b.comboB];
+    const x = b.x, y = b.y;
+    if (parts.includes('pyromancer')) {
+      spawnExplosionParticles(x, y, ['#ff9d3d', '#ffe27a']);
+      spawnShockwave(x, y, 'rgba(255,120,40,0.7)', 45);
+      // primaryEnemy already took the main hit from the caller, so only
+      // splash-damage the others in range — everyone in range still burns.
+      for (const o of enemies) {
+        if (o.dead || Math.hypot(o.x - x, o.y - y) >= 45) continue;
+        if (o !== primaryEnemy) applyDamage(o, b.dmg);
+        if (!o.dead) { o.burnTimer = 2.5; o.burnTick = 0.5; }
+      }
+    }
+    if (parts.includes('frost')) {
+      applyFrost(primaryEnemy);
+      for (const o of enemies) if (!o.dead && o !== primaryEnemy && Math.hypot(o.x - x, o.y - y) < 40) applyFrost(o);
+    }
+    if (parts.includes('lightning')) chainLightning(primaryEnemy, b.dmg * 0.6, [primaryEnemy], 2);
+    if (parts.includes('acid')) {
+      primaryEnemy.acidTimer = 2.5; primaryEnemy.acidTick = 0.4;
+      spawnAcidPuddle(x, y);
+    }
+    if (parts.includes('shadow')) {
+      for (const o of enemies) {
+        if (o.dead) continue;
+        const d = Math.hypot(o.x - x, o.y - y);
+        if (d < 90 && d > 1) o.x += (x - o.x) * 0.55;
+      }
+      player.homingNext = true;
+      spawnShockwave(x, y, 'rgba(122,95,201,0.8)', 40);
+    }
+    if (parts.includes('berserker')) {
+      // Matches standalone berserker ammo: a flat splash on top of the
+      // primary's already-applied heavy hit (see shoot()/updateBullets).
+      explode(x, y, 60, 20, { palette: ['#ffe98a', '#fff5cc'], ringColor: 'rgba(255,220,140,0.95)' });
+    }
+  }
   function spawnLightningArc(x1, y1, x2, y2) {
     particles.push({ x: x1, y: y1, x2, y2, vx: 0, vy: 0, life: 0.15, maxLife: 0.15, color: '#d8c7ff', shape: 'arc', grav: false });
   }
@@ -646,7 +767,13 @@
     if (player.fireCooldown > 0 || player.shockedTimer > 0) return;
     let ammo = player.ammo;
     if (ammo === 'knife') { knifeAttack(); return; }
-    if (ammo !== 'normal' && player.souls[ammo] <= 0) {
+    if (ammo.startsWith('combo:')) {
+      if ((player.combos[ammo.slice(6)] || 0) <= 0) {
+        addMessage(player.x, player.y - 24, 'NO FUSED SHOTS', '#c9b98f');
+        sfx.empty();
+        ammo = 'normal'; player.ammo = 'normal';
+      }
+    } else if (ammo !== 'normal' && player.souls[ammo] <= 0) {
       addMessage(player.x, player.y - 24, 'NO SOULS', '#c9b98f');
       sfx.empty();
       ammo = 'normal'; player.ammo = 'normal';
@@ -696,6 +823,13 @@
     } else if (ammo === 'shadow') {
       player.souls.shadow--; sfx.frost();
       pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'shadow', dmg: dmg * 0.5, homing });
+    } else if (ammo.startsWith('combo:')) {
+      const comboKey = ammo.slice(6);
+      const [a, b] = comboKey.split('+');
+      player.combos[comboKey]--;
+      sfx.heavyShot();
+      const mult = ((TRAIT_DMG[a] + TRAIT_DMG[b]) / 2) * 1.3;
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'combo', comboA: a, comboB: b, dmg: dmg * mult, homing });
     }
   }
 
@@ -828,7 +962,7 @@
 
   const GAME_KEYS = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
-    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
+    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
   ]);
 
   // Single source of truth for the Digit1-8 ammo hotkeys, also reused by the
@@ -854,6 +988,7 @@
     if (ev.code === 'ArrowDown' || ev.code === 'KeyS') trySlide();
     if (ev.code === 'KeyR') useSpecialAttack();
     if (ev.code === 'Digit9') placeTrap();
+    if (ev.code === 'Digit0') cycleComboAmmo();
   }
   function handleKeyUp(ev) {
     keys[ev.code] = false;
@@ -870,13 +1005,17 @@
   // Progress is saved at each checkpoint, floor transition, and respawn (plus
   // a periodic autosave for score/kills/upgrades between checkpoints) so
   // closing and reopening the page can offer to pick back up from there.
-  const SAVE_KEY = 'templeOfBones_save_v1';
+  // Bumped to v2 when the Bone Crypt floor was inserted before the throne —
+  // an old save's levelIndex would otherwise silently resolve to the wrong
+  // floor (everything from the crypt onward shifted up by one), so a save
+  // written by the previous floor layout must not be reused as-is.
+  const SAVE_KEY = 'templeOfBones_save_v2';
 
   function saveGame() {
     if (state !== 'playing') return;
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        v: 1,
+        v: 2,
         levelIndex,
         mobileControlsEnabled,
         respawn: { x: respawn.x, y: respawn.y },
@@ -885,6 +1024,7 @@
           score: player.score, kills: player.kills,
           ammo: player.ammo, bullets: player.bullets,
           souls: { ...player.souls },
+          combos: { ...player.combos },
           dmgMult: player.dmgMult, armor: player.armor,
           upgrades: { ...player.upgrades },
           shadowHelm: player.shadowHelm, helmDmgBonus: player.helmDmgBonus,
@@ -900,7 +1040,7 @@
       if (!raw) return null;
       const data = JSON.parse(raw);
       if (
-        !data || data.v !== 1 || !LEVEL_DEFS[data.levelIndex] ||
+        !data || data.v !== 2 || !LEVEL_DEFS[data.levelIndex] ||
         !data.respawn || typeof data.respawn.x !== 'number' || typeof data.respawn.y !== 'number' ||
         !data.player || typeof data.player !== 'object'
       ) return null;
@@ -922,6 +1062,7 @@
     player = newPlayer();
     Object.assign(player, save.player);
     player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0, ...save.player.souls };
+    player.combos = { ...save.player.combos };
     player.upgrades = { damage: 0, vitality: 0, armor: 0, ...save.player.upgrades };
     elapsed = 0; shake = { t: 0, mag: 0 };
     enterLevelEntitiesAt(save.respawn.x, save.respawn.y);
@@ -983,6 +1124,14 @@
     releaseKey('Digit9');
   });
   tcTrapBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+  const tcComboBtn = document.getElementById('tcCombo');
+  tcComboBtn.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    pressKey('Digit0');
+    releaseKey('Digit0');
+  });
+  tcComboBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
   const tcAmmoBtn = document.getElementById('tcAmmo');
   tcAmmoBtn.addEventListener('pointerdown', (ev) => {
@@ -1766,6 +1915,9 @@
             }
             player.homingNext = true;
             spawnShockwave(b.x, b.y, 'rgba(122,95,201,0.8)', 40);
+          } else if (b.kind === 'combo') {
+            applyDamage(e, b.dmg);
+            applyComboEffects(b, e);
           } else applyDamage(e, b.dmg);
           b.dead = true;
           break;
@@ -1905,6 +2057,10 @@
       grad.addColorStop(0, '#180f28');
       grad.addColorStop(0.55, '#4a2f3a');
       grad.addColorStop(1, '#8a6a3a');
+    } else if (theme === 'crypt') {
+      grad.addColorStop(0, '#050505');
+      grad.addColorStop(0.55, '#1a1612');
+      grad.addColorStop(1, '#332c22');
     } else if (theme === 'throne') {
       grad.addColorStop(0, '#05010a');
       grad.addColorStop(0.55, '#1a0526');
@@ -1947,6 +2103,12 @@
       ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 19, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = 'rgba(160,90,210,0.14)';
       ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 46, 0, Math.PI * 2); ctx.fill();
+    } else if (theme === 'crypt') {
+      // a pale, bone-white moon over the grave
+      ctx.fillStyle = 'rgba(230,220,200,0.85)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 16, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(230,220,200,0.12)';
+      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 44, 0, Math.PI * 2); ctx.fill();
     } else if (theme === 'throne') {
       // a watching violet eye where a sun or moon should be
       ctx.fillStyle = 'rgba(192,74,255,0.95)';
@@ -1961,7 +2123,7 @@
 
     // distant pillars / tree trunks / spires (parallax)
     const parallax = camX * 0.4;
-    ctx.fillStyle = theme === 'dungeon' ? 'rgba(20,15,30,0.6)' : theme === 'jungle' ? 'rgba(5,20,10,0.65)' : theme === 'hell' ? 'rgba(40,10,5,0.7)' : theme === 'ice' ? 'rgba(15,35,50,0.7)' : theme === 'desert' ? 'rgba(60,40,30,0.6)' : theme === 'throne' ? 'rgba(20,5,30,0.75)' : 'rgba(60,110,90,0.35)';
+    ctx.fillStyle = theme === 'dungeon' ? 'rgba(20,15,30,0.6)' : theme === 'jungle' ? 'rgba(5,20,10,0.65)' : theme === 'hell' ? 'rgba(40,10,5,0.7)' : theme === 'ice' ? 'rgba(15,35,50,0.7)' : theme === 'desert' ? 'rgba(60,40,30,0.6)' : theme === 'crypt' ? 'rgba(35,30,25,0.65)' : theme === 'throne' ? 'rgba(20,5,30,0.75)' : 'rgba(60,110,90,0.35)';
     for (let i = -1; i < 8; i++) {
       const x = i * 140 - (parallax % 140);
       ctx.fillRect(px(x), VIEW_H - 160, 26, 160);
@@ -1980,6 +2142,10 @@
       } else if (theme === 'desert') {
         // rounded, wind-worn dune caps
         ctx.beginPath(); ctx.ellipse(px(x) + 13, VIEW_H - 166, 24, 14, 0, 0, Math.PI * 2); ctx.fill();
+      } else if (theme === 'crypt') {
+        // a mound of piled skulls capping each pillar
+        ctx.beginPath(); ctx.ellipse(px(x) + 13, VIEW_H - 168, 22, 16, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(px(x) + 3, VIEW_H - 178, 20, 10);
       } else if (theme === 'throne') {
         // jagged obsidian spire
         ctx.beginPath();
@@ -2029,6 +2195,14 @@
         ctx.fillStyle = `rgba(${180 + (i % 3) * 20},${60 + (i % 3) * 20},255,0.7)`;
         ctx.fillRect(px(x), y, 2, 2);
       }
+    } else if (theme === 'crypt') {
+      // drifting bone dust
+      for (let i = -1; i < 14; i++) {
+        const x = (i * 68 - (camX * 0.6 % 68));
+        const y = (elapsed * 9 + i * 37) % VIEW_H;
+        ctx.fillStyle = 'rgba(220,210,190,0.35)';
+        ctx.fillRect(px(x), y, 2, 2);
+      }
     } else if (theme === 'jungle') {
       // drifting fireflies
       for (let i = -1; i < 14; i++) {
@@ -2066,14 +2240,15 @@
     const hell = theme === 'hell';
     const ice = theme === 'ice';
     const desert = theme === 'desert';
+    const crypt = theme === 'crypt';
     const throne = theme === 'throne';
     const arenaBoss = currentLevel().hasBoss ? enemies.find(e => e.cfg.isBoss) : null;
     const arenaRgb = hexToRgbTriplet((arenaBoss && arenaBoss.cfg.hudColor) || '#a78bfa');
-    const topColor = dungeon ? '#4a4258' : jungle ? '#3a4a2a' : hell ? '#3a1408' : ice ? '#3a5a68' : desert ? '#a68a4a' : throne ? '#2a0a38' : '#f2d99b';
-    const sideColor = dungeon ? '#241f30' : jungle ? '#1c2814' : hell ? '#1a0a04' : ice ? '#16262e' : desert ? '#5a4a26' : throne ? '#150420' : '#c9a361';
-    const edgeColor = dungeon ? 'rgba(10,8,16,0.5)' : jungle ? 'rgba(5,10,5,0.5)' : hell ? 'rgba(0,0,0,0.6)' : ice ? 'rgba(5,15,20,0.6)' : desert ? 'rgba(40,25,10,0.5)' : throne ? 'rgba(5,0,10,0.6)' : 'rgba(120,85,40,0.35)';
-    const highlightColor = dungeon ? 'rgba(167,139,250,0.15)' : jungle ? 'rgba(140,255,120,0.12)' : hell ? 'rgba(255,120,40,0.25)' : ice ? 'rgba(200,240,255,0.3)' : desert ? 'rgba(200,140,255,0.25)' : throne ? 'rgba(192,74,255,0.3)' : 'rgba(255,255,255,0.25)';
-    const glyphColor = dungeon ? 'rgba(167,139,250,0.35)' : jungle ? 'rgba(140,255,120,0.35)' : hell ? 'rgba(255,120,40,0.5)' : ice ? 'rgba(180,230,255,0.4)' : desert ? 'rgba(180,100,255,0.4)' : throne ? 'rgba(192,74,255,0.5)' : 'rgba(120,85,40,0.5)';
+    const topColor = dungeon ? '#4a4258' : jungle ? '#3a4a2a' : hell ? '#3a1408' : ice ? '#3a5a68' : desert ? '#a68a4a' : crypt ? '#cfc6b0' : throne ? '#2a0a38' : '#f2d99b';
+    const sideColor = dungeon ? '#241f30' : jungle ? '#1c2814' : hell ? '#1a0a04' : ice ? '#16262e' : desert ? '#5a4a26' : crypt ? '#2a241c' : throne ? '#150420' : '#c9a361';
+    const edgeColor = dungeon ? 'rgba(10,8,16,0.5)' : jungle ? 'rgba(5,10,5,0.5)' : hell ? 'rgba(0,0,0,0.6)' : ice ? 'rgba(5,15,20,0.6)' : desert ? 'rgba(40,25,10,0.5)' : crypt ? 'rgba(10,8,5,0.55)' : throne ? 'rgba(5,0,10,0.6)' : 'rgba(120,85,40,0.35)';
+    const highlightColor = dungeon ? 'rgba(167,139,250,0.15)' : jungle ? 'rgba(140,255,120,0.12)' : hell ? 'rgba(255,120,40,0.25)' : ice ? 'rgba(200,240,255,0.3)' : desert ? 'rgba(200,140,255,0.25)' : crypt ? 'rgba(230,220,200,0.25)' : throne ? 'rgba(192,74,255,0.3)' : 'rgba(255,255,255,0.25)';
+    const glyphColor = dungeon ? 'rgba(167,139,250,0.35)' : jungle ? 'rgba(140,255,120,0.35)' : hell ? 'rgba(255,120,40,0.5)' : ice ? 'rgba(180,230,255,0.4)' : desert ? 'rgba(180,100,255,0.4)' : crypt ? 'rgba(230,220,200,0.4)' : throne ? 'rgba(192,74,255,0.5)' : 'rgba(120,85,40,0.5)';
 
     const c0 = Math.max(0, Math.floor(camX / TILE) - 1);
     const c1 = Math.min(COLS - 1, Math.ceil((camX + VIEW_W) / TILE) + 1);
@@ -2110,12 +2285,12 @@
     for (let c = c0; c <= c1; c++) {
       if (map[ROWS - 1][c] === 1 && c % 8 === 4) {
         const x = px(c * TILE - camX) + TILE / 2, y = (ROWS - 1) * TILE;
-        ctx.fillStyle = dungeon ? '#3a3448' : jungle ? '#3a2f1a' : hell ? '#2a1006' : ice ? '#22404c' : desert ? '#4a3a1a' : throne ? '#241030' : '#8a5a2a';
+        ctx.fillStyle = dungeon ? '#3a3448' : jungle ? '#3a2f1a' : hell ? '#2a1006' : ice ? '#22404c' : desert ? '#4a3a1a' : crypt ? '#241f18' : throne ? '#241030' : '#8a5a2a';
         ctx.fillRect(x - 2, y - 14, 4, 14);
         const flick = 6 + Math.sin(elapsed * 12 + c) * 2;
-        ctx.fillStyle = dungeon ? '#a78bfa' : jungle ? '#5cffa0' : hell ? '#ff5a1f' : ice ? '#6bd9e8' : desert ? '#c04aff' : throne ? '#c04aff' : '#ff8a3d';
+        ctx.fillStyle = dungeon ? '#a78bfa' : jungle ? '#5cffa0' : hell ? '#ff5a1f' : ice ? '#6bd9e8' : desert ? '#c04aff' : crypt ? '#cfe8ff' : throne ? '#c04aff' : '#ff8a3d';
         ctx.beginPath(); ctx.arc(x, y - 16, flick / 2, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = dungeon ? '#e0d4ff' : jungle ? '#c8ffdd' : hell ? '#ffd24a' : ice ? '#e0faff' : desert ? '#f0c8ff' : throne ? '#f0c8ff' : '#ffe27a';
+        ctx.fillStyle = dungeon ? '#e0d4ff' : jungle ? '#c8ffdd' : hell ? '#ffd24a' : ice ? '#e0faff' : desert ? '#f0c8ff' : crypt ? '#ffffff' : throne ? '#f0c8ff' : '#ffe27a';
         ctx.beginPath(); ctx.arc(x, y - 16, flick / 4, 0, Math.PI * 2); ctx.fill();
       }
     }
@@ -2171,6 +2346,18 @@
       ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 20, pulse, pulse * 1.3, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#f4dcff';
       ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 20, pulse * 0.4, pulse * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+    } else if (crypt) {
+      ctx.fillStyle = '#18140f';
+      ctx.fillRect(gx, gy - 34, TILE, 34);
+      const pulse = 7 + Math.sin(elapsed * 3.5) * 3;
+      ctx.fillStyle = 'rgba(230,220,200,0.8)';
+      ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 20, pulse, pulse * 1.3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fffaf0';
+      ctx.beginPath(); ctx.ellipse(gx + TILE / 2, gy - 20, pulse * 0.4, pulse * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+      // flanking bone spikes jutting from the grave marker
+      ctx.fillStyle = 'rgba(220,210,190,0.75)';
+      ctx.beginPath(); ctx.moveTo(gx + 3, gy - 34); ctx.lineTo(gx + 7, gy - 46); ctx.lineTo(gx + 11, gy - 34); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(gx + TILE - 11, gy - 34); ctx.lineTo(gx + TILE - 7, gy - 46); ctx.lineTo(gx + TILE - 3, gy - 34); ctx.closePath(); ctx.fill();
     } else if (throne) {
       ctx.fillStyle = '#0c0214';
       ctx.fillRect(gx, gy - 40, TILE, 40);
@@ -2742,6 +2929,14 @@
       ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#f0c8ff';
       ctx.beginPath(); ctx.arc(1, -1, 2, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === 'combo') {
+      // two-tone fused shot — one half per source soul's color
+      ctx.fillStyle = SOUL_META[b.comboA].color;
+      ctx.beginPath(); ctx.ellipse(-2, 0, 7, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = SOUL_META[b.comboB].color;
+      ctx.beginPath(); ctx.ellipse(2, 0, 7, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI * 2); ctx.fill();
     } else {
       // normal (player default)
       ctx.fillStyle = '#2f8f5b';
@@ -2906,11 +3101,17 @@
       { key: 'shadow', label: '7', color: SOUL_META.shadow.color, count: player.souls.shadow },
       { key: 'knife', label: '8', color: player.demonKnife ? '#ff8a3d' : '#c9b98f', count: 'KNIFE' },
       { key: 'trap', label: '9', color: player.souls.trap > 0 ? SOUL_META.trap.color : '#c9b98f', count: player.souls.trap },
+      (() => {
+        const totalCombos = COMBO_LIST.reduce((sum, k) => sum + (player.combos[k] || 0), 0);
+        const activeKey = player.ammo.startsWith('combo:') ? player.ammo.slice(6) : null;
+        const color = activeKey ? SOUL_META[activeKey.split('+')[0]].color : (totalCombos > 0 ? '#e0d4ff' : '#5a5448');
+        return { key: 'combo', label: '0', color, count: activeKey ? player.combos[activeKey] : totalCombos };
+      })(),
     ];
     let sx = VIEW_W / 2 - (slots.length * 34) / 2;
     const sy = VIEW_H - 22;
     for (const s of slots) {
-      const active = player.ammo === s.key;
+      const active = s.key === 'combo' ? player.ammo.startsWith('combo:') : player.ammo === s.key;
       ctx.fillStyle = active ? 'rgba(255,205,60,0.3)' : 'rgba(0,0,0,0.35)';
       ctx.fillRect(sx, sy, 30, 18);
       ctx.strokeStyle = active ? s.color : 'rgba(255,255,255,0.2)';
@@ -3021,6 +3222,11 @@
     { type: 'zombie', speaker: 'HUNTER', text: "Everything I've been putting down since the temple — they're not monsters. They're his people. He wouldn't even let them rest." },
     { type: 'arrive', speaker: 'HUNTER', text: "Grief doesn't stay grief forever. Eventually it just becomes weather." },
   ];
+  const CRYPT_CUTSCENE = [
+    { type: 'arrive', speaker: 'HUNTER', text: "The sand gives out onto something worse — a crypt holding more bones than one kingdom should have made." },
+    { type: 'vision', tint: 'grief', figures: ['fallen', 'fallen'], speaker: 'VISION', text: "He didn't bury his people. He stacked them — every grave one more brick in whatever he was building on top." },
+    { type: 'zombie', speaker: 'HUNTER', text: "I know what's waiting over this. I can already see it from here." },
+  ];
   const THRONE_CUTSCENE = [
     { type: 'vision', tint: 'void', figures: ['demon', 'throne'], speaker: 'VISION', text: "He built himself a throne over the grave he made and never got up again. Call that a god if you want. It's really just a man who ran out of ways to stop hurting." },
     { type: 'arrive', speaker: 'HUNTER', text: "I've killed a lot of things to get here. This one, I don't think I get to feel good about." },
@@ -3030,7 +3236,7 @@
   // on LEVEL_DEFS — those entries are built before these consts exist.
   const FLOOR_CUTSCENES = {
     dungeon: DUNGEON_CUTSCENE, jungle: JUNGLE_CUTSCENE, ice: ICE_CUTSCENE,
-    hell: HELL_CUTSCENE, desert: DESERT_CUTSCENE, throne: THRONE_CUTSCENE,
+    hell: HELL_CUTSCENE, desert: DESERT_CUTSCENE, crypt: CRYPT_CUTSCENE, throne: THRONE_CUTSCENE,
   };
   const VISION_PALETTES = {
     peace: ['#3a3020', '#6a5838', '#8a7048'],
@@ -3384,7 +3590,7 @@
   // Prices climb the deeper you go, on top of the existing per-purchase
   // escalation, so gear bought outside the temple actually costs more.
   let shopNextLevel = 0;
-  const SHOP_FLOOR_MULT = { 1: 1.2, 2: 1.7, 3: 2.1, 4: 2.6, 5: 3.1, 6: 3.7 };
+  const SHOP_FLOOR_MULT = { 1: 1.2, 2: 1.7, 3: 2.1, 4: 2.6, 5: 3.1, 6: 3.7, 7: 4.3 };
   function shopCostMult() { return SHOP_FLOOR_MULT[shopNextLevel] || 1; }
   function scaledCost(base) { return Math.round((base * shopCostMult()) / 5) * 5; }
 
@@ -3434,6 +3640,10 @@
     shopNextLevel = nextLevel;
     state = 'shop';
     renderShopUI();
+    renderComboUI();
+    comboPanelOpen = false;
+    comboPanelEl.classList.add('collapsed');
+    comboToggleEl.textContent = '⚗ COMBINE SOULS ▾';
     shopScreen.classList.remove('hidden');
     sfx.win();
   }
@@ -3463,11 +3673,54 @@
         item.buy(player);
         sfx.checkpoint();
         renderShopUI();
+        renderComboUI();
       });
       row.appendChild(icon);
       row.appendChild(info);
       row.appendChild(btn);
       shopItemsEl.appendChild(row);
+    }
+  }
+
+  let comboPanelOpen = false;
+  comboToggleEl.addEventListener('click', () => {
+    comboPanelOpen = !comboPanelOpen;
+    comboPanelEl.classList.toggle('collapsed', !comboPanelOpen);
+    comboToggleEl.textContent = comboPanelOpen ? '⚗ COMBINE SOULS ▴' : '⚗ COMBINE SOULS ▾';
+  });
+
+  function renderComboUI() {
+    comboSoulCountsEl.innerHTML = SOUL_KEYS.map(k =>
+      `<span class="comboSoulChip"><span class="dot" style="background:${SOUL_META[k].color}"></span>${SOUL_NAMES[k]}: ${player.souls[k]}</span>`
+    ).join('');
+    comboItemsEl.innerHTML = '';
+    for (const key of COMBO_LIST) {
+      const [a, b] = key.split('+');
+      const afford = player.souls[a] >= COMBO_COST && player.souls[b] >= COMBO_COST;
+      const owned = player.combos[key] || 0;
+      const row = document.createElement('div');
+      row.className = 'comboItem';
+      const icon = document.createElement('div');
+      icon.className = 'comboItemIcon';
+      icon.innerHTML = comboIconSVG(SOUL_META[a].color, SOUL_META[b].color);
+      const info = document.createElement('div');
+      info.className = 'comboItemInfo';
+      info.innerHTML = `<div class="comboItemName">${SOUL_NAMES[a]} + ${SOUL_NAMES[b]}</div>` +
+        `<div class="comboItemDesc">${TRAIT_PHRASE[a]} + ${TRAIT_PHRASE[b]} in one shot.</div>` +
+        `<div class="comboItemCount">Costs ${COMBO_COST} ${SOUL_NAMES[a]} + ${COMBO_COST} ${SOUL_NAMES[b]} souls → +${COMBO_YIELD} charges` +
+        (owned > 0 ? ` (have ${owned})` : '') + `</div>`;
+      const btn = document.createElement('button');
+      btn.className = 'comboBuyBtn';
+      btn.textContent = 'FUSE';
+      btn.disabled = !afford;
+      btn.addEventListener('click', () => {
+        tryCombine(a, b);
+        renderComboUI();
+      });
+      row.appendChild(icon);
+      row.appendChild(info);
+      row.appendChild(btn);
+      comboItemsEl.appendChild(row);
     }
   }
 
