@@ -161,9 +161,9 @@
     if (step % 4 === 0) noiseBurst(0.07, 0.1);
     else if (step % 4 === 2) noiseBurst(0.025, 0.045);
   }
-  function startBossMusic() {
+  function startBossMusic(resume) {
     if (bossMusicTimer || !actx) return;
-    bossMusicStep = 0;
+    if (!resume) bossMusicStep = 0;
     const stepMs = (60 / BOSS_BPM / 4) * 1000;
     bossMusicTimer = setInterval(() => { playBossStep(bossMusicStep % BOSS_LEAD.length); bossMusicStep++; }, stepMs);
   }
@@ -1216,8 +1216,14 @@
   chooseDesktopBtn.addEventListener('click', () => chooseDevice(false));
 
   // ---------- Settings (sound) ----------
+  // The label reflects whether audio is actually audible right now (muted
+  // OR volume dragged to 0), not just the `muted` flag on its own — so it
+  // can't drift out of sync with a slider dragged all the way down.
+  function updateMuteLabel() {
+    muteBtn.textContent = (audioSettings.muted || audioSettings.volume === 0) ? '🔇 Unmute' : '🔊 Mute';
+  }
   volumeSlider.value = Math.round(audioSettings.volume * 100);
-  muteBtn.textContent = audioSettings.muted ? '🔇 Unmute' : '🔊 Mute';
+  updateMuteLabel();
   // Tracks whether opening Settings is the thing that silenced the boss
   // track, so closing it only resumes music that was actually playing
   // (rather than ever starting it up on a non-boss floor).
@@ -1232,22 +1238,33 @@
     settingsOpen = false;
     settingsScreen.classList.add('hidden');
     claimFocus();
-    if (settingsPausedBossMusic) { settingsPausedBossMusic = false; startBossMusic(); }
+    // Resume (not restart) the boss track so it doesn't snap back to beat
+    // one every time Settings is opened and closed mid-fight.
+    if (settingsPausedBossMusic) { settingsPausedBossMusic = false; startBossMusic(true); }
   });
   volumeSlider.addEventListener('input', () => {
     audioSettings.volume = volumeSlider.value / 100;
-    if (audioSettings.volume > 0 && audioSettings.muted) {
-      audioSettings.muted = false;
-      muteBtn.textContent = '🔊 Mute';
-    }
+    if (audioSettings.volume > 0 && audioSettings.muted) audioSettings.muted = false;
+    updateMuteLabel();
     applyAudioSettings();
   });
   // Persist only once the user finishes dragging, rather than on every
   // 'input' tick (which can fire dozens of times per drag).
   volumeSlider.addEventListener('change', () => saveAudioSettings());
   muteBtn.addEventListener('click', () => {
-    audioSettings.muted = !audioSettings.muted;
-    muteBtn.textContent = audioSettings.muted ? '🔇 Unmute' : '🔊 Mute';
+    const isSilent = audioSettings.muted || audioSettings.volume === 0;
+    if (isSilent) {
+      // "Unmute" always has to actually restore audible sound — clearing
+      // the flag alone wouldn't help if volume itself was dragged to 0.
+      audioSettings.muted = false;
+      if (audioSettings.volume === 0) {
+        audioSettings.volume = 0.5;
+        volumeSlider.value = 50;
+      }
+    } else {
+      audioSettings.muted = true;
+    }
+    updateMuteLabel();
     applyAudioSettings();
     saveAudioSettings();
   });
@@ -3164,6 +3181,44 @@
     ctx.globalAlpha = 1;
   }
 
+  // A row of every fused shot the player currently has charges for — icon
+  // split in the two source souls' colors plus a charge count, e.g. a
+  // fire/frost-colored badge reading "x3". Sits just under the hearts/HP
+  // bar and the boss/progress bar, so it only appears once there's
+  // something to show and never collides with either.
+  function drawComboHUD() {
+    const owned = COMBO_LIST.filter(k => (player.combos[k] || 0) > 0);
+    if (owned.length === 0) return;
+    // Fixed slot width (enough for the icon + "xN" text to stay legible) —
+    // wraps to further rows below rather than shrinking slots, so owning
+    // many combos at once crowds the HUD vertically, never illegibly.
+    // Capped at 10/row to stay clear of the wolf readout (left, x<70) and
+    // the score (right, x>450).
+    const slotW = 30, rowH = 13, maxPerRow = 10;
+    ctx.font = '8px monospace';
+    owned.forEach((key, i) => {
+      const row = Math.floor(i / maxPerRow);
+      const countInRow = Math.min(maxPerRow, owned.length - row * maxPerRow);
+      const sx = VIEW_W / 2 - (countInRow * slotW) / 2 + (i % maxPerRow) * slotW;
+      const y = 26 + row * rowH;
+      const [a, b] = key.split('+');
+      const active = player.ammo === 'combo:' + key;
+      ctx.fillStyle = SOUL_META[a].color;
+      ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(sx + 10, y); ctx.lineTo(sx, y + 10); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = SOUL_META[b].color;
+      ctx.beginPath(); ctx.moveTo(sx + 10, y); ctx.lineTo(sx + 10, y + 10); ctx.lineTo(sx, y + 10); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = active ? '#fff' : 'rgba(255,255,255,0.65)';
+      ctx.fillRect(sx + 3, y + 3, 4, 4);
+      if (active) {
+        ctx.strokeStyle = '#ffcd3c';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx - 1, y - 1, 12, 12);
+      }
+      ctx.fillStyle = '#fff';
+      ctx.fillText('x' + player.combos[key], sx + 13, y + 8);
+    });
+  }
+
   function drawHUD() {
     // hearts
     for (let i = 0; i < 3; i++) {
@@ -3232,6 +3287,8 @@
       ctx.fillStyle = '#ffcd3c';
       ctx.fillRect(VIEW_W / 2 - 60, 6, 120 * prog, 5);
     }
+
+    drawComboHUD();
 
     // ammo slots
     const slots = [
@@ -3880,10 +3937,10 @@
     if (!settingsOpen) {
       if (state === 'playing' || state === 'win' || state === 'dead' || state === 'dying') { update(dt); render(); }
       else if (state === 'cutscene') { updateCutscene(dt); renderCutscene(); }
-    }
-    if (state === 'playing' && !settingsOpen) {
-      autosaveTimer += dt;
-      if (autosaveTimer >= 10) { autosaveTimer = 0; saveGame(); }
+      if (state === 'playing') {
+        autosaveTimer += dt;
+        if (autosaveTimer >= 10) { autosaveTimer = 0; saveGame(); }
+      }
     }
     syncTouchControls();
     requestAnimationFrame(loop);

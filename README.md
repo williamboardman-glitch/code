@@ -53,6 +53,11 @@ Pyromancer (**3**) + Frost (**4**) loads Pyromancer+Frost, and so on for any
 pair you've actually crafted. Key **0** (or the mobile **FUSE** button) also
 cycles through whichever ones you've crafted, one at a time.
 
+Every fused shot you're currently holding charges for shows up as a badge
+along the top of the screen — split in its two souls' colors with a charge
+count (e.g. a fire/frost badge reading "x3") — so you can see your whole
+fused loadout at a glance, with the currently-loaded one outlined in gold.
+
 ## Play
 
 Open `index.html` in a browser (or serve the folder with any static file
