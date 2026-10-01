@@ -266,11 +266,17 @@
   function comboIconSVG(colorA, colorB) {
     return `<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><polygon points="0,0 16,0 0,16" fill="${colorA}"/><polygon points="16,0 16,16 0,16" fill="${colorB}"/><rect x="6" y="6" width="4" height="4" fill="#fff"/></svg>`;
   }
+  // Canonical "a+b" key for a pair regardless of which order they're given
+  // in — needed since a keyboard chord can land in either order depending
+  // on which of the two keys the player happens to press second.
+  function comboKeyFor(a, b) {
+    return SOUL_KEYS.indexOf(a) < SOUL_KEYS.indexOf(b) ? `${a}+${b}` : `${b}+${a}`;
+  }
   function tryCombine(a, b) {
     if (player.souls[a] < COMBO_COST || player.souls[b] < COMBO_COST) return;
     player.souls[a] -= COMBO_COST;
     player.souls[b] -= COMBO_COST;
-    const key = `${a}+${b}`;
+    const key = comboKeyFor(a, b);
     player.combos[key] = (player.combos[key] || 0) + COMBO_YIELD;
     sfx.checkpoint();
   }
@@ -974,6 +980,14 @@
     Digit4: 'frost', Digit5: 'lightning', Digit6: 'acid', Digit7: 'shadow', Digit8: 'knife',
   };
   const AMMO_CYCLE = Object.values(DIGIT_AMMO);
+  // Soul-only subset of DIGIT_AMMO (no normal/knife) — holding any two of
+  // these keys together loads the fused shot for that pair directly, e.g.
+  // 2+5 (Berserker+Lightning) or 3+4 (Pyromancer+Frost), instead of having
+  // to cycle through crafted combos one at a time with key 0.
+  const DIGIT_SOUL = {
+    Digit2: 'berserker', Digit3: 'pyromancer', Digit4: 'frost',
+    Digit5: 'lightning', Digit6: 'acid', Digit7: 'shadow',
+  };
 
   function handleKeyDown(ev) {
     keys[ev.code] = true;
@@ -984,6 +998,13 @@
     }
     if (state !== 'playing') return;
     if (DIGIT_AMMO[ev.code]) player.ammo = DIGIT_AMMO[ev.code];
+    if (DIGIT_SOUL[ev.code]) {
+      for (const code in DIGIT_SOUL) {
+        if (code === ev.code || !keys[code]) continue;
+        const comboKey = comboKeyFor(DIGIT_SOUL[ev.code], DIGIT_SOUL[code]);
+        if ((player.combos[comboKey] || 0) > 0) { player.ammo = 'combo:' + comboKey; break; }
+      }
+    }
     if (ev.code === 'KeyW' || ev.code === 'ArrowUp') player.jumpBuffer = 0.12;
     if (ev.code === 'ArrowDown' || ev.code === 'KeyS') trySlide();
     if (ev.code === 'KeyR') useSpecialAttack();

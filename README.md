@@ -46,9 +46,12 @@ The supply cache between floors can fuse two of your souls into one: spend
 effects at once. Berserker + Lightning hits as hard as the heavy shot and
 still chains to nearby enemies; Acid + Pyromancer leaves a burning,
 corrosive puddle; and so on for all 15 pairings of the 6 combat souls.
-Fused shots load into their own slot, separate from the regular ammo row —
-press **0** (or the mobile **FUSE** button) to cycle through whichever ones
-you've crafted.
+Fused shots load into their own slot, separate from the regular ammo row.
+The fastest way to pull one up is to hold both of its souls' ammo keys at
+once — Berserker (**2**) + Lightning (**5**) loads Berserker+Lightning,
+Pyromancer (**3**) + Frost (**4**) loads Pyromancer+Frost, and so on for any
+pair you've actually crafted. Key **0** (or the mobile **FUSE** button) also
+cycles through whichever ones you've crafted, one at a time.
 
 ## Play
 
@@ -83,7 +86,7 @@ shared or synced anywhere.
 - **1-7** — switch ammo
 - **8** — switch to the knife manually (works anytime, not just when out of bullets)
 - **9** — place a trap (requires a trap charge, and being on the ground)
-- **0** — cycle fused shots (see [Soul Fusion](#soul-fusion))
+- **0** — cycle fused shots; or hold two souls' ammo keys together (e.g. **2+5**) to load that pair directly (see [Soul Fusion](#soul-fusion))
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 **Mobile (on-screen controls)**
