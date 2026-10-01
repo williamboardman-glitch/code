@@ -97,6 +97,7 @@ shared or synced anywhere.
 - **8** — switch to the knife manually (works anytime, not just when out of bullets)
 - **9** — place a trap (requires a trap charge, and being on the ground)
 - **0** — cycle fused shots; or hold two souls' ammo keys together (e.g. **2+5**) to load that pair directly (see [Soul Fusion](#soul-fusion))
+- **Q** — drink a potion (heals 30 HP on the spot; bought at the supply cache, holds up to 5)
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 **Mobile (on-screen controls)**
@@ -105,6 +106,7 @@ shared or synced anywhere.
 - **AMMO** — cycle through ammo types (including the knife)
 - **TRAP** — place a trap (requires a trap charge, and being on the ground)
 - **FUSE** — cycle fused shots (see [Soul Fusion](#soul-fusion))
+- **POTION** — drink a potion (heals 30 HP on the spot)
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 ## Enemies & souls
@@ -235,12 +237,14 @@ Alpha Wolf → **Fenrir**, fully grown at 300 kills.
 ## Shop
 
 Between floors, spend your score at the supply cache on healing, ammo
-refills, and permanent damage/health/armor upgrades — or roll out the
-Combine Souls panel to fuse your souls together (see
-[Soul Fusion](#soul-fusion)). Prices climb both with repeated purchases of
-the same upgrade and with how deep you are — every floor's cache after the
-temple's charges more than the last, and the Demon God's throne is the
-steepest of all.
+refills, permanent damage/health/armor upgrades, and Health Potions — a
+portable heal (30 HP, up to 5 held at once) you can drink anytime with
+**Q**, unlike the instant full heal that only works at the cache itself.
+You can also roll out the Combine Souls panel to fuse your souls together
+(see [Soul Fusion](#soul-fusion)). Prices climb both with repeated
+purchases of the same upgrade and with how deep you are — every floor's
+cache after the temple's charges more than the last, and the Demon God's
+throne is the steepest of all.
 
 You have 3 lives and respawn at the last torch-lit checkpoint you passed.
 Falling into a pit costs a life instantly, however much HP you have left.

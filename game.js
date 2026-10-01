@@ -140,6 +140,7 @@
     knife: () => tone(900, 0.05, 'square', 0.09, 400),
     demonSlash: () => { tone(200, 0.09, 'sawtooth', 0.16, 60); noiseBurst(0.09, 0.12); },
     slide: () => noiseBurst(0.14, 0.1),
+    heal: () => { tone(520, 0.1, 'sine', 0.1, 780); setTimeout(() => tone(780, 0.14, 'sine', 0.1, 1040), 70); },
   };
 
   // ---------- Boss music ----------
@@ -438,6 +439,8 @@
   const SLIDE_COOLDOWN = 0.55; // > SLIDE_DURATION so the slide's invuln can't be chained into permanent i-frames
   const ENEMY_DEATH_ANIM = 0.3; // brief collapse+fade instead of vanishing outright
   const PLAYER_DEATH_ANIM = 1.0; // topple+fade before the game-over screen cuts in
+  const POTION_MAX = 5;
+  const POTION_HEAL = 30;
 
   // ---------- State ----------
   let state = 'start'; // start | cutscene | playing | shop | win | dead | dying
@@ -464,7 +467,7 @@
       homingNext: false, shadowHelm: false, helmDmgBonus: 1, knockX: 0, knockTimer: 0,
       usedSpecialThisFloor: false, knifeSwing: 0, demonKnife: false, godDmgBonus: 1,
       slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
-      deathTimer: 0,
+      deathTimer: 0, potions: 0,
     };
   }
 
@@ -577,6 +580,7 @@
     player.upgrades = { damage: 0, vitality: 0, armor: 0 };
     player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0 };
     player.combos = {};
+    player.potions = 0;
     player.ammo = 'normal';
     player.bullets = 100;
     player.lives = 3;
@@ -728,6 +732,27 @@
     hazards.push({ x: player.x, y: player.y + player.h / 2 - 2, radius: 16, life: 12, armed: 0.3, dmg: 40, kind: 'trap', triggered: false });
     sfx.checkpoint();
     addMessage(player.x, player.y - 24, 'TRAP SET', '#ffcd3c');
+  }
+
+  // A portable, capped-stock heal (bought at the shop, drunk anytime) —
+  // distinct from the shop's own Field Medic, which fully heals but only
+  // works at the shop itself.
+  function usePotion() {
+    if (player.potions <= 0) {
+      addMessage(player.x, player.y - 24, 'NO POTIONS', '#c9b98f');
+      sfx.empty();
+      return;
+    }
+    if (player.hp >= player.maxHp) {
+      addMessage(player.x, player.y - 24, 'FULL HEALTH', '#c9b98f');
+      sfx.empty();
+      return;
+    }
+    player.potions--;
+    player.hp = Math.min(player.maxHp, player.hp + POTION_HEAL);
+    spawnHitParticles(player.x, player.y, '#5ef29a');
+    addMessage(player.x, player.y - 24, `+${POTION_HEAL} HP`, '#5ef29a');
+    sfx.heal();
   }
 
   // A quick, free ground dash — no resource cost, just a cooldown — that
@@ -1028,7 +1053,7 @@
 
   const GAME_KEYS = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
-    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
+    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'KeyQ', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
   ]);
 
   // Single source of truth for the Digit1-8 ammo hotkeys, also reused by the
@@ -1071,15 +1096,19 @@
     if (ev.code === 'KeyR') useSpecialAttack();
     if (ev.code === 'Digit9') placeTrap();
     if (ev.code === 'Digit0') cycleComboAmmo();
+    if (ev.code === 'KeyQ') usePotion();
   }
   function handleKeyUp(ev) {
     keys[ev.code] = false;
     if (GAME_KEYS.has(ev.code)) ev.preventDefault();
   }
+  // A single listener on window is enough — keyboard events bubble up to it
+  // from whichever element has focus (the canvas, via claimFocus() above),
+  // and nothing in this file calls stopPropagation. A second listener
+  // directly on the canvas would just double-fire every key handler for
+  // the same physical keypress.
   window.addEventListener('keydown', handleKeyDown);
   window.addEventListener('keyup', handleKeyUp);
-  screenCanvas.addEventListener('keydown', handleKeyDown);
-  screenCanvas.addEventListener('keyup', handleKeyUp);
 
   function held(...codes) { return codes.some(c => keys[c]); }
 
@@ -1107,6 +1136,7 @@
           ammo: player.ammo, bullets: player.bullets,
           souls: { ...player.souls },
           combos: { ...player.combos },
+          potions: player.potions,
           dmgMult: player.dmgMult, armor: player.armor,
           upgrades: { ...player.upgrades },
           shadowHelm: player.shadowHelm, helmDmgBonus: player.helmDmgBonus,
@@ -1214,6 +1244,14 @@
     releaseKey('Digit0');
   });
   tcComboBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+  const tcPotionBtn = document.getElementById('tcPotion');
+  tcPotionBtn.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    pressKey('KeyQ');
+    releaseKey('KeyQ');
+  });
+  tcPotionBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
   const tcAmmoBtn = document.getElementById('tcAmmo');
   tcAmmoBtn.addEventListener('pointerdown', (ev) => {
@@ -3350,6 +3388,13 @@
       ctx.fillText(player.usedSpecialThisFloor ? 'WITHER: USED' : 'WITHER (R): READY', 8, 45);
     }
 
+    // Potions: bought at the shop, drunk anytime with Q
+    if (player.potions > 0) {
+      ctx.font = '8px monospace';
+      ctx.fillStyle = '#5ef29a';
+      ctx.fillText(`POTION (Q): x${player.potions}`, 8, 56);
+    }
+
     // score
     ctx.fillStyle = '#2b1d14';
     ctx.font = 'bold 12px monospace';
@@ -3898,6 +3943,7 @@
     damage: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><polygon points="6,1 10,1 8,4" fill="#d8d8d8"/><rect x="7" y="4" width="2" height="5" fill="#d8d8d8"/><rect x="7" y="4" width="1" height="5" fill="#fff"/><rect x="4" y="9" width="8" height="2" fill="#8a5a2a"/><rect x="6" y="11" width="4" height="4" fill="#5a3a1a"/></svg>',
     vitality: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="3" y="3" width="3" height="3" fill="#c0392b"/><rect x="10" y="3" width="3" height="3" fill="#c0392b"/><rect x="2" y="5" width="12" height="4" fill="#c0392b"/><rect x="3" y="9" width="10" height="2" fill="#c0392b"/><rect x="5" y="11" width="6" height="2" fill="#c0392b"/><rect x="7" y="13" width="2" height="1" fill="#c0392b"/></svg>',
     armor: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="4" y="2" width="8" height="6" fill="#8a94a0"/><rect x="5" y="8" width="6" height="3" fill="#8a94a0"/><rect x="6" y="11" width="4" height="2" fill="#8a94a0"/><rect x="7" y="13" width="2" height="1" fill="#8a94a0"/><rect x="6" y="4" width="4" height="4" fill="#5a6470"/></svg>',
+    potion: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="6" y="2" width="4" height="2" fill="#8a94a0"/><rect x="6" y="4" width="4" height="2" fill="#5a6470"/><rect x="4" y="6" width="8" height="2" fill="#e8e0c8"/><rect x="3" y="8" width="10" height="5" fill="#e8e0c8"/><rect x="3" y="10" width="10" height="3" fill="#c0392b"/><rect x="5" y="9" width="2" height="1" fill="#fff"/></svg>',
   };
   const SHOP_ITEMS = [
     {
@@ -3929,6 +3975,12 @@
       cost: (p) => scaledCost(100 + p.upgrades.armor * 50),
       canBuy: (p) => p.armor < 10,
       buy: (p) => { p.armor = Math.min(10, p.armor + 2); p.upgrades.armor++; },
+    },
+    {
+      key: 'potion', name: 'Health Potion', desc: 'Carry a potion that heals 30 HP on the spot — press Q anytime. Holds up to 5.',
+      cost: (p) => scaledCost(20 + p.potions * 10),
+      canBuy: (p) => p.potions < POTION_MAX,
+      buy: (p) => { p.potions++; },
     },
   ];
 
