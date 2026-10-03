@@ -98,6 +98,7 @@ shared or synced anywhere.
 - **9** — place a trap (requires a trap charge, and being on the ground)
 - **0** — cycle fused shots; or hold two souls' ammo keys together (e.g. **2+5**) to load that pair directly (see [Soul Fusion](#soul-fusion))
 - **Q** — drink a potion (heals 30 HP on the spot; bought at the supply cache, holds up to 5)
+- **E** — feed your wolf a biscuit (heals it 50 HP on the spot; bought at the supply cache, holds up to 5)
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 **Mobile (on-screen controls)**
@@ -107,6 +108,7 @@ shared or synced anywhere.
 - **TRAP** — place a trap (requires a trap charge, and being on the ground)
 - **FUSE** — cycle fused shots (see [Soul Fusion](#soul-fusion))
 - **POTION** — drink a potion (heals 30 HP on the spot)
+- **BISCUIT** — feed your wolf a biscuit (heals it 50 HP on the spot)
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 ## Enemies & souls
@@ -234,17 +236,41 @@ fights in melee, biting whatever's nearest, and gets stronger, faster, and
 tougher-looking at each stage: Puppy → Young Wolf → Wolf → Dire Wolf →
 Alpha Wolf → **Fenrir**, fully grown at 300 kills.
 
+The wolf has its own health bar, shown under the stage-progress bar in the
+HUD. It starts fragile — the Puppy's max HP (70) is below your own starting
+100 — but ends up tougher than you: Fenrir caps at 180. It never truly
+dies; a losing fight just bottoms it out at 1 HP rather than ending the run.
+Melee zombies that touch it deal contact damage, same as they do to you.
+
+Every stage lands its own named special move on a successful bite:
+
+| Stage | Move | Effect |
+|---|---|---|
+| Puppy | Paw Pounce | Small damage, briefly slows the target |
+| Young Wolf | Wolf Dash | Damages every enemy in a short line in front of it |
+| Wolf | Moon Fang | Extra damage, and heals the wolf a little |
+| Dire Wolf | Frost Howl | Damages and slows every enemy near the wolf |
+| Alpha Wolf | Alpha Roar | Damages every enemy near the wolf, and speeds up its own next few bites |
+| Fenrir | Ragnarok Bite | Massive damage, followed by a dark explosion around the target that also hits anything nearby |
+
+Keep it alive and fighting with two supply-cache items: **Pet Armor**
+(-2 damage taken per hit, up to -8) and **Dog Biscuits** — a portable heal
+(50 HP, up to 5 held at once) fed to the wolf anytime with **E**, the same
+pattern as your own Health Potions.
+
 ## Shop
 
 Between floors, spend your score at the supply cache on healing, ammo
-refills, permanent damage/health/armor upgrades, and Health Potions — a
-portable heal (30 HP, up to 5 held at once) you can drink anytime with
-**Q**, unlike the instant full heal that only works at the cache itself.
-You can also roll out the Combine Souls panel to fuse your souls together
-(see [Soul Fusion](#soul-fusion)). Prices climb both with repeated
-purchases of the same upgrade and with how deep you are — every floor's
-cache after the temple's charges more than the last, and the Demon God's
-throne is the steepest of all.
+refills, permanent damage/health/armor upgrades, Health Potions, Pet
+Armor, and Dog Biscuits. Health Potions are a portable heal (30 HP, up to
+5 held at once) you can drink anytime with **Q**, unlike the instant full
+heal that only works at the cache itself; Dog Biscuits work the same way
+for your wolf companion (see [Wolf companion](#wolf-companion)). You can
+also roll out the Combine Souls panel to fuse your souls together (see
+[Soul Fusion](#soul-fusion)). Prices climb both with repeated purchases of
+the same upgrade and with how deep you are — every floor's cache after the
+temple's charges more than the last, and the Demon God's throne is the
+steepest of all.
 
 You have 3 lives and respawn at the last torch-lit checkpoint you passed.
 Falling into a pit costs a life instantly, however much HP you have left.

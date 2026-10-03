@@ -441,6 +441,9 @@
   const PLAYER_DEATH_ANIM = 1.0; // topple+fade before the game-over screen cuts in
   const POTION_MAX = 5;
   const POTION_HEAL = 30;
+  const PET_ARMOR_MAX = 8;
+  const BISCUIT_MAX = 5;
+  const BISCUIT_HEAL = 50;
 
   // ---------- State ----------
   let state = 'start'; // start | cutscene | playing | shop | win | dead | dying
@@ -468,7 +471,12 @@
       usedSpecialThisFloor: false, knifeSwing: 0, demonKnife: false, godDmgBonus: 1,
       slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
       deathTimer: 0, potions: 0,
+      wolfHp: WOLF_STAGES[0].maxHp, wolfArmor: 0, biscuits: 0,
     };
+  }
+
+  function makeWolf(x, y) {
+    return { x, y, biteCooldown: 0, invuln: 0, hitFlash: 0, hasteTimer: 0 };
   }
 
   function resetRun() {
@@ -476,7 +484,7 @@
     levelIndex = 0;
     buildMap();
     player = newPlayer();
-    wolf = { x: player.x - 14, y: player.y, biteCooldown: 0 };
+    wolf = makeWolf(player.x - 14, player.y);
     enemies = currentLevel().spawnList.map(([type, col, row]) => spawnEnemy(type, col, row));
     pBullets = []; eBullets = []; hazards = []; particles = []; messages = [];
     spawnFloorHazards();
@@ -497,7 +505,7 @@
     bossArenaSealed = false;
     player.x = x; player.y = y; player.vx = 0; player.vy = 0; player.groundVx = 0;
     player.knockX = 0; player.knockTimer = 0;
-    if (wolf) { wolf.x = x - 14; wolf.y = y; } else { wolf = { x: x - 14, y, biteCooldown: 0 }; }
+    if (wolf) { wolf.x = x - 14; wolf.y = y; } else { wolf = makeWolf(x - 14, y); }
     respawn = { x, y };
   }
 
@@ -581,6 +589,9 @@
     player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0 };
     player.combos = {};
     player.potions = 0;
+    player.wolfArmor = 0;
+    player.biscuits = 0;
+    player.wolfHp = WOLF_STAGES[wolfStage()].maxHp;
     player.ammo = 'normal';
     player.bullets = 100;
     player.lives = 3;
@@ -663,6 +674,7 @@
       if (Math.hypot(e.x - x, e.y - y) <= radius) {
         applyDamage(e, dmg);
         if (opts.burn && !e.dead) { e.burnTimer = 3; e.burnTick = 0.5; }
+        if (opts.slow && !e.dead) { e.speedMult = opts.slow.mult; e.slowTimer = Math.max(e.slowTimer, opts.slow.time); }
       }
     }
   }
@@ -752,6 +764,28 @@
     player.hp = Math.min(player.maxHp, player.hp + POTION_HEAL);
     spawnHitParticles(player.x, player.y, '#5ef29a');
     addMessage(player.x, player.y - 24, `+${POTION_HEAL} HP`, '#5ef29a');
+    sfx.heal();
+  }
+
+  // Same pattern as usePotion(), but heals the wolf companion instead of the
+  // player — capped stock, bought at the shop, used anytime with key E.
+  function useBiscuit() {
+    if (!wolf) return;
+    if (player.biscuits <= 0) {
+      addMessage(wolf.x, wolf.y - 24, 'NO BISCUITS', '#c9b98f');
+      sfx.empty();
+      return;
+    }
+    const maxHp = WOLF_STAGES[wolfStage()].maxHp;
+    if (player.wolfHp >= maxHp) {
+      addMessage(wolf.x, wolf.y - 24, 'FULL HEALTH', '#c9b98f');
+      sfx.empty();
+      return;
+    }
+    player.biscuits--;
+    player.wolfHp = Math.min(maxHp, player.wolfHp + BISCUIT_HEAL);
+    spawnHitParticles(wolf.x, wolf.y, '#d9a066');
+    addMessage(wolf.x, wolf.y - 24, `+${BISCUIT_HEAL} HP`, '#d9a066');
     sfx.heal();
   }
 
@@ -1053,7 +1087,7 @@
 
   const GAME_KEYS = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
-    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'KeyQ', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
+    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'KeyQ', 'KeyE', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
   ]);
 
   // Single source of truth for the Digit1-8 ammo hotkeys, also reused by the
@@ -1097,6 +1131,7 @@
     if (ev.code === 'Digit9') placeTrap();
     if (ev.code === 'Digit0') cycleComboAmmo();
     if (ev.code === 'KeyQ') usePotion();
+    if (ev.code === 'KeyE') useBiscuit();
   }
   function handleKeyUp(ev) {
     keys[ev.code] = false;
@@ -1137,6 +1172,7 @@
           souls: { ...player.souls },
           combos: { ...player.combos },
           potions: player.potions,
+          wolfHp: player.wolfHp, wolfArmor: player.wolfArmor, biscuits: player.biscuits,
           dmgMult: player.dmgMult, armor: player.armor,
           upgrades: { ...player.upgrades },
           shadowHelm: player.shadowHelm, helmDmgBonus: player.helmDmgBonus,
@@ -1176,6 +1212,10 @@
     player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0, ...save.player.souls };
     player.combos = { ...save.player.combos };
     player.upgrades = { damage: 0, vitality: 0, armor: 0, ...save.player.upgrades };
+    // Pre-wolf-HP saves won't have a wolfHp field — default it to a full bar
+    // for whatever stage the restored kill count puts the wolf at, rather
+    // than leaving it at newPlayer()'s Puppy-level default.
+    if (save.player.wolfHp == null) player.wolfHp = WOLF_STAGES[wolfStage()].maxHp;
     elapsed = 0; shake = { t: 0, mag: 0 };
     enterLevelEntitiesAt(save.respawn.x, save.respawn.y);
     levelBanner = { text: `FLOOR ${levelIndex + 1} — ${currentLevel().name.toUpperCase()}`, t: 3 };
@@ -1252,6 +1292,14 @@
     releaseKey('KeyQ');
   });
   tcPotionBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+  const tcBiscuitBtn = document.getElementById('tcBiscuit');
+  tcBiscuitBtn.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    pressKey('KeyE');
+    releaseKey('KeyE');
+  });
+  tcBiscuitBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
   const tcAmmoBtn = document.getElementById('tcAmmo');
   tcAmmoBtn.addEventListener('pointerdown', (ev) => {
@@ -1589,6 +1637,18 @@
     sfx.hurt();
     shakeScreen(6);
     if (player.hp <= 0) loseLife('hp');
+  }
+
+  // The wolf can be hurt by whatever melee zombie it's brawling with, but
+  // never truly dies — it bottoms out at 1 HP, hurt but still fighting.
+  // Pet Armor (shop) reduces the damage; Dog Biscuits (shop, key E) heal it.
+  function hurtWolf(dmg) {
+    if (!wolf || wolf.invuln > 0) return;
+    dmg = Math.max(1, dmg - player.wolfArmor);
+    player.wolfHp = Math.max(1, player.wolfHp - dmg);
+    wolf.invuln = 0.6;
+    wolf.hitFlash = 0.2;
+    spawnHitParticles(wolf.x, wolf.y, '#fff');
   }
 
   // ---------- Boss AI ----------
@@ -1992,6 +2052,7 @@
   }
 
   function updateEnemies(dt) {
+    const wolfCfg = wolf ? WOLF_STAGES[wolfStage()] : null;
     for (const e of enemies) {
       if (e.dead) {
         if (e.deathTimer > 0) e.deathTimer -= dt;
@@ -2065,6 +2126,9 @@
         e.x += e.vx * dt;
         if (rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, player.x, player.y, player.w, player.h)) {
           hurtPlayer(e.cfg.dmg * e.weakDmgMult);
+        }
+        if (wolf && rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, wolf.x, wolf.y, 20 * wolfCfg.scale, 16 * wolfCfg.scale)) {
+          hurtWolf(e.cfg.dmg * e.weakDmgMult);
         }
       } else if (e.cfg.ranged) {
         // Long-range snipers: engage from well off-screen-adjacent distance
@@ -2217,21 +2281,68 @@
   // Starts as a puppy at the hunter's side and grows with every kill — a
   // slow melee companion rather than a gun, so it reads as a wolf, not a
   // second turret. Fully grown into Fenrir once the kill count caps out.
+  // maxHp starts below the player's base 100 (Puppy) and ends well above it
+  // (Fenrir) — the companion grows from fragile to genuinely tanky. Each
+  // stage's named move is what shows in the floating popup on a landed bite.
   const WOLF_STAGES = [
-    { name: 'Puppy', dmg: 4, biteRate: 1.4, range: 100, speed: 90, scale: 0.55, color: '#8a6a4a', dark: '#5a4530', eye: '#fff2d0' },
-    { name: 'Young Wolf', dmg: 7, biteRate: 1.2, range: 130, speed: 100, scale: 0.7, color: '#7a6248', dark: '#4a3a28', eye: '#ffdf9c' },
-    { name: 'Wolf', dmg: 11, biteRate: 1.0, range: 160, speed: 110, scale: 0.85, color: '#6b5a44', dark: '#3a3024', eye: '#ffd25a' },
-    { name: 'Dire Wolf', dmg: 16, biteRate: 0.85, range: 190, speed: 120, scale: 1.0, color: '#4a4038', dark: '#2a231d', eye: '#ffb347' },
-    { name: 'Alpha Wolf', dmg: 22, biteRate: 0.7, range: 220, speed: 135, scale: 1.15, color: '#332a26', dark: '#1c1613', eye: '#ff7a3d' },
-    { name: 'Fenrir', dmg: 32, biteRate: 0.5, range: 260, speed: 155, scale: 1.4, color: '#160f0d', dark: '#000000', eye: '#ff2e2e' },
+    { name: 'Puppy', dmg: 4, biteRate: 1.4, range: 100, speed: 90, scale: 0.55, color: '#8a6a4a', dark: '#5a4530', eye: '#fff2d0', maxHp: 70, move: 'Paw Pounce' },
+    { name: 'Young Wolf', dmg: 7, biteRate: 1.2, range: 130, speed: 100, scale: 0.7, color: '#7a6248', dark: '#4a3a28', eye: '#ffdf9c', maxHp: 85, move: 'Wolf Dash' },
+    { name: 'Wolf', dmg: 11, biteRate: 1.0, range: 160, speed: 110, scale: 0.85, color: '#6b5a44', dark: '#3a3024', eye: '#ffd25a', maxHp: 100, move: 'Moon Fang' },
+    { name: 'Dire Wolf', dmg: 16, biteRate: 0.85, range: 190, speed: 120, scale: 1.0, color: '#4a4038', dark: '#2a231d', eye: '#ffb347', maxHp: 120, move: 'Frost Howl' },
+    { name: 'Alpha Wolf', dmg: 22, biteRate: 0.7, range: 220, speed: 135, scale: 1.15, color: '#332a26', dark: '#1c1613', eye: '#ff7a3d', maxHp: 145, move: 'Alpha Roar' },
+    { name: 'Fenrir', dmg: 32, biteRate: 0.5, range: 260, speed: 155, scale: 1.4, color: '#160f0d', dark: '#000000', eye: '#ff2e2e', maxHp: 180, move: 'Ragnarok Bite' },
   ];
   const WOLF_MAX_KILLS = 300;
   function wolfStage() { return Math.min(WOLF_STAGES.length - 1, Math.floor(player.kills / (WOLF_MAX_KILLS / (WOLF_STAGES.length - 1)))); }
+
+  // Each stage's named move has its own effect, not just extra damage:
+  // Paw Pounce briefly slows its target, Wolf Dash hits everyone in a line,
+  // Moon Fang bites for extra and heals the wolf, Frost Howl and Alpha Roar
+  // hit everything nearby (the roar also speeds up the wolf's next few
+  // bites), and Ragnarok Bite follows up its hit with a dark explosion.
+  function wolfSpecialAttack(target, cfg) {
+    spawnHitParticles(wolf.x, wolf.y, cfg.eye);
+    switch (cfg.name) {
+      case 'Puppy':
+        applyDamage(target, cfg.dmg);
+        if (!target.dead) { target.speedMult = 0.6; target.slowTimer = Math.max(target.slowTimer, 1.2); }
+        break;
+      case 'Young Wolf': {
+        const dashLen = 80, dashWidth = 24, facing = wolf.facing || 1;
+        for (const e of enemies) {
+          if (e.dead) continue;
+          const relX = (e.x - wolf.x) * facing;
+          const relY = Math.abs(e.y - wolf.y);
+          if (relX >= -10 && relX <= dashLen && relY <= dashWidth) applyDamage(e, cfg.dmg);
+        }
+        break;
+      }
+      case 'Wolf':
+        applyDamage(target, cfg.dmg * 1.5);
+        player.wolfHp = Math.min(cfg.maxHp, player.wolfHp + 6);
+        break;
+      case 'Dire Wolf':
+        explode(wolf.x, wolf.y, 90, cfg.dmg, { palette: ['#bfe8ff', '#eaf7ff'], ringColor: 'rgba(130,210,255,0.8)', slow: { mult: 0.4, time: 3 } });
+        break;
+      case 'Alpha Wolf':
+        explode(wolf.x, wolf.y, 110, cfg.dmg, { palette: ['#ff9d5c', '#ffd199'], ringColor: 'rgba(255,140,61,0.8)' });
+        wolf.hasteTimer = 4;
+        break;
+      case 'Fenrir':
+        applyDamage(target, cfg.dmg * 1.8);
+        explode(target.x, target.y, 70, cfg.dmg, { palette: ['#8a2be2', '#1a0a2e'], ringColor: 'rgba(192,74,255,0.85)' });
+        break;
+    }
+  }
 
   function updateWolf(dt) {
     if (!wolf) return;
     const cfg = WOLF_STAGES[wolfStage()];
     wolf.biteCooldown = Math.max(0, wolf.biteCooldown - dt);
+    wolf.invuln = Math.max(0, wolf.invuln - dt);
+    wolf.hitFlash = Math.max(0, wolf.hitFlash - dt);
+    wolf.hasteTimer = Math.max(0, (wolf.hasteTimer || 0) - dt);
+    player.wolfHp = Math.min(player.wolfHp, cfg.maxHp); // clamp down if it just leveled down a stage somehow, or up a stage raised the ceiling
     const target = findNearestEnemy(wolf.x, wolf.y, cfg.range);
     if (target) {
       const dx = target.x - wolf.x, dy = target.y - wolf.y, d = Math.hypot(dx, dy) || 1;
@@ -2240,10 +2351,10 @@
       else {
         wolf.moving = false;
         if (wolf.biteCooldown <= 0) {
-          wolf.biteCooldown = cfg.biteRate;
-          applyDamage(target, cfg.dmg);
-          spawnHitParticles(wolf.x, wolf.y, cfg.eye);
+          wolf.biteCooldown = wolf.hasteTimer > 0 ? cfg.biteRate * 0.5 : cfg.biteRate;
+          wolfSpecialAttack(target, cfg);
           sfx.hit();
+          addMessage(wolf.x, wolf.y - 20, cfg.move.toUpperCase(), cfg.eye);
         }
       }
     } else {
@@ -2748,6 +2859,8 @@
     const x = px(w.x - camX), y = px(w.y);
     const bob = w.moving ? Math.sin(elapsed * 10) * 1.5 : Math.sin(elapsed * 2) * 0.6;
     const facing = w.facing || 1;
+    const flash = w.hitFlash > 0;
+    const col = (c) => flash ? '#fff' : c;
     ctx.save();
     ctx.translate(x, y + bob);
     ctx.scale(facing * cfg.scale, cfg.scale);
@@ -2758,24 +2871,24 @@
     }
 
     // tail + legs
-    ctx.fillStyle = cfg.dark;
+    ctx.fillStyle = col(cfg.dark);
     ctx.fillRect(-13, -4, 5, 3);
     ctx.fillRect(-8, 4, 3, 5);
     ctx.fillRect(4, 4, 3, 5);
 
     // body + head
-    ctx.fillStyle = cfg.color;
+    ctx.fillStyle = col(cfg.color);
     ctx.fillRect(-9, -5, 16, 9);
     ctx.fillRect(6, -8, 8, 7);
 
     // snout + ears
-    ctx.fillStyle = cfg.dark;
+    ctx.fillStyle = col(cfg.dark);
     ctx.fillRect(12, -5, 4, 3);
     ctx.fillRect(6, -10, 3, 3);
     ctx.fillRect(11, -10, 3, 3);
 
     // glowing eye
-    ctx.fillStyle = cfg.eye;
+    ctx.fillStyle = col(cfg.eye);
     ctx.fillRect(10, -6, 2, 2);
     ctx.restore();
   }
@@ -3379,20 +3492,33 @@
       ctx.fillRect(8, 34, 60, 3);
       ctx.fillStyle = wcfg.eye;
       ctx.fillRect(8, 34, 60 * Math.max(0, Math.min(1, wPct)), 3);
+
+      const wHpPct = Math.max(0, player.wolfHp / wcfg.maxHp);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(8, 39, 60, 3);
+      ctx.fillStyle = wHpPct > 0.5 ? '#6ecb63' : wHpPct > 0.2 ? '#e6c14a' : '#c0392b';
+      ctx.fillRect(8, 39, 60 * wHpPct, 3);
     }
 
     // Wither: the Shadow Helm's once-per-floor curse
     if (player.shadowHelm) {
       ctx.font = '8px monospace';
       ctx.fillStyle = player.usedSpecialThisFloor ? 'rgba(138,111,209,0.4)' : '#a78bfa';
-      ctx.fillText(player.usedSpecialThisFloor ? 'WITHER: USED' : 'WITHER (R): READY', 8, 45);
+      ctx.fillText(player.usedSpecialThisFloor ? 'WITHER: USED' : 'WITHER (R): READY', 8, 50);
     }
 
     // Potions: bought at the shop, drunk anytime with Q
     if (player.potions > 0) {
       ctx.font = '8px monospace';
       ctx.fillStyle = '#5ef29a';
-      ctx.fillText(`POTION (Q): x${player.potions}`, 8, 56);
+      ctx.fillText(`POTION (Q): x${player.potions}`, 8, 61);
+    }
+
+    // Biscuits: bought at the shop, fed to the wolf anytime with E
+    if (player.biscuits > 0) {
+      ctx.font = '8px monospace';
+      ctx.fillStyle = '#d9a066';
+      ctx.fillText(`BISCUIT (E): x${player.biscuits}`, 8, 72);
     }
 
     // score
@@ -3944,6 +4070,8 @@
     vitality: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="3" y="3" width="3" height="3" fill="#c0392b"/><rect x="10" y="3" width="3" height="3" fill="#c0392b"/><rect x="2" y="5" width="12" height="4" fill="#c0392b"/><rect x="3" y="9" width="10" height="2" fill="#c0392b"/><rect x="5" y="11" width="6" height="2" fill="#c0392b"/><rect x="7" y="13" width="2" height="1" fill="#c0392b"/></svg>',
     armor: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="4" y="2" width="8" height="6" fill="#8a94a0"/><rect x="5" y="8" width="6" height="3" fill="#8a94a0"/><rect x="6" y="11" width="4" height="2" fill="#8a94a0"/><rect x="7" y="13" width="2" height="1" fill="#8a94a0"/><rect x="6" y="4" width="4" height="4" fill="#5a6470"/></svg>',
     potion: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="6" y="2" width="4" height="2" fill="#8a94a0"/><rect x="6" y="4" width="4" height="2" fill="#5a6470"/><rect x="4" y="6" width="8" height="2" fill="#e8e0c8"/><rect x="3" y="8" width="10" height="5" fill="#e8e0c8"/><rect x="3" y="10" width="10" height="3" fill="#c0392b"/><rect x="5" y="9" width="2" height="1" fill="#fff"/></svg>',
+    wolfArmor: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="2" y="7" width="12" height="3" fill="#6b4423"/><rect x="2" y="7" width="2" height="3" fill="#4a2f18"/><rect x="12" y="7" width="2" height="3" fill="#4a2f18"/><rect x="7" y="7" width="2" height="3" fill="#d9a066"/><rect x="7" y="10" width="2" height="2" fill="#d9a066"/></svg>',
+    biscuit: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="1" y="6" width="3" height="2" fill="#d9a066"/><rect x="1" y="5" width="2" height="1" fill="#d9a066"/><rect x="1" y="8" width="2" height="1" fill="#d9a066"/><rect x="4" y="7" width="8" height="2" fill="#e8c187"/><rect x="12" y="6" width="3" height="2" fill="#d9a066"/><rect x="13" y="5" width="2" height="1" fill="#d9a066"/><rect x="13" y="8" width="2" height="1" fill="#d9a066"/></svg>',
   };
   const SHOP_ITEMS = [
     {
@@ -3981,6 +4109,18 @@
       cost: (p) => scaledCost(20 + p.potions * 10),
       canBuy: (p) => p.potions < POTION_MAX,
       buy: (p) => { p.potions++; },
+    },
+    {
+      key: 'wolfArmor', name: 'Pet Armor', desc: "Reduce damage your wolf companion takes by 2 per hit (max -8, never below 1).",
+      cost: (p) => scaledCost(70 + (p.wolfArmor / 2) * 35),
+      canBuy: (p) => p.wolfArmor < PET_ARMOR_MAX,
+      buy: (p) => { p.wolfArmor = Math.min(PET_ARMOR_MAX, p.wolfArmor + 2); },
+    },
+    {
+      key: 'biscuit', name: 'Dog Biscuit', desc: 'Carry a biscuit that heals your wolf 50 HP on the spot — press E anytime. Holds up to 5.',
+      cost: (p) => scaledCost(20 + p.biscuits * 10),
+      canBuy: (p) => p.biscuits < BISCUIT_MAX,
+      buy: (p) => { p.biscuits++; },
     },
   ];
 
