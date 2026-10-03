@@ -1640,12 +1640,12 @@
   }
 
   // The wolf can be hurt by whatever melee zombie it's brawling with, but
-  // never truly dies — it bottoms out at 1 HP, hurt but still fighting.
+  // never truly dies — its HP can empty out to 0, hurt but still fighting.
   // Pet Armor (shop) reduces the damage; Dog Biscuits (shop, key E) heal it.
   function hurtWolf(dmg) {
     if (!wolf || wolf.invuln > 0) return;
     dmg = Math.max(1, dmg - player.wolfArmor);
-    player.wolfHp = Math.max(1, player.wolfHp - dmg);
+    player.wolfHp = Math.max(0, player.wolfHp - dmg);
     wolf.invuln = 0.6;
     wolf.hitFlash = 0.2;
     spawnHitParticles(wolf.x, wolf.y, '#fff');
@@ -2281,19 +2281,20 @@
   // Starts as a puppy at the hunter's side and grows with every kill — a
   // slow melee companion rather than a gun, so it reads as a wolf, not a
   // second turret. Fully grown into Fenrir once the kill count caps out.
-  // maxHp starts below the player's base 100 (Puppy) and ends well above it
-  // (Fenrir) — the companion grows from fragile to genuinely tanky. Each
-  // stage's named move is what shows in the floating popup on a landed bite.
+  // Puppy's maxHp (140) is above the player's base 100 so it can soak hits
+  // early on without emptying out too fast; every later stage climbs
+  // higher still. Each stage's named move is what shows in the floating
+  // popup on a landed bite.
   // Palette matches the reference art: a golden-tan floppy-eared puppy,
   // grey wolves with a darker saddle and a pale belly/muzzle, amber eyes
   // through Alpha Wolf, and a near-black Fenrir with an icy blue glow.
   const WOLF_STAGES = [
-    { name: 'Puppy', dmg: 4, biteRate: 1.4, range: 100, speed: 90, scale: 0.55, color: '#d8a35c', dark: '#9c6a34', belly: '#f3e0b8', eye: '#ffe9b0', maxHp: 70, move: 'Paw Pounce' },
-    { name: 'Young Wolf', dmg: 7, biteRate: 1.2, range: 130, speed: 100, scale: 0.7, color: '#8a8a92', dark: '#55555e', belly: '#dcd8cc', eye: '#8fd0ff', maxHp: 85, move: 'Wolf Dash' },
-    { name: 'Wolf', dmg: 11, biteRate: 1.0, range: 160, speed: 110, scale: 0.85, color: '#75757e', dark: '#45454e', belly: '#d2cdc0', eye: '#ffd25a', maxHp: 100, move: 'Moon Fang' },
-    { name: 'Dire Wolf', dmg: 16, biteRate: 0.85, range: 190, speed: 120, scale: 1.0, color: '#64646f', dark: '#383842', belly: '#c6d2da', eye: '#ffcf6b', maxHp: 120, move: 'Frost Howl' },
-    { name: 'Alpha Wolf', dmg: 22, biteRate: 0.7, range: 220, speed: 135, scale: 1.15, color: '#45454f', dark: '#26262c', belly: '#8e8e96', eye: '#ffcf4a', maxHp: 145, move: 'Alpha Roar' },
-    { name: 'Fenrir', dmg: 32, biteRate: 0.5, range: 260, speed: 155, scale: 1.4, color: '#1c1c24', dark: '#000000', belly: '#2b2b3a', eye: '#4fd6ff', maxHp: 180, move: 'Ragnarok Bite' },
+    { name: 'Puppy', dmg: 4, biteRate: 1.4, range: 100, speed: 90, scale: 0.55, color: '#d8a35c', dark: '#9c6a34', belly: '#f3e0b8', eye: '#ffe9b0', maxHp: 140, move: 'Paw Pounce' },
+    { name: 'Young Wolf', dmg: 7, biteRate: 1.2, range: 130, speed: 100, scale: 0.7, color: '#8a8a92', dark: '#55555e', belly: '#dcd8cc', eye: '#8fd0ff', maxHp: 155, move: 'Wolf Dash' },
+    { name: 'Wolf', dmg: 11, biteRate: 1.0, range: 160, speed: 110, scale: 0.85, color: '#75757e', dark: '#45454e', belly: '#d2cdc0', eye: '#ffd25a', maxHp: 170, move: 'Moon Fang' },
+    { name: 'Dire Wolf', dmg: 16, biteRate: 0.85, range: 190, speed: 120, scale: 1.0, color: '#64646f', dark: '#383842', belly: '#c6d2da', eye: '#ffcf6b', maxHp: 190, move: 'Frost Howl' },
+    { name: 'Alpha Wolf', dmg: 22, biteRate: 0.7, range: 220, speed: 135, scale: 1.15, color: '#45454f', dark: '#26262c', belly: '#8e8e96', eye: '#ffcf4a', maxHp: 215, move: 'Alpha Roar' },
+    { name: 'Fenrir', dmg: 32, biteRate: 0.5, range: 260, speed: 155, scale: 1.4, color: '#1c1c24', dark: '#000000', belly: '#2b2b3a', eye: '#4fd6ff', maxHp: 250, move: 'Ragnarok Bite' },
   ];
   const WOLF_MAX_KILLS = 300;
   function wolfStage() { return Math.min(WOLF_STAGES.length - 1, Math.floor(player.kills / (WOLF_MAX_KILLS / (WOLF_STAGES.length - 1)))); }

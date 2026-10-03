@@ -237,10 +237,11 @@ tougher-looking at each stage: Puppy → Young Wolf → Wolf → Dire Wolf →
 Alpha Wolf → **Fenrir**, fully grown at 300 kills.
 
 The wolf has its own health bar, shown under the stage-progress bar in the
-HUD. It starts fragile — the Puppy's max HP (70) is below your own starting
-100 — but ends up tougher than you: Fenrir caps at 180. It never truly
-dies; a losing fight just bottoms it out at 1 HP rather than ending the run.
-Melee zombies that touch it deal contact damage, same as they do to you.
+HUD. The Puppy starts tanky with 140 max HP, already above your own
+starting 100, and every later stage climbs higher still, capping at 250 for
+Fenrir. It never truly dies; a losing fight just empties its HP bar out to
+0 rather than ending the run. Melee zombies that touch it deal contact
+damage, same as they do to you.
 
 Every stage lands its own named special move on a successful bite:
 
