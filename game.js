@@ -2284,13 +2284,16 @@
   // maxHp starts below the player's base 100 (Puppy) and ends well above it
   // (Fenrir) — the companion grows from fragile to genuinely tanky. Each
   // stage's named move is what shows in the floating popup on a landed bite.
+  // Palette matches the reference art: a golden-tan floppy-eared puppy,
+  // grey wolves with a darker saddle and a pale belly/muzzle, amber eyes
+  // through Alpha Wolf, and a near-black Fenrir with an icy blue glow.
   const WOLF_STAGES = [
-    { name: 'Puppy', dmg: 4, biteRate: 1.4, range: 100, speed: 90, scale: 0.55, color: '#8a6a4a', dark: '#5a4530', eye: '#fff2d0', maxHp: 70, move: 'Paw Pounce' },
-    { name: 'Young Wolf', dmg: 7, biteRate: 1.2, range: 130, speed: 100, scale: 0.7, color: '#7a6248', dark: '#4a3a28', eye: '#ffdf9c', maxHp: 85, move: 'Wolf Dash' },
-    { name: 'Wolf', dmg: 11, biteRate: 1.0, range: 160, speed: 110, scale: 0.85, color: '#6b5a44', dark: '#3a3024', eye: '#ffd25a', maxHp: 100, move: 'Moon Fang' },
-    { name: 'Dire Wolf', dmg: 16, biteRate: 0.85, range: 190, speed: 120, scale: 1.0, color: '#4a4038', dark: '#2a231d', eye: '#ffb347', maxHp: 120, move: 'Frost Howl' },
-    { name: 'Alpha Wolf', dmg: 22, biteRate: 0.7, range: 220, speed: 135, scale: 1.15, color: '#332a26', dark: '#1c1613', eye: '#ff7a3d', maxHp: 145, move: 'Alpha Roar' },
-    { name: 'Fenrir', dmg: 32, biteRate: 0.5, range: 260, speed: 155, scale: 1.4, color: '#160f0d', dark: '#000000', eye: '#ff2e2e', maxHp: 180, move: 'Ragnarok Bite' },
+    { name: 'Puppy', dmg: 4, biteRate: 1.4, range: 100, speed: 90, scale: 0.55, color: '#d8a35c', dark: '#9c6a34', belly: '#f3e0b8', eye: '#ffe9b0', maxHp: 70, move: 'Paw Pounce' },
+    { name: 'Young Wolf', dmg: 7, biteRate: 1.2, range: 130, speed: 100, scale: 0.7, color: '#8a8a92', dark: '#55555e', belly: '#dcd8cc', eye: '#8fd0ff', maxHp: 85, move: 'Wolf Dash' },
+    { name: 'Wolf', dmg: 11, biteRate: 1.0, range: 160, speed: 110, scale: 0.85, color: '#75757e', dark: '#45454e', belly: '#d2cdc0', eye: '#ffd25a', maxHp: 100, move: 'Moon Fang' },
+    { name: 'Dire Wolf', dmg: 16, biteRate: 0.85, range: 190, speed: 120, scale: 1.0, color: '#64646f', dark: '#383842', belly: '#c6d2da', eye: '#ffcf6b', maxHp: 120, move: 'Frost Howl' },
+    { name: 'Alpha Wolf', dmg: 22, biteRate: 0.7, range: 220, speed: 135, scale: 1.15, color: '#45454f', dark: '#26262c', belly: '#8e8e96', eye: '#ffcf4a', maxHp: 145, move: 'Alpha Roar' },
+    { name: 'Fenrir', dmg: 32, biteRate: 0.5, range: 260, speed: 155, scale: 1.4, color: '#1c1c24', dark: '#000000', belly: '#2b2b3a', eye: '#4fd6ff', maxHp: 180, move: 'Ragnarok Bite' },
   ];
   const WOLF_MAX_KILLS = 300;
   function wolfStage() { return Math.min(WOLF_STAGES.length - 1, Math.floor(player.kills / (WOLF_MAX_KILLS / (WOLF_STAGES.length - 1)))); }
@@ -2854,42 +2857,73 @@
     ctx.restore();
   }
 
+  // Modeled on the reference art: a golden floppy-eared puppy that grows
+  // into a grey wolf with a darker saddle along its back, a pale belly and
+  // muzzle, perked ears, and (at Fenrir) a near-black coat with a glowing
+  // blue eye and aura instead of the puppy's plain dark one.
   function drawWolf(w) {
     const cfg = WOLF_STAGES[wolfStage()];
     const x = px(w.x - camX), y = px(w.y);
     const bob = w.moving ? Math.sin(elapsed * 10) * 1.5 : Math.sin(elapsed * 2) * 0.6;
+    const legSwing = w.moving ? Math.sin(elapsed * 10) * 2 : 0;
     const facing = w.facing || 1;
     const flash = w.hitFlash > 0;
     const col = (c) => flash ? '#fff' : c;
+    const puppy = cfg.name === 'Puppy';
     ctx.save();
     ctx.translate(x, y + bob);
     ctx.scale(facing * cfg.scale, cfg.scale);
 
     if (cfg.name === 'Fenrir') {
-      ctx.fillStyle = 'rgba(255,40,20,0.3)';
-      ctx.beginPath(); ctx.arc(0, -2, 16, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(70,170,255,0.3)';
+      ctx.beginPath(); ctx.arc(0, -2, 17, 0, Math.PI * 2); ctx.fill();
     }
 
-    // tail + legs
-    ctx.fillStyle = col(cfg.dark);
-    ctx.fillRect(-13, -4, 5, 3);
-    ctx.fillRect(-8, 4, 3, 5);
-    ctx.fillRect(4, 4, 3, 5);
-
-    // body + head
+    // tail: sweeps up and back behind the body, darker at the tip
     ctx.fillStyle = col(cfg.color);
-    ctx.fillRect(-9, -5, 16, 9);
-    ctx.fillRect(6, -8, 8, 7);
-
-    // snout + ears
+    ctx.fillRect(-15, -6, 4, 3);
     ctx.fillStyle = col(cfg.dark);
-    ctx.fillRect(12, -5, 4, 3);
-    ctx.fillRect(6, -10, 3, 3);
-    ctx.fillRect(11, -10, 3, 3);
+    ctx.fillRect(-18, -9, 4, 3);
 
-    // glowing eye
-    ctx.fillStyle = col(cfg.eye);
-    ctx.fillRect(10, -6, 2, 2);
+    // rear + front legs, with a little swing while moving
+    ctx.fillStyle = col(cfg.dark);
+    ctx.fillRect(-9, 1 - legSwing * 0.3, 4, 7);
+    ctx.fillRect(4, 1 + legSwing * 0.3, 4, 7);
+
+    // body: main coat, a darker saddle along the back, a pale belly underneath
+    ctx.fillStyle = col(cfg.color);
+    ctx.fillRect(-10, -6, 19, 8);
+    ctx.fillStyle = col(cfg.dark);
+    ctx.fillRect(-10, -6, 19, 3);
+    ctx.fillStyle = col(cfg.belly);
+    ctx.fillRect(-8, 0, 15, 2);
+
+    // neck/chest leading into the head
+    ctx.fillStyle = col(cfg.color);
+    ctx.fillRect(7, -8, 4, 9);
+
+    // head + pale muzzle + nose
+    ctx.fillStyle = col(cfg.color);
+    ctx.fillRect(9, -11, 8, 8);
+    ctx.fillStyle = col(cfg.belly);
+    ctx.fillRect(15, -7, 6, 3);
+    ctx.fillStyle = col('#1a1410');
+    ctx.fillRect(20, -6, 1, 1);
+
+    // ears: floppy on the puppy, perked and pointed on every wolf stage —
+    // drawn after the head so they sit on top of it instead of underneath
+    ctx.fillStyle = col(cfg.dark);
+    if (puppy) {
+      ctx.fillRect(8, -8, 3, 7);
+    } else {
+      ctx.fillRect(10, -14, 2, 4);
+      ctx.fillRect(13, -15, 2, 5);
+    }
+
+    // eye: a plain dark dot on the puppy, a colored glow on every wolf stage
+    ctx.fillStyle = puppy ? col('#2a1810') : col(cfg.eye);
+    ctx.fillRect(13, -9, 2, 2);
+
     ctx.restore();
   }
 
