@@ -2,10 +2,12 @@
 
 A pixel-art 2D run-and-gun platformer. Jump across eight crumbling floors —
 temple, dungeon, jungle, a frozen temple, Hell itself, a cursed desert, a
-bone crypt, and finally the Demon God's own throne — and gun down whatever's
-guarding them. Every clean kill leaves behind a soul you can load as special
-ammunition, and a wolf pup follows you the whole way, growing fiercer with
-every kill.
+bone crypt, and finally the Demon God's own throne — and take down whatever's
+guarding them. Floor one is fists-only; clearing it hands you a choice of
+class — Samurai, Sniper, or Petmancer — that shapes how you fight for the
+rest of the run (see [Classes](#classes)). Every clean kill leaves behind a
+soul you can load as special ammunition, on top of whatever your class gives
+you.
 
 ## Story
 
@@ -15,13 +17,37 @@ what actually happened here: a king, a bargain with something that shouldn't
 have been bargained with, and exactly what he became. It builds to the
 throne room at the very end. Better experienced in order than spoiled here.
 
+## Classes
+
+Floor one is bare-handed — no gun, just fists — so the choice means
+something by the time you reach it. Clearing floor one opens a one-time
+class-select screen:
+
+- **⚔️ Samurai** — the knife slot is replaced by a **katana** that hits
+  noticeably harder than a plain knife swing, and **C** opens a brief parry
+  window: a hit landed during it does no damage and detonates a damage
+  pulse on everything close enough to have thrown it, instead of just
+  shrugging the hit off. The gun and soul-ammo system work exactly as
+  normal alongside it.
+- **🎯 Sniper** — the standard gun and soul-ammo kit, unchanged, at a
+  touch less damage than the other classes.
+- **🐺 Petmancer** — no gun at all, ever. A wolf companion joins you
+  instead (see [Wolf companion](#wolf-companion)), and the shop's gun/soul
+  items (Ammo Cache, Combine Souls) are hidden since there's nothing to
+  spend them on.
+
+Kills earn class levels independently of your overall kill count, with a
+permanent damage buff every 5 levels. Picking a class is permanent for the
+run — there's no second class-select screen later on.
+
 ## Bullets & the knife
 
-Normal ammo isn't infinite — you start each run with 100 bullets. Run out
-and shooting falls back to a short-range knife swing instead of failing
-outright. Every kill restocks +2 bullets, even a soulless shambler, so
-staying aggressive keeps you stocked; the shop's Ammo Cache also tops
-bullets back up to 100 (never down) alongside its usual soul refill.
+Normal ammo isn't infinite — you start each run with 100 bullets (once
+you've picked a gun-carrying class). Run out and shooting falls back to a
+short-range knife swing instead of failing outright. Every kill restocks
++2 bullets, even a soulless shambler, so staying aggressive keeps you
+stocked; the shop's Ammo Cache also tops bullets back up to 100 (never
+down) alongside its usual soul refill.
 
 Beat the Arch Demon and that knife is upgraded permanently into the
 **Demon Knife**: instead of a stationary swipe it becomes a short forward
@@ -99,6 +125,7 @@ shared or synced anywhere.
 - **0** — cycle fused shots; or hold two souls' ammo keys together (e.g. **2+5**) to load that pair directly (see [Soul Fusion](#soul-fusion))
 - **Q** — drink a potion (heals 30 HP on the spot; bought at the supply cache, holds up to 5)
 - **E** — feed your wolf a biscuit (heals it 50 HP on the spot; bought at the supply cache, holds up to 5)
+- **C** — parry (Samurai only): blocks the next hit outright and counters nearby enemies
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 **Mobile (on-screen controls)**
@@ -109,6 +136,7 @@ shared or synced anywhere.
 - **FUSE** — cycle fused shots (see [Soul Fusion](#soul-fusion))
 - **POTION** — drink a potion (heals 30 HP on the spot)
 - **BISCUIT** — feed your wolf a biscuit (heals it 50 HP on the spot)
+- **PARRY** — parry (Samurai only)
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 ## Enemies & souls
@@ -230,7 +258,8 @@ it's dead. Beating it grants a permanent +20% damage bonus and ends the run
 
 ## Wolf companion
 
-A wolf pup starts at your side from the first floor and levels up purely
+Petmancer-only (see [Classes](#classes)) — picking any other class means no
+pet at all. Once chosen, a wolf pup joins your side and levels up purely
 from your running kill count — no feeding or separate XP to manage. It
 fights in melee, biting whatever's nearest, and gets stronger, faster, and
 tougher-looking at each stage: Puppy → Young Wolf → Wolf → Dire Wolf →
@@ -262,14 +291,16 @@ pattern as your own Health Potions.
 ## Shop
 
 Between floors, spend your score at the supply cache on healing, ammo
-refills, permanent damage/health/armor upgrades, Health Potions, Pet
-Armor, and Dog Biscuits. Health Potions are a portable heal (30 HP, up to
-5 held at once) you can drink anytime with **Q**, unlike the instant full
-heal that only works at the cache itself; Dog Biscuits work the same way
-for your wolf companion (see [Wolf companion](#wolf-companion)). You can
-also roll out the Combine Souls panel to fuse your souls together (see
-[Soul Fusion](#soul-fusion)). Prices climb both with repeated purchases of
-the same upgrade and with how deep you are — every floor's cache after the
+refills, and permanent damage/health/armor upgrades, plus Health Potions —
+a portable heal (30 HP, up to 5 held at once) you can drink anytime with
+**Q**, unlike the instant full heal that only works at the cache itself.
+You can also roll out the Combine Souls panel to fuse your souls together
+(see [Soul Fusion](#soul-fusion)). Petmancer gets two more items in its
+place — Pet Armor and Dog Biscuits (the latter working like a Health
+Potion, but for your wolf) — while Ammo Cache and Combine Souls are hidden
+instead, since there's no gun to spend bullets or fused shots from (see
+[Classes](#classes)). Prices climb both with repeated purchases of the
+same upgrade and with how deep you are — every floor's cache after the
 temple's charges more than the last, and the Demon God's throne is the
 steepest of all.
 

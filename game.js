@@ -30,6 +30,10 @@
   const resumeSummaryEl = document.getElementById('resumeSummary');
   const resumeContinueBtn = document.getElementById('resumeContinueBtn');
   const resumeNewGameBtn = document.getElementById('resumeNewGameBtn');
+  const classScreen = document.getElementById('classScreen');
+  const chooseSamuraiBtn = document.getElementById('chooseSamuraiBtn');
+  const chooseSniperBtn = document.getElementById('chooseSniperBtn');
+  const choosePetmancerBtn = document.getElementById('choosePetmancerBtn');
 
   // ---------- Virtual low-res buffer (gives the whole game its pixelated look) ----------
   const TILE = 30;
@@ -141,6 +145,7 @@
     demonSlash: () => { tone(200, 0.09, 'sawtooth', 0.16, 60); noiseBurst(0.09, 0.12); },
     slide: () => noiseBurst(0.14, 0.1),
     heal: () => { tone(520, 0.1, 'sine', 0.1, 780); setTimeout(() => tone(780, 0.14, 'sine', 0.1, 1040), 70); },
+    parry: () => { tone(1100, 0.07, 'square', 0.16, 1700); noiseBurst(0.05, 0.1); },
   };
 
   // ---------- Boss music ----------
@@ -444,6 +449,29 @@
   const PET_ARMOR_MAX = 8;
   const BISCUIT_MAX = 5;
   const BISCUIT_HEAL = 50;
+  const KILLS_PER_LEVEL = 10; // one class level every 10 kills, once a class is chosen
+  const CLASS_NAMES = { samurai: 'Samurai', sniper: 'Sniper', petmancer: 'Petmancer' };
+
+  // Levels only start counting once a class is picked (end of floor 1).
+  // Every level raises damage a little; every 5th level is the "massive
+  // buff" milestone each class's abilities unlock on (wired per class).
+  function classLevel(p) { return p.classType ? Math.floor(p.classKills / KILLS_PER_LEVEL) : 0; }
+  function classDmgMult(p) { return p.classType ? 1 + 0.08 * Math.floor(classLevel(p) / 5) : 1; }
+  // No gun pre-class (floor 1 is fists-only) or as the Petmancer (pure
+  // melee/pets, no personal ranged attack).
+  function hasGun(p) { return !!p.classType && p.classType !== 'petmancer'; }
+  // The Samurai's katana replaces the plain knife swing with something that
+  // actually hits like a dedicated weapon rather than a last-resort fallback.
+  function meleeDmgMult(p) { return p.classType === 'samurai' ? 1.8 : 1; }
+  // "Normal kit, normal damage slightly lower" — the Sniper trades a little
+  // base damage for its ranged abilities.
+  function gunDmgMult(p) { return p.classType === 'sniper' ? 0.85 : 1; }
+  // Shared by every player-dealt hit (bullets, knife/katana, the parry
+  // counter) so a future change to the formula can't desync between them —
+  // weaponMult is whichever of gunDmgMult/meleeDmgMult/a flat bonus applies.
+  function playerBaseDmg(p, weaponMult = 1) {
+    return BASE_DMG * p.dmgMult * p.helmDmgBonus * p.godDmgBonus * classDmgMult(p) * weaponMult;
+  }
 
   // ---------- State ----------
   let state = 'start'; // start | cutscene | playing | shop | win | dead | dying
@@ -459,7 +487,10 @@
       x: 1 * TILE + TILE / 2, y: (ROWS - 1) * TILE - 13, vx: 0, vy: 0, groundVx: 0, w: 14, h: 24,
       onGround: false, facing: 1, aim: 0, // aim: -1 up, 0 horizontal, 1 down
       hp: 100, maxHp: 100, lives: 3, score: 0, kills: 0,
-      ammo: 'normal', bullets: 100, souls: { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0 },
+      // No class chosen yet (that happens at the end of floor 1), so you
+      // fight bare-handed — no gun until classType is set.
+      classType: null, classKills: 0,
+      ammo: 'knife', bullets: 0, souls: { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0 },
       combos: {},
       fireCooldown: 0, invuln: 0, coyote: 0, jumpBuffer: 0, jumpsUsed: 0, walkT: 0, hurtFlash: 0,
       shockedTimer: 0, blockMsgCooldown: 0, won: false,
@@ -470,6 +501,7 @@
       homingNext: false, shadowHelm: false, helmDmgBonus: 1, knockX: 0, knockTimer: 0,
       usedSpecialThisFloor: false, knifeSwing: 0, demonKnife: false, godDmgBonus: 1,
       slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
+      parryTimer: 0, parryCooldown: 0,
       deathTimer: 0, potions: 0,
       wolfHp: WOLF_STAGES[0].maxHp, wolfArmor: 0, biscuits: 0,
     };
@@ -484,7 +516,7 @@
     levelIndex = 0;
     buildMap();
     player = newPlayer();
-    wolf = makeWolf(player.x - 14, player.y);
+    wolf = null; // only the Petmancer class has a pet, chosen after floor 1
     enemies = currentLevel().spawnList.map(([type, col, row]) => spawnEnemy(type, col, row));
     pBullets = []; eBullets = []; hazards = []; particles = []; messages = [];
     spawnFloorHazards();
@@ -505,7 +537,7 @@
     bossArenaSealed = false;
     player.x = x; player.y = y; player.vx = 0; player.vy = 0; player.groundVx = 0;
     player.knockX = 0; player.knockTimer = 0;
-    if (wolf) { wolf.x = x - 14; wolf.y = y; } else { wolf = makeWolf(x - 14, y); }
+    if (wolf) { wolf.x = x - 14; wolf.y = y; } else if (player.classType === 'petmancer') { wolf = makeWolf(x - 14, y); }
     respawn = { x, y };
   }
 
@@ -592,8 +624,15 @@
     player.wolfArmor = 0;
     player.biscuits = 0;
     player.wolfHp = WOLF_STAGES[wolfStage()].maxHp;
-    player.ammo = 'normal';
-    player.bullets = 100;
+    // No class yet means still-floor-1 fists-only; Petmancer never gets a
+    // gun at all. Everyone else gets their bullets back.
+    if (hasGun(player)) {
+      player.ammo = 'normal';
+      player.bullets = 100;
+    } else {
+      player.ammo = 'knife';
+      player.bullets = 0;
+    }
     player.lives = 3;
     player.hp = player.maxHp;
     // Only strip the Guardian's shadow helm (and the damage bonus it
@@ -633,7 +672,14 @@
     e.deathTimer = ENEMY_DEATH_ANIM;
     player.score += e.cfg.points;
     player.kills++;
-    player.bullets += 2; // every kill restocks bullets, even a soulless shambler
+    // No gun at all pre-class or as the Petmancer, so nothing to restock.
+    if (hasGun(player)) player.bullets += 2;
+    if (player.classType) {
+      const before = classLevel(player);
+      player.classKills++;
+      const after = classLevel(player);
+      if (after > before) addMessage(player.x, player.y - 30, `LEVEL ${after}`, '#ffcd3c');
+    }
     spawnDeathParticles(e.x, e.y, e.cfg.color);
     addMessage(e.x, e.y - 16, `+${e.cfg.points}`, '#dfeee4');
     if (e.cfg.soul) {
@@ -804,10 +850,26 @@
     sfx.slide();
   }
 
+  const PARRY_WINDOW = 0.25;
+  const PARRY_COOLDOWN = 1.0;
+  // Samurai-only: a brief window that blocks the next hit outright and
+  // counters with a pulse of damage to anything close enough to have
+  // thrown it, instead of just shrugging the hit off like the slide's
+  // i-frames do.
+  function tryParry() {
+    if (state !== 'playing' || player.classType !== 'samurai') return;
+    if (player.parryCooldown > 0) return;
+    player.parryTimer = PARRY_WINDOW;
+    player.parryCooldown = PARRY_COOLDOWN;
+    sfx.parry();
+    spawnHitParticles(player.x + player.facing * 10, player.y, '#8fd0ff');
+  }
+
   // Cycles ammo through whichever fused combos the player currently has
   // charges for (key 0 / the mobile FUSE button) — separate from the
   // Digit1-8 base-ammo row since combos are crafted, not fixed slots.
   function cycleComboAmmo() {
+    if (!hasGun(player)) return;
     const owned = COMBO_LIST.filter(k => (player.combos[k] || 0) > 0);
     if (owned.length === 0) {
       addMessage(player.x, player.y - 24, 'NO FUSED SHOTS', '#c9b98f');
@@ -908,7 +970,7 @@
     const muzzleY = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
     spawnShellCasing(player.x - dir * 2, player.y - 6, dir);
 
-    const dmg = BASE_DMG * player.dmgMult * player.helmDmgBonus * player.godDmgBonus;
+    const dmg = playerBaseDmg(player, gunDmgMult(player));
     const homing = player.homingNext;
     player.homingNext = false;
     if (ammo === 'normal') {
@@ -954,7 +1016,7 @@
     player.knifeSwing = 0.15;
     const dir = player.facing;
     const ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
-    const dmg = BASE_DMG * player.dmgMult * player.helmDmgBonus * player.godDmgBonus;
+    const dmg = playerBaseDmg(player, meleeDmgMult(player));
 
     if (player.demonKnife) {
       const startX = player.x;
@@ -1087,7 +1149,7 @@
 
   const GAME_KEYS = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
-    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'KeyQ', 'KeyE', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
+    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'KeyQ', 'KeyE', 'KeyC', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
   ]);
 
   // Single source of truth for the Digit1-8 ammo hotkeys, also reused by the
@@ -1117,8 +1179,8 @@
       return;
     }
     if (state !== 'playing') return;
-    if (DIGIT_AMMO[ev.code]) player.ammo = DIGIT_AMMO[ev.code];
-    if (DIGIT_SOUL[ev.code]) {
+    if (DIGIT_AMMO[ev.code] && hasGun(player)) player.ammo = DIGIT_AMMO[ev.code];
+    if (DIGIT_SOUL[ev.code] && hasGun(player)) {
       for (const code in DIGIT_SOUL) {
         if (code === ev.code || !keys[code]) continue;
         const comboKey = comboKeyFor(DIGIT_SOUL[ev.code], DIGIT_SOUL[code]);
@@ -1128,6 +1190,7 @@
     if (ev.code === 'KeyW' || ev.code === 'ArrowUp') player.jumpBuffer = 0.12;
     if (ev.code === 'ArrowDown' || ev.code === 'KeyS') trySlide();
     if (ev.code === 'KeyR') useSpecialAttack();
+    if (ev.code === 'KeyC') tryParry();
     if (ev.code === 'Digit9') placeTrap();
     if (ev.code === 'Digit0') cycleComboAmmo();
     if (ev.code === 'KeyQ') usePotion();
@@ -1155,19 +1218,24 @@
   // an old save's levelIndex would otherwise silently resolve to the wrong
   // floor (everything from the crypt onward shifted up by one), so a save
   // written by the previous floor layout must not be reused as-is.
-  const SAVE_KEY = 'templeOfBones_save_v2';
+  // Bumped again to v3 for the class system: classType is legitimately null
+  // in a perfectly valid save (floor 1, before the class-select screen), so
+  // there's no reliable way to tell that apart from a save written before
+  // classes existed at all — a clean break avoids guessing wrong either way.
+  const SAVE_KEY = 'templeOfBones_save_v3';
 
   function saveGame() {
     if (state !== 'playing') return;
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        v: 2,
+        v: 3,
         levelIndex,
         mobileControlsEnabled,
         respawn: { x: respawn.x, y: respawn.y },
         player: {
           hp: player.hp, maxHp: player.maxHp, lives: player.lives,
           score: player.score, kills: player.kills,
+          classType: player.classType, classKills: player.classKills,
           ammo: player.ammo, bullets: player.bullets,
           souls: { ...player.souls },
           combos: { ...player.combos },
@@ -1188,7 +1256,7 @@
       if (!raw) return null;
       const data = JSON.parse(raw);
       if (
-        !data || data.v !== 2 || !LEVEL_DEFS[data.levelIndex] ||
+        !data || data.v !== 3 || !LEVEL_DEFS[data.levelIndex] ||
         !data.respawn || typeof data.respawn.x !== 'number' || typeof data.respawn.y !== 'number' ||
         !data.player || typeof data.player !== 'object'
       ) return null;
@@ -1225,6 +1293,7 @@
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
     shopScreen.classList.add('hidden');
+    classScreen.classList.add('hidden');
     skipCutsceneBtn.classList.add('hidden');
     if (currentLevel().hasBoss) startBossMusic();
     sfx.checkpoint();
@@ -1301,10 +1370,18 @@
   });
   tcBiscuitBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
+  const tcParryBtn = document.getElementById('tcParry');
+  tcParryBtn.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    pressKey('KeyC');
+    releaseKey('KeyC');
+  });
+  tcParryBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
   const tcAmmoBtn = document.getElementById('tcAmmo');
   tcAmmoBtn.addEventListener('pointerdown', (ev) => {
     ev.preventDefault();
-    if (state !== 'playing') return;
+    if (state !== 'playing' || !hasGun(player)) return;
     const idx = AMMO_CYCLE.indexOf(player.ammo);
     player.ammo = AMMO_CYCLE[(idx + 1) % AMMO_CYCLE.length];
   });
@@ -1414,9 +1491,22 @@
 
   function syncTouchControls() {
     const show = mobileControlsEnabled && state === 'playing';
-    if (show === touchControlsShown) return;
-    touchControlsShown = show;
-    touchControls.classList.toggle('hidden', !show);
+    if (show !== touchControlsShown) {
+      touchControlsShown = show;
+      touchControls.classList.toggle('hidden', !show);
+    }
+    // Hide the class-specific buttons that would otherwise just silently
+    // no-op for whichever class isn't using them — a gunless Petmancer has
+    // no use for FUSE/AMMO, only a Samurai can PARRY, and only a Petmancer
+    // (the only class with a wolf) has a BISCUIT to feed it. Only matters
+    // once a player object actually exists (state 'playing' already implies
+    // that, same as every other player.* read gated on it elsewhere).
+    if (state === 'playing') {
+      tcParryBtn.classList.toggle('hidden', player.classType !== 'samurai');
+      tcBiscuitBtn.classList.toggle('hidden', !wolf);
+      tcComboBtn.classList.toggle('hidden', !hasGun(player));
+      tcAmmoBtn.classList.toggle('hidden', !hasGun(player));
+    }
   }
 
   // ---------- Physics ----------
@@ -1472,6 +1562,8 @@
     player.shockedTimer = Math.max(0, player.shockedTimer - dt);
     player.slideTimer = Math.max(0, player.slideTimer - dt);
     player.slideCooldown = Math.max(0, player.slideCooldown - dt);
+    player.parryTimer = Math.max(0, player.parryTimer - dt);
+    player.parryCooldown = Math.max(0, player.parryCooldown - dt);
     // Leaving the ground (walking off a ledge) ends the slide immediately —
     // otherwise its forced speed, locked aim, and invulnerability would carry
     // into the air for the rest of its duration, turning it into free extra
@@ -1614,9 +1706,13 @@
         }
       } else if (levelIndex + 1 < LEVEL_DEFS.length) {
         const next = levelIndex + 1;
-        const nextCutscene = FLOOR_CUTSCENES[LEVEL_DEFS[next].theme];
-        if (nextCutscene) playCutscene(nextCutscene, () => openShop(next));
-        else openShop(next);
+        const proceed = () => {
+          const nextCutscene = FLOOR_CUTSCENES[LEVEL_DEFS[next].theme];
+          if (nextCutscene) playCutscene(nextCutscene, () => openShop(next));
+          else openShop(next);
+        };
+        if (next === 1 && !player.classType) showClassSelect(proceed);
+        else proceed();
       } else {
         state = 'win';
         clearSave();
@@ -1630,6 +1726,17 @@
 
   function hurtPlayer(dmg) {
     if (player.invuln > 0) return;
+    if (player.parryTimer > 0) {
+      player.parryTimer = 0;
+      sfx.parry();
+      spawnShockwave(player.x, player.y, 'rgba(143,208,255,0.8)', 50);
+      const counterDmg = playerBaseDmg(player, meleeDmgMult(player) * 1.5);
+      for (const e of enemies) {
+        if (e.dead) continue;
+        if (Math.hypot(e.x - player.x, e.y - player.y) < 50) applyDamage(e, counterDmg);
+      }
+      return;
+    }
     dmg = Math.max(1, dmg - player.armor);
     player.hp -= dmg;
     player.invuln = 1.0;
@@ -2306,9 +2413,13 @@
   // bites), and Ragnarok Bite follows up its hit with a dark explosion.
   function wolfSpecialAttack(target, cfg) {
     spawnHitParticles(wolf.x, wolf.y, cfg.eye);
+    // The Petmancer's per-5-level damage buff has no gun to apply to, so it
+    // goes to the wolf's bites instead — otherwise leveling up would do
+    // nothing for the one class that actually leans on it.
+    const dmg = cfg.dmg * classDmgMult(player);
     switch (cfg.name) {
       case 'Puppy':
-        applyDamage(target, cfg.dmg);
+        applyDamage(target, dmg);
         if (!target.dead) { target.speedMult = 0.6; target.slowTimer = Math.max(target.slowTimer, 1.2); }
         break;
       case 'Young Wolf': {
@@ -2317,24 +2428,24 @@
           if (e.dead) continue;
           const relX = (e.x - wolf.x) * facing;
           const relY = Math.abs(e.y - wolf.y);
-          if (relX >= -10 && relX <= dashLen && relY <= dashWidth) applyDamage(e, cfg.dmg);
+          if (relX >= -10 && relX <= dashLen && relY <= dashWidth) applyDamage(e, dmg);
         }
         break;
       }
       case 'Wolf':
-        applyDamage(target, cfg.dmg * 1.5);
+        applyDamage(target, dmg * 1.5);
         player.wolfHp = Math.min(cfg.maxHp, player.wolfHp + 6);
         break;
       case 'Dire Wolf':
-        explode(wolf.x, wolf.y, 90, cfg.dmg, { palette: ['#bfe8ff', '#eaf7ff'], ringColor: 'rgba(130,210,255,0.8)', slow: { mult: 0.4, time: 3 } });
+        explode(wolf.x, wolf.y, 90, dmg, { palette: ['#bfe8ff', '#eaf7ff'], ringColor: 'rgba(130,210,255,0.8)', slow: { mult: 0.4, time: 3 } });
         break;
       case 'Alpha Wolf':
-        explode(wolf.x, wolf.y, 110, cfg.dmg, { palette: ['#ff9d5c', '#ffd199'], ringColor: 'rgba(255,140,61,0.8)' });
+        explode(wolf.x, wolf.y, 110, dmg, { palette: ['#ff9d5c', '#ffd199'], ringColor: 'rgba(255,140,61,0.8)' });
         wolf.hasteTimer = 4;
         break;
       case 'Fenrir':
-        applyDamage(target, cfg.dmg * 1.8);
-        explode(target.x, target.y, 70, cfg.dmg, { palette: ['#8a2be2', '#1a0a2e'], ringColor: 'rgba(192,74,255,0.85)' });
+        applyDamage(target, dmg * 1.8);
+        explode(target.x, target.y, 70, dmg, { palette: ['#8a2be2', '#1a0a2e'], ringColor: 'rgba(192,74,255,0.85)' });
         break;
     }
   }
@@ -3514,6 +3625,17 @@
     ctx.fillStyle = hpPct > 0.5 ? '#6ecb63' : hpPct > 0.2 ? '#e6c14a' : '#c0392b';
     ctx.fillRect(9, 19, 88 * hpPct, 4);
 
+    // class + level — always shown once a class is picked. Whatever sits
+    // right below it (the pet block, or the parry readout) pushes every
+    // line after it down by extraHudLine to make room, same 11px spacing
+    // as the rest of this stack.
+    if (player.classType) {
+      ctx.font = '8px monospace';
+      ctx.fillStyle = '#ffcd3c';
+      ctx.fillText(`${CLASS_NAMES[player.classType].toUpperCase()} LV${classLevel(player)}`, 8, 32);
+    }
+    const extraHudLine = (wolf || player.classType === 'samurai') ? 11 : 0;
+
     // wolf companion: name + progress toward its next stage (Fenrir at 300 kills)
     if (wolf) {
       const stage = wolfStage();
@@ -3522,38 +3644,46 @@
       const wPct = stage >= WOLF_STAGES.length - 1 ? 1 : (player.kills % perStage) / perStage;
       ctx.font = '8px monospace';
       ctx.fillStyle = wcfg.eye;
-      ctx.fillText(wcfg.name.toUpperCase(), 8, 32);
+      ctx.fillText(wcfg.name.toUpperCase(), 8, 32 + extraHudLine);
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.fillRect(8, 34, 60, 3);
+      ctx.fillRect(8, 34 + extraHudLine, 60, 3);
       ctx.fillStyle = wcfg.eye;
-      ctx.fillRect(8, 34, 60 * Math.max(0, Math.min(1, wPct)), 3);
+      ctx.fillRect(8, 34 + extraHudLine, 60 * Math.max(0, Math.min(1, wPct)), 3);
 
       const wHpPct = Math.max(0, player.wolfHp / wcfg.maxHp);
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.fillRect(8, 39, 60, 3);
+      ctx.fillRect(8, 39 + extraHudLine, 60, 3);
       ctx.fillStyle = wHpPct > 0.5 ? '#6ecb63' : wHpPct > 0.2 ? '#e6c14a' : '#c0392b';
-      ctx.fillRect(8, 39, 60 * wHpPct, 3);
+      ctx.fillRect(8, 39 + extraHudLine, 60 * wHpPct, 3);
+    }
+
+    // Parry: Samurai-only, ready/on-cooldown readout in the gap the pet
+    // block would otherwise occupy (Samurai never has a pet)
+    if (player.classType === 'samurai') {
+      ctx.font = '8px monospace';
+      ctx.fillStyle = player.parryCooldown > 0 ? 'rgba(143,208,255,0.4)' : '#8fd0ff';
+      ctx.fillText(player.parryCooldown > 0 ? 'PARRY: COOLDOWN' : 'PARRY (C): READY', 8, 32 + extraHudLine);
     }
 
     // Wither: the Shadow Helm's once-per-floor curse
     if (player.shadowHelm) {
       ctx.font = '8px monospace';
       ctx.fillStyle = player.usedSpecialThisFloor ? 'rgba(138,111,209,0.4)' : '#a78bfa';
-      ctx.fillText(player.usedSpecialThisFloor ? 'WITHER: USED' : 'WITHER (R): READY', 8, 50);
+      ctx.fillText(player.usedSpecialThisFloor ? 'WITHER: USED' : 'WITHER (R): READY', 8, 50 + extraHudLine);
     }
 
     // Potions: bought at the shop, drunk anytime with Q
     if (player.potions > 0) {
       ctx.font = '8px monospace';
       ctx.fillStyle = '#5ef29a';
-      ctx.fillText(`POTION (Q): x${player.potions}`, 8, 61);
+      ctx.fillText(`POTION (Q): x${player.potions}`, 8, 61 + extraHudLine);
     }
 
     // Biscuits: bought at the shop, fed to the wolf anytime with E
     if (player.biscuits > 0) {
       ctx.font = '8px monospace';
       ctx.fillStyle = '#d9a066';
-      ctx.fillText(`BISCUIT (E): x${player.biscuits}`, 8, 72);
+      ctx.fillText(`BISCUIT (E): x${player.biscuits}`, 8, 72 + extraHudLine);
     }
 
     // score
@@ -3591,16 +3721,30 @@
 
     drawComboHUD();
 
-    // ammo slots
+    // ammo slots — no gun pre-class (floor 1) or as the Petmancer, so just
+    // show a single fists-only indicator instead of the full ammo bar
+    if (!hasGun(player)) {
+      const sy = VIEW_H - 22;
+      ctx.fillStyle = 'rgba(255,205,60,0.3)';
+      ctx.fillRect(VIEW_W / 2 - 24, sy, 48, 18);
+      ctx.strokeStyle = '#c9b98f';
+      ctx.strokeRect(VIEW_W / 2 - 23.5, sy + 0.5, 47, 17);
+      ctx.fillStyle = '#fff';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('FIST', VIEW_W / 2, sy + 13);
+      ctx.textAlign = 'left';
+    } else {
+    const meleeLabel = player.classType === 'samurai' ? 'KATANA' : 'KNIFE';
     const slots = [
-      { key: 'normal', label: '1', color: player.bullets > 0 ? '#5ef29a' : (player.demonKnife ? '#ff8a3d' : '#c9b98f'), count: player.bullets > 0 ? player.bullets : 'KNIFE' },
+      { key: 'normal', label: '1', color: player.bullets > 0 ? '#5ef29a' : (player.demonKnife ? '#ff8a3d' : '#c9b98f'), count: player.bullets > 0 ? player.bullets : meleeLabel },
       { key: 'berserker', label: '2', color: SOUL_META.berserker.color, count: player.souls.berserker },
       { key: 'pyromancer', label: '3', color: SOUL_META.pyromancer.color, count: player.souls.pyromancer },
       { key: 'frost', label: '4', color: SOUL_META.frost.color, count: player.souls.frost },
       { key: 'lightning', label: '5', color: SOUL_META.lightning.color, count: player.souls.lightning },
       { key: 'acid', label: '6', color: SOUL_META.acid.color, count: player.souls.acid },
       { key: 'shadow', label: '7', color: SOUL_META.shadow.color, count: player.souls.shadow },
-      { key: 'knife', label: '8', color: player.demonKnife ? '#ff8a3d' : '#c9b98f', count: 'KNIFE' },
+      { key: 'knife', label: '8', color: player.demonKnife ? '#ff8a3d' : '#c9b98f', count: meleeLabel },
       { key: 'trap', label: '9', color: player.souls.trap > 0 ? SOUL_META.trap.color : '#c9b98f', count: player.souls.trap },
       (() => {
         const totalCombos = COMBO_LIST.reduce((sum, k) => sum + (player.combos[k] || 0), 0);
@@ -3623,6 +3767,7 @@
       ctx.fillStyle = '#fff';
       ctx.fillText(String(s.count), sx + 3, sy + 16);
       sx += 34;
+    }
     }
 
     ctx.font = '9px monospace';
@@ -3766,6 +3911,13 @@
   }
 
   function endCutscene() {
+    // The intro cutscene's own onEnd (beginGameplay) already hides this, but
+    // a floor-transition cutscene's onEnd (openShop/showClassSelect) never
+    // did — leaving it stuck visible over actual gameplay, where a stray
+    // click would fall through to the beginGameplay() fallback below and
+    // silently wipe the run. Hiding it here, the one place every cutscene
+    // actually ends, covers every caller at once.
+    skipCutsceneBtn.classList.add('hidden');
     const onEnd = cutsceneOnEnd || beginGameplay;
     cutsceneOnEnd = null;
     onEnd();
@@ -4117,6 +4269,7 @@
     },
     {
       key: 'ammo', name: 'Ammo Cache', desc: '+1 soul of every special ammo type, +1 trap charge, and tops up bullets to 100.',
+      visible: (p) => hasGun(p),
       cost: () => scaledCost(50),
       canBuy: () => true,
       buy: (p) => { for (const k of Object.keys(p.souls)) p.souls[k]++; p.bullets = Math.max(p.bullets, 100); },
@@ -4147,17 +4300,51 @@
     },
     {
       key: 'wolfArmor', name: 'Pet Armor', desc: "Reduce damage your wolf companion takes by 2 per hit (max -8, never below 1).",
+      visible: (p) => p.classType === 'petmancer',
       cost: (p) => scaledCost(70 + (p.wolfArmor / 2) * 35),
       canBuy: (p) => p.wolfArmor < PET_ARMOR_MAX,
       buy: (p) => { p.wolfArmor = Math.min(PET_ARMOR_MAX, p.wolfArmor + 2); },
     },
     {
       key: 'biscuit', name: 'Dog Biscuit', desc: 'Carry a biscuit that heals your wolf 50 HP on the spot — press E anytime. Holds up to 5.',
+      visible: (p) => p.classType === 'petmancer',
       cost: (p) => scaledCost(20 + p.biscuits * 10),
       canBuy: (p) => p.biscuits < BISCUIT_MAX,
       buy: (p) => { p.biscuits++; },
     },
   ];
+
+  // Grants the chosen class's starting kit. Samurai/Sniper unlock the gun;
+  // Petmancer never gets one and instead spawns its wolf companion.
+  function applyClassChoice(type) {
+    player.classType = type;
+    player.classKills = 0;
+    if (type === 'petmancer') {
+      player.ammo = 'knife';
+      player.bullets = 0;
+      if (!wolf) wolf = makeWolf(player.x - 14, player.y);
+    } else {
+      player.ammo = 'normal';
+      player.bullets = 100;
+    }
+  }
+
+  // Shown once, right as floor 1 ends — picks the class that drives the
+  // rest of the run. onDone resumes whatever would normally happen next
+  // (a cutscene, then the shop).
+  function showClassSelect(onDone) {
+    state = 'classSelect';
+    classScreen.classList.remove('hidden');
+    const pick = (type) => {
+      applyClassChoice(type);
+      classScreen.classList.add('hidden');
+      state = 'playing';
+      onDone();
+    };
+    chooseSamuraiBtn.onclick = () => pick('samurai');
+    chooseSniperBtn.onclick = () => pick('sniper');
+    choosePetmancerBtn.onclick = () => pick('petmancer');
+  }
 
   function openShop(nextLevel) {
     shopNextLevel = nextLevel;
@@ -4167,6 +4354,10 @@
     comboPanelOpen = false;
     comboPanelEl.classList.add('collapsed');
     comboToggleEl.textContent = '⚗ COMBINE SOULS ▾';
+    // A fused shot still has to be fired, so it's pointless for a class
+    // with no gun (pre-class, or Petmancer) — don't let them spend souls
+    // crafting ammo they can never use.
+    comboToggleEl.classList.toggle('hidden', !hasGun(player));
     shopScreen.classList.remove('hidden');
     sfx.win();
   }
@@ -4175,6 +4366,7 @@
     shopScoreEl.textContent = `Loot: ${player.score}`;
     shopItemsEl.innerHTML = '';
     for (const item of SHOP_ITEMS) {
+      if (item.visible && !item.visible(player)) continue;
       const cost = item.cost(player);
       const usable = item.canBuy(player);
       const afford = player.score >= cost;
@@ -4288,6 +4480,7 @@
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
     shopScreen.classList.add('hidden');
+    classScreen.classList.add('hidden');
     skipCutsceneBtn.classList.add('hidden');
   }
 
