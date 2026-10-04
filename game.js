@@ -470,7 +470,8 @@
   // counter) so a future change to the formula can't desync between them —
   // weaponMult is whichever of gunDmgMult/meleeDmgMult/a flat bonus applies.
   function playerBaseDmg(p, weaponMult = 1) {
-    return BASE_DMG * p.dmgMult * p.helmDmgBonus * p.godDmgBonus * classDmgMult(p) * weaponMult;
+    const hawkEyeMult = p.hawkEyeTimer > 0 ? 1.5 : 1;
+    return BASE_DMG * p.dmgMult * p.helmDmgBonus * p.godDmgBonus * classDmgMult(p) * weaponMult * hawkEyeMult;
   }
 
   // ---------- State ----------
@@ -502,13 +503,18 @@
       usedSpecialThisFloor: false, knifeSwing: 0, demonKnife: false, godDmgBonus: 1,
       slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
       parryTimer: 0, parryCooldown: 0,
+      // One cooldown per ability slot (0/1/2), shared mechanism across all
+      // three classes — each one unlocks at class level 5/10/15.
+      abilityCooldown: [0, 0, 0],
+      stormTimer: 0, stormTick: 0, // Samurai Storm's channeled multi-hit
+      hawkEyeTimer: 0, // Sniper's Hawk Eye damage buff
       deathTimer: 0, potions: 0,
       wolfHp: WOLF_STAGES[0].maxHp, wolfArmor: 0, biscuits: 0,
     };
   }
 
   function makeWolf(x, y) {
-    return { x, y, biteCooldown: 0, invuln: 0, hitFlash: 0, hasteTimer: 0 };
+    return { x, y, biteCooldown: 0, invuln: 0, hitFlash: 0, hasteTimer: 0, commandBonus: 1 };
   }
 
   function resetRun() {
@@ -537,7 +543,10 @@
     bossArenaSealed = false;
     player.x = x; player.y = y; player.vx = 0; player.vy = 0; player.groundVx = 0;
     player.knockX = 0; player.knockTimer = 0;
-    if (wolf) { wolf.x = x - 14; wolf.y = y; } else if (player.classType === 'petmancer') { wolf = makeWolf(x - 14, y); }
+    // A Pack Command target (and its pending damage bonus) from the floor
+    // just left behind would otherwise keep the wolf locked onto a phantom
+    // enemy, or leak the bonus onto an unrelated hit on the new floor.
+    if (wolf) { wolf.x = x - 14; wolf.y = y; wolf.commandTarget = null; wolf.commandBonus = 1; } else if (player.classType === 'petmancer') { wolf = makeWolf(x - 14, y); }
     respawn = { x, y };
   }
 
@@ -865,6 +874,163 @@
     spawnHitParticles(player.x + player.facing * 10, player.y, '#8fd0ff');
   }
 
+  // ---------- Class abilities (C/Z/V, unlocked at class level 5/10/15) ----------
+  // Same three keys for every class; which move they trigger depends on
+  // player.classType. Cooldowns live in player.abilityCooldown[slot].
+  const CLASS_ABILITIES = {
+    samurai: [
+      { name: 'Dragon Slash', level: 5, cooldown: 3, key: 'C' },
+      { name: 'Shadow Step', level: 10, cooldown: 4, key: 'Z' },
+      { name: 'Samurai Storm', level: 15, cooldown: 8, key: 'V' },
+    ],
+    sniper: [
+      { name: 'Deadeye', level: 5, cooldown: 4, key: 'C' },
+      { name: 'Piercing Shot', level: 10, cooldown: 5, key: 'Z' },
+      { name: 'Hawk Eye', level: 15, cooldown: 12, key: 'V' },
+    ],
+    petmancer: [
+      { name: 'Pack Command', level: 5, cooldown: 5, key: 'C' },
+      { name: 'Pet Swap', level: 10, cooldown: 6, key: 'Z' },
+      { name: 'Beast Fury', level: 15, cooldown: 8, key: 'V' },
+    ],
+  };
+
+  function useAbility(slot) {
+    if (state !== 'playing' || !player.classType) return;
+    const defs = CLASS_ABILITIES[player.classType];
+    if (!defs) return;
+    const def = defs[slot];
+    if (classLevel(player) < def.level) {
+      addMessage(player.x, player.y - 24, `LOCKED — LV${def.level}`, '#c9b98f');
+      sfx.empty();
+      return;
+    }
+    if (player.abilityCooldown[slot] > 0) return;
+    const fired = ABILITY_IMPL[player.classType][slot]();
+    if (fired === false) return; // ability declined to fire (e.g. no target) — no cooldown spent
+    player.abilityCooldown[slot] = def.cooldown;
+    addMessage(player.x, player.y - 30, def.name.toUpperCase(), '#8fd0ff');
+  }
+
+  // A wide forward arc, bigger and harder-hitting than a plain katana swing.
+  function abilityDragonSlash() {
+    const dir = player.facing;
+    const kx = player.x + dir * 20, ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
+    const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 2;
+    player.knifeSwing = 0.15; // plays the same katana-swing sprite as a normal hit
+    spawnHitParticles(kx, ky, '#8fd0ff');
+    spawnShockwave(player.x, player.y, 'rgba(216,220,226,0.8)', 50);
+    sfx.demonSlash();
+    for (const e of enemies) {
+      if (e.dead) continue;
+      if (rectsOverlap(kx, ky, 60, 40, e.x, e.y, e.cfg.w, e.cfg.h)) applyDamage(e, dmg);
+    }
+  }
+
+  // Teleports behind the nearest enemy and lands a heavy bonus-damage hit.
+  function abilityShadowStep() {
+    const target = findNearestEnemy(player.x, player.y, 260);
+    if (!target) { addMessage(player.x, player.y - 24, 'NO TARGET', '#c9b98f'); sfx.empty(); return false; }
+    const side = target.x >= player.x ? 1 : -1;
+    const landX = target.x + side * 18;
+    if (!isSolidPixel(landX, target.y)) { player.x = landX; player.y = target.y; }
+    player.facing = -side;
+    player.invuln = Math.max(player.invuln, 0.3);
+    player.knifeSwing = 0.15;
+    const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 2.2;
+    applyDamage(target, dmg);
+    spawnShockwave(player.x, player.y, 'rgba(143,208,255,0.8)', 40);
+    spawnHitParticles(target.x, target.y, '#8fd0ff');
+    sfx.demonSlash();
+  }
+
+  // Channeled: 3 damage pulses to everything nearby, one every 0.2s. Timer
+  // is just inside the 3rd tick's boundary (0.4s) so a 4th can't sneak in.
+  function abilitySamuraiStorm() {
+    player.stormTimer = 0.45;
+    player.stormTick = 0;
+    player.knifeSwing = 0.15;
+    sfx.demonSlash();
+  }
+
+  // Instant massive damage to the nearest enemy, no ammo spent.
+  function abilityDeadeye() {
+    const target = findNearestEnemy(player.x, player.y, 400);
+    if (!target) { addMessage(player.x, player.y - 24, 'NO TARGET', '#c9b98f'); sfx.empty(); return false; }
+    const dmg = playerBaseDmg(player, gunDmgMult(player)) * 5;
+    applyDamage(target, dmg);
+    spawnShockwave(target.x, target.y, 'rgba(255,205,60,0.8)', 30);
+    spawnHitParticles(target.x, target.y, '#ffcd3c');
+    sfx.heavyShot();
+  }
+
+  // A bullet that keeps going through everything it hits instead of
+  // stopping at the first enemy.
+  function abilityPiercingShot() {
+    const dir = player.facing;
+    let vx = 0, vy = 0;
+    if (player.aim === -1) vy = -500; else if (player.aim === 1 && !player.onGround) vy = 500; else vx = 500 * dir;
+    const dmg = playerBaseDmg(player, gunDmgMult(player)) * 1.3;
+    spawnShellCasing(player.x - dir * 2, player.y - 6, dir);
+    pBullets.push({ x: player.x, y: player.y - 2, vx, vy, kind: 'normal', dmg, pierce: true });
+    sfx.heavyShot();
+  }
+
+  // A brief damage buff, folded into playerBaseDmg() while active.
+  function abilityHawkEye() {
+    player.hawkEyeTimer = 6;
+    spawnShockwave(player.x, player.y, 'rgba(255,205,60,0.6)', 60);
+    sfx.frost();
+  }
+
+  // Locks the wolf onto the player's own nearest target and empowers its
+  // next bite — the closest single-wolf equivalent of "both pets focus
+  // fire" until there are two pets to actually coordinate.
+  function abilityPackCommand() {
+    if (!wolf) return false;
+    const target = findNearestEnemy(player.x, player.y, 400);
+    if (!target) { addMessage(wolf.x, wolf.y - 24, 'NO TARGET', '#c9b98f'); sfx.empty(); return false; }
+    wolf.commandTarget = target;
+    wolf.commandBonus = 2;
+    wolf.biteCooldown = 0;
+    sfx.demonSlash();
+  }
+
+  // Recalls the wolf to your side with a burst of speed — a single-pet
+  // stand-in for swapping which of two pets is in the fight.
+  function abilityPetSwap() {
+    if (!wolf) return false;
+    wolf.x = player.x - player.facing * 14;
+    wolf.y = player.y;
+    wolf.hasteTimer = Math.max(wolf.hasteTimer, 3);
+    spawnHitParticles(wolf.x, wolf.y, '#ffcf4a');
+    sfx.slide();
+  }
+
+  // Forces the wolf's special attack immediately, at a damage bonus,
+  // regardless of its normal bite cooldown.
+  function abilityBeastFury() {
+    if (!wolf) return false;
+    const target = findNearestEnemy(wolf.x, wolf.y, 500);
+    if (!target) { addMessage(wolf.x, wolf.y - 24, 'NO TARGET', '#c9b98f'); sfx.empty(); return false; }
+    // Snap the wolf right next to the target first — several of its moves
+    // (Young Wolf's dash, Dire/Alpha Wolf's explosions) are centered on
+    // its own position, so they'd whiff entirely on a target this far
+    // from wherever the wolf currently happens to be standing.
+    wolf.x = target.x - 15;
+    wolf.y = target.y;
+    wolf.facing = 1; // target is always placed to the wolf's right above
+    wolf.commandBonus = 2.5;
+    wolfSpecialAttack(target, WOLF_STAGES[wolfStage()]);
+    wolf.commandBonus = 1;
+  }
+
+  const ABILITY_IMPL = {
+    samurai: [abilityDragonSlash, abilityShadowStep, abilitySamuraiStorm],
+    sniper: [abilityDeadeye, abilityPiercingShot, abilityHawkEye],
+    petmancer: [abilityPackCommand, abilityPetSwap, abilityBeastFury],
+  };
+
   // Cycles ammo through whichever fused combos the player currently has
   // charges for (key 0 / the mobile FUSE button) — separate from the
   // Digit1-8 base-ammo row since combos are crafted, not fixed slots.
@@ -1149,7 +1315,7 @@
 
   const GAME_KEYS = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
-    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'KeyQ', 'KeyE', 'KeyC', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
+    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'KeyQ', 'KeyE', 'KeyB', 'KeyC', 'KeyZ', 'KeyV', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
   ]);
 
   // Single source of truth for the Digit1-8 ammo hotkeys, also reused by the
@@ -1190,7 +1356,10 @@
     if (ev.code === 'KeyW' || ev.code === 'ArrowUp') player.jumpBuffer = 0.12;
     if (ev.code === 'ArrowDown' || ev.code === 'KeyS') trySlide();
     if (ev.code === 'KeyR') useSpecialAttack();
-    if (ev.code === 'KeyC') tryParry();
+    if (ev.code === 'KeyB') tryParry();
+    if (ev.code === 'KeyC') useAbility(0);
+    if (ev.code === 'KeyZ') useAbility(1);
+    if (ev.code === 'KeyV') useAbility(2);
     if (ev.code === 'Digit9') placeTrap();
     if (ev.code === 'Digit0') cycleComboAmmo();
     if (ev.code === 'KeyQ') usePotion();
@@ -1373,10 +1542,34 @@
   const tcParryBtn = document.getElementById('tcParry');
   tcParryBtn.addEventListener('pointerdown', (ev) => {
     ev.preventDefault();
+    pressKey('KeyB');
+    releaseKey('KeyB');
+  });
+  tcParryBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+  const tcAbility1Btn = document.getElementById('tcAbility1');
+  tcAbility1Btn.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
     pressKey('KeyC');
     releaseKey('KeyC');
   });
-  tcParryBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+  tcAbility1Btn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+  const tcAbility2Btn = document.getElementById('tcAbility2');
+  tcAbility2Btn.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    pressKey('KeyZ');
+    releaseKey('KeyZ');
+  });
+  tcAbility2Btn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+  const tcAbility3Btn = document.getElementById('tcAbility3');
+  tcAbility3Btn.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    pressKey('KeyV');
+    releaseKey('KeyV');
+  });
+  tcAbility3Btn.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
   const tcAmmoBtn = document.getElementById('tcAmmo');
   tcAmmoBtn.addEventListener('pointerdown', (ev) => {
@@ -1506,6 +1699,10 @@
       tcBiscuitBtn.classList.toggle('hidden', !wolf);
       tcComboBtn.classList.toggle('hidden', !hasGun(player));
       tcAmmoBtn.classList.toggle('hidden', !hasGun(player));
+      const noClass = !player.classType;
+      tcAbility1Btn.classList.toggle('hidden', noClass);
+      tcAbility2Btn.classList.toggle('hidden', noClass);
+      tcAbility3Btn.classList.toggle('hidden', noClass);
     }
   }
 
@@ -1564,6 +1761,25 @@
     player.slideCooldown = Math.max(0, player.slideCooldown - dt);
     player.parryTimer = Math.max(0, player.parryTimer - dt);
     player.parryCooldown = Math.max(0, player.parryCooldown - dt);
+    for (let i = 0; i < player.abilityCooldown.length; i++) {
+      player.abilityCooldown[i] = Math.max(0, player.abilityCooldown[i] - dt);
+    }
+    player.hawkEyeTimer = Math.max(0, player.hawkEyeTimer - dt);
+    // Samurai Storm: a short channel that pulses damage to everything
+    // nearby every 0.2s instead of landing all at once.
+    if (player.stormTimer > 0) {
+      player.stormTimer -= dt;
+      player.stormTick -= dt;
+      if (player.stormTick <= 0) {
+        player.stormTick = 0.2;
+        const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 0.9;
+        spawnShockwave(player.x, player.y, 'rgba(143,208,255,0.6)', 45);
+        for (const e of enemies) {
+          if (e.dead) continue;
+          if (Math.hypot(e.x - player.x, e.y - player.y) < 45) applyDamage(e, dmg);
+        }
+      }
+    }
     // Leaving the ground (walking off a ledge) ends the slide immediately —
     // otherwise its forced speed, locked aim, and invulnerability would carry
     // into the air for the rest of its duration, turning it into free extra
@@ -2283,7 +2499,7 @@
       b.dead = isSolidPixel(b.x, b.y);
       if (b.dead) { if (b.kind === 'acid') spawnAcidPuddle(b.x, b.y); continue; }
       for (const e of enemies) {
-        if (e.dead) continue;
+        if (e.dead || (b.hitSet && b.hitSet.has(e))) continue;
         if (rectsOverlap(b.x, b.y, 4, 4, e.x, e.y, e.cfg.w, e.cfg.h)) {
           if (b.kind === 'pyro') {
             explode(b.x, b.y, 55, b.dmg, { burn: true, palette: ['#ff9d3d', '#ffe27a'], ringColor: 'rgba(255,120,40,0.9)' });
@@ -2315,6 +2531,9 @@
             applyDamage(e, b.dmg);
             applyComboEffects(b, e);
           } else applyDamage(e, b.dmg);
+          // Piercing Shot keeps traveling through whatever it's already hit
+          // instead of stopping at the first enemy.
+          if (b.pierce) { (b.hitSet || (b.hitSet = new Set())).add(e); continue; }
           b.dead = true;
           break;
         }
@@ -2415,8 +2634,10 @@
     spawnHitParticles(wolf.x, wolf.y, cfg.eye);
     // The Petmancer's per-5-level damage buff has no gun to apply to, so it
     // goes to the wolf's bites instead — otherwise leveling up would do
-    // nothing for the one class that actually leans on it.
-    const dmg = cfg.dmg * classDmgMult(player);
+    // nothing for the one class that actually leans on it. commandBonus is
+    // Pack Command/Beast Fury's one-shot damage multiplier, consumed here.
+    const dmg = cfg.dmg * classDmgMult(player) * (wolf.commandBonus || 1);
+    wolf.commandBonus = 1;
     switch (cfg.name) {
       case 'Puppy':
         applyDamage(target, dmg);
@@ -2458,7 +2679,10 @@
     wolf.hitFlash = Math.max(0, wolf.hitFlash - dt);
     wolf.hasteTimer = Math.max(0, (wolf.hasteTimer || 0) - dt);
     player.wolfHp = Math.min(player.wolfHp, cfg.maxHp); // clamp down if it just leveled down a stage somehow, or up a stage raised the ceiling
-    const target = findNearestEnemy(wolf.x, wolf.y, cfg.range);
+    // Pack Command overrides the normal nearest-to-wolf targeting with
+    // whatever the player picked, until it lands one bite on it.
+    let target = (wolf.commandTarget && !wolf.commandTarget.dead) ? wolf.commandTarget : null;
+    if (!target) { wolf.commandTarget = null; target = findNearestEnemy(wolf.x, wolf.y, cfg.range); }
     if (target) {
       const dx = target.x - wolf.x, dy = target.y - wolf.y, d = Math.hypot(dx, dy) || 1;
       wolf.facing = dx >= 0 ? 1 : -1;
@@ -2468,6 +2692,7 @@
         if (wolf.biteCooldown <= 0) {
           wolf.biteCooldown = wolf.hasteTimer > 0 ? cfg.biteRate * 0.5 : cfg.biteRate;
           wolfSpecialAttack(target, cfg);
+          if (wolf.commandTarget === target) wolf.commandTarget = null;
           sfx.hit();
           addMessage(wolf.x, wolf.y - 20, cfg.move.toUpperCase(), cfg.eye);
         }
@@ -2929,42 +3154,97 @@
     ctx.fillStyle = flash ? '#fff' : '#7a6a48';
     ctx.fillRect(-4, -5 + armSwing, 4, 8);
 
-    // front arm + rifle, angled for up/down aim
+    // front arm, angled for up/down aim — the rifle only exists for a class
+    // that actually has one; everyone else just has a bare, ready fist.
     const gy = -2 + gunUp;
     ctx.fillStyle = flash ? '#fff' : '#8a7a52';
     ctx.fillRect(3, -4, 5, 6);
-    ctx.fillStyle = flash ? '#fff' : '#2b2418'; // barrel
-    ctx.fillRect(7, gy - 1, 13, 3);
-    ctx.fillStyle = flash ? '#fff' : '#4a4030'; // receiver body
-    ctx.fillRect(3, gy - 2, 6, 5);
-    ctx.fillStyle = flash ? '#fff' : '#1e1a12'; // magazine
-    ctx.fillRect(5, gy + 2, 3, 6);
-    ctx.fillStyle = flash ? '#fff' : '#2b2418'; // stock
-    ctx.fillRect(-1, gy - 1, 4, 3);
+    if (hasGun(player)) {
+      ctx.fillStyle = flash ? '#fff' : '#2b2418'; // barrel
+      ctx.fillRect(7, gy - 1, 13, 3);
+      ctx.fillStyle = flash ? '#fff' : '#4a4030'; // receiver body
+      ctx.fillRect(3, gy - 2, 6, 5);
+      ctx.fillStyle = flash ? '#fff' : '#1e1a12'; // magazine
+      ctx.fillRect(5, gy + 2, 3, 6);
+      ctx.fillStyle = flash ? '#fff' : '#2b2418'; // stock
+      ctx.fillRect(-1, gy - 1, 4, 3);
 
-    if (firing) {
-      const fx = 20, fy = gy - 1;
-      ctx.fillStyle = '#fff8c9';
-      ctx.fillRect(fx, fy - 3, 2, 7);
-      ctx.fillRect(fx - 3, fy, 8, 2);
-      ctx.fillStyle = '#ffcf4a';
-      ctx.fillRect(fx + 1, fy - 1, 4, 3);
+      if (firing) {
+        const fx = 20, fy = gy - 1;
+        ctx.fillStyle = '#fff8c9';
+        ctx.fillRect(fx, fy - 3, 2, 7);
+        ctx.fillRect(fx - 3, fy, 8, 2);
+        ctx.fillStyle = '#ffcf4a';
+        ctx.fillRect(fx + 1, fy - 1, 4, 3);
+      }
+    } else {
+      ctx.fillStyle = flash ? '#fff' : '#d9a876';
+      ctx.fillRect(6, gy - 2, 5, 5);
     }
     if (player.knifeSwing > 0) {
       const t = 1 - player.knifeSwing / 0.15;
       const demon = player.demonKnife;
-      // Plain knife stays at its original size — only the Demon Knife
-      // (the Arch Demon's reward) gets the bigger, showier slash.
-      const swingRadius = demon ? 55 : 13;
-      const sx = (demon ? 33 : 9) + t * (demon ? 44 : 10), sy = gy - (demon ? 22 : 8) + t * (demon ? 44 : 16);
-      const tipW = demon ? 11 : 4, tipH = demon ? 6 : 2;
-      ctx.strokeStyle = demon ? 'rgba(255,120,40,0.9)' : 'rgba(232,232,232,0.9)';
-      ctx.lineWidth = demon ? 8 : 2;
-      ctx.beginPath();
-      ctx.arc(6, gy, swingRadius, -0.9 + t * 1.1, -0.2 + t * 1.1);
-      ctx.stroke();
-      ctx.fillStyle = demon ? '#ffcf4a' : '#d8d8d8';
-      ctx.fillRect(sx, sy, tipW, tipH);
+      const samurai = player.classType === 'samurai';
+      if (demon) {
+        // Plain knife stays at its original size — only the Demon Knife
+        // (the Arch Demon's reward) gets the bigger, showier slash.
+        const sx = 33 + t * 44, sy = gy - 22 + t * 44;
+        ctx.strokeStyle = 'rgba(255,120,40,0.9)';
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.arc(6, gy, 55, -0.9 + t * 1.1, -0.2 + t * 1.1);
+        ctx.stroke();
+        ctx.fillStyle = '#ffcf4a';
+        ctx.fillRect(sx, sy, 11, 6);
+      } else if (samurai) {
+        // A proper katana, not a knife — a long blade swept through a wide
+        // arc, several times the sprite's own height, with a visible guard
+        // and hilt so it reads as a dedicated weapon at a glance.
+        const angle = -1.4 + t * 1.7;
+        ctx.save();
+        ctx.translate(5, gy - 1);
+        ctx.rotate(angle);
+        ctx.fillStyle = '#3a2418'; // hilt
+        ctx.fillRect(-7, -2, 7, 4);
+        ctx.fillStyle = '#c9a227'; // guard
+        ctx.fillRect(-1, -5, 3, 10);
+        ctx.fillStyle = '#d8dce2'; // blade
+        ctx.fillRect(2, -2, 42, 4);
+        ctx.fillStyle = '#f2f4f8'; // edge highlight
+        ctx.fillRect(2, -2, 42, 1);
+        ctx.beginPath(); // tip
+        ctx.moveTo(44, -2); ctx.lineTo(50, 0); ctx.lineTo(44, 2);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+      } else if (hasGun(player)) {
+        // A class with a gun (Sniper) still has an actual knife as its
+        // out-of-ammo fallback — the original small arc-and-tip swipe.
+        const sx = 9 + t * 10, sy = gy - 8 + t * 16;
+        ctx.strokeStyle = 'rgba(232,232,232,0.9)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(6, gy, 13, -0.9 + t * 1.1, -0.2 + t * 1.1);
+        ctx.stroke();
+        ctx.fillStyle = '#d8d8d8';
+        ctx.fillRect(sx, sy, 4, 2);
+      } else {
+        // No gun at all (pre-class, or Petmancer) — a bare-fist jab with
+        // motion lines, no blade.
+        const fx = 8 + t * 10;
+        ctx.fillStyle = '#d9a876';
+        ctx.fillRect(fx, gy - 3, 7, 6);
+        ctx.fillStyle = '#b8875c';
+        ctx.fillRect(fx + 4, gy - 3, 3, 6);
+        if (t > 0.55) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(fx + 9, gy - 5); ctx.lineTo(fx + 14, gy - 7);
+          ctx.moveTo(fx + 9, gy); ctx.lineTo(fx + 15, gy);
+          ctx.moveTo(fx + 9, gy + 5); ctx.lineTo(fx + 14, gy + 7);
+          ctx.stroke();
+        }
+      }
     }
     ctx.restore();
   }
@@ -3625,16 +3905,19 @@
     ctx.fillStyle = hpPct > 0.5 ? '#6ecb63' : hpPct > 0.2 ? '#e6c14a' : '#c0392b';
     ctx.fillRect(9, 19, 88 * hpPct, 4);
 
-    // class + level — always shown once a class is picked. Whatever sits
-    // right below it (the pet block, or the parry readout) pushes every
-    // line after it down by extraHudLine to make room, same 11px spacing
-    // as the rest of this stack.
+    // Everything below the HP bar stacks dynamically — how many lines a
+    // class's pet/parry/ability block takes varies (Petmancer's pet block
+    // alone is worth 2 lines), so each piece advances a shared cursor
+    // instead of relying on hardcoded y-offsets that only fit one class.
+    let hudY = 32;
+    const HUD_LINE = 11;
+    ctx.font = '8px monospace';
+
     if (player.classType) {
-      ctx.font = '8px monospace';
       ctx.fillStyle = '#ffcd3c';
-      ctx.fillText(`${CLASS_NAMES[player.classType].toUpperCase()} LV${classLevel(player)}`, 8, 32);
+      ctx.fillText(`${CLASS_NAMES[player.classType].toUpperCase()} LV${classLevel(player)}`, 8, hudY);
+      hudY += HUD_LINE;
     }
-    const extraHudLine = (wolf || player.classType === 'samurai') ? 11 : 0;
 
     // wolf companion: name + progress toward its next stage (Fenrir at 300 kills)
     if (wolf) {
@@ -3642,48 +3925,68 @@
       const wcfg = WOLF_STAGES[stage];
       const perStage = WOLF_MAX_KILLS / (WOLF_STAGES.length - 1);
       const wPct = stage >= WOLF_STAGES.length - 1 ? 1 : (player.kills % perStage) / perStage;
-      ctx.font = '8px monospace';
       ctx.fillStyle = wcfg.eye;
-      ctx.fillText(wcfg.name.toUpperCase(), 8, 32 + extraHudLine);
+      ctx.fillText(wcfg.name.toUpperCase(), 8, hudY);
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.fillRect(8, 34 + extraHudLine, 60, 3);
+      ctx.fillRect(8, hudY + 2, 60, 3);
       ctx.fillStyle = wcfg.eye;
-      ctx.fillRect(8, 34 + extraHudLine, 60 * Math.max(0, Math.min(1, wPct)), 3);
+      ctx.fillRect(8, hudY + 2, 60 * Math.max(0, Math.min(1, wPct)), 3);
 
       const wHpPct = Math.max(0, player.wolfHp / wcfg.maxHp);
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.fillRect(8, 39 + extraHudLine, 60, 3);
+      ctx.fillRect(8, hudY + 7, 60, 3);
       ctx.fillStyle = wHpPct > 0.5 ? '#6ecb63' : wHpPct > 0.2 ? '#e6c14a' : '#c0392b';
-      ctx.fillRect(8, 39 + extraHudLine, 60 * wHpPct, 3);
+      ctx.fillRect(8, hudY + 7, 60 * wHpPct, 3);
+      hudY += HUD_LINE * 2;
     }
 
-    // Parry: Samurai-only, ready/on-cooldown readout in the gap the pet
-    // block would otherwise occupy (Samurai never has a pet)
+    // Parry: Samurai-only, ready/on-cooldown readout
     if (player.classType === 'samurai') {
-      ctx.font = '8px monospace';
       ctx.fillStyle = player.parryCooldown > 0 ? 'rgba(143,208,255,0.4)' : '#8fd0ff';
-      ctx.fillText(player.parryCooldown > 0 ? 'PARRY: COOLDOWN' : 'PARRY (C): READY', 8, 32 + extraHudLine);
+      ctx.fillText(player.parryCooldown > 0 ? 'PARRY: COOLDOWN' : 'PARRY (B): READY', 8, hudY);
+      hudY += HUD_LINE;
+    }
+
+    // Class abilities: C/Z/V, unlocked at level 5/10/15 — shown locked
+    // (dim) ahead of time so the player knows what's coming.
+    if (player.classType) {
+      const defs = CLASS_ABILITIES[player.classType];
+      const lvl = classLevel(player);
+      for (let i = 0; i < defs.length; i++) {
+        const def = defs[i];
+        if (lvl < def.level) {
+          ctx.fillStyle = 'rgba(255,255,255,0.35)';
+          ctx.fillText(`${def.name.toUpperCase()} — LV${def.level}`, 8, hudY);
+        } else if (player.abilityCooldown[i] > 0) {
+          ctx.fillStyle = 'rgba(143,208,255,0.4)';
+          ctx.fillText(`${def.name.toUpperCase()} (${def.key}): CD`, 8, hudY);
+        } else {
+          ctx.fillStyle = '#8fd0ff';
+          ctx.fillText(`${def.name.toUpperCase()} (${def.key}): READY`, 8, hudY);
+        }
+        hudY += HUD_LINE;
+      }
     }
 
     // Wither: the Shadow Helm's once-per-floor curse
     if (player.shadowHelm) {
-      ctx.font = '8px monospace';
       ctx.fillStyle = player.usedSpecialThisFloor ? 'rgba(138,111,209,0.4)' : '#a78bfa';
-      ctx.fillText(player.usedSpecialThisFloor ? 'WITHER: USED' : 'WITHER (R): READY', 8, 50 + extraHudLine);
+      ctx.fillText(player.usedSpecialThisFloor ? 'WITHER: USED' : 'WITHER (R): READY', 8, hudY);
+      hudY += HUD_LINE;
     }
 
     // Potions: bought at the shop, drunk anytime with Q
     if (player.potions > 0) {
-      ctx.font = '8px monospace';
       ctx.fillStyle = '#5ef29a';
-      ctx.fillText(`POTION (Q): x${player.potions}`, 8, 61 + extraHudLine);
+      ctx.fillText(`POTION (Q): x${player.potions}`, 8, hudY);
+      hudY += HUD_LINE;
     }
 
     // Biscuits: bought at the shop, fed to the wolf anytime with E
     if (player.biscuits > 0) {
-      ctx.font = '8px monospace';
       ctx.fillStyle = '#d9a066';
-      ctx.fillText(`BISCUIT (E): x${player.biscuits}`, 8, 72 + extraHudLine);
+      ctx.fillText(`BISCUIT (E): x${player.biscuits}`, 8, hudY);
+      hudY += HUD_LINE;
     }
 
     // score
@@ -3788,7 +4091,10 @@
       ctx.fillStyle = '#a78bfa';
       ctx.shadowColor = '#a78bfa';
       ctx.shadowBlur = 12;
-      ctx.fillText(levelBanner.text, VIEW_W / 2, VIEW_H / 2 - 40);
+      // A couple notches lower than dead center — a class with a tall HUD
+      // stack (abilities, a pet block) now reaches further down than this
+      // banner used to have to clear.
+      ctx.fillText(levelBanner.text, VIEW_W / 2, VIEW_H / 2 - 15);
       ctx.shadowBlur = 0;
       ctx.textAlign = 'left';
       ctx.globalAlpha = 1;

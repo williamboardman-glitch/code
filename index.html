@@ -53,7 +53,7 @@
   <div id="startScreen" class="overlay hidden">
     <div class="panel">
       <h1>TEMPLE <span class="accent">OF BONES</span></h1>
-      <p class="lore">A sunken temple, cracked open after a thousand years — and the dead inside never stopped guarding it. Run, jump, and shoot your way through eight floors — temple, dungeon, jungle, a frozen temple, Hell itself, a cursed desert, a bone crypt, and finally the Demon God's own throne — to reach whatever's waiting at the bottom. Floor one is fists-only — no gun yet — and clearing it hands you a choice of class: a Samurai's katana, a Sniper's gun and souls, or a Petmancer's wolf companion. A gunned class runs dry and is down to a knife until the next kill — any kill, even a shambler — restocks two more, or switch to the knife on purpose anytime with key 8. Kills earn levels too, with a permanent damage buff every 5. Every zombie you drop leaves a soul behind, and a soul loaded in your gun is not the same as a bullet — the supply cache between floors can even fuse two souls together into a single shot that carries both their effects. Floor two's exit is sealed behind the Guardian — walk into its arena and the way back shuts until one of you falls. Beat it, and you claim its shadow helm, which also unlocks Wither: a once-per-floor curse that halves a target's remaining health and the damage it deals. Choose the Petmancer and a wolf companion joins you from floor two onward, growing fiercer with every kill, fully grown into Fenrir after 300 — each stage lands its own named move (Paw Pounce through Ragnarok Bite) and carries its own health bar, starting fragile but ending up tougher than you; keep it alive with Pet Armor and Dog Biscuits from the supply cache. Hell belongs to one thing alone: the Arch Demon commands the entire floor, with no lesser zombies to hide behind. Beat it and your knife is reforged into the Demon Knife, trading its stationary swipe for a burning dash strike. Past Hell, a cursed desert's rooted Cacti drop trap charges instead of souls — plant one with key 9 and let it do the work. Beyond the desert lies the crypt where the king buried everyone he destroyed — the hardest lineup of lesser horrors in the game. At the very end, the Demon God waits alone on its own throne, and falling it for good grants a permanent damage boost and ends the run. Between floors, spend what you've looted at the supply cache — though it charges more the deeper you go.</p>
+      <p class="lore">A sunken temple, cracked open after a thousand years — and the dead inside never stopped guarding it. Run, jump, and shoot your way through eight floors — temple, dungeon, jungle, a frozen temple, Hell itself, a cursed desert, a bone crypt, and finally the Demon God's own throne — to reach whatever's waiting at the bottom. Floor one is fists-only — no gun yet — and clearing it hands you a choice of class: a Samurai's katana, a Sniper's gun and souls, or a Petmancer's wolf companion. A gunned class runs dry and is down to a knife until the next kill — any kill, even a shambler — restocks two more, or switch to the knife on purpose anytime with key 8. Kills earn levels too, with a permanent damage buff every 5 and a class-specific ability unlocked at levels 5, 10, and 15 — bound to C, Z, and V whichever class you picked. Every zombie you drop leaves a soul behind, and a soul loaded in your gun is not the same as a bullet — the supply cache between floors can even fuse two souls together into a single shot that carries both their effects. Floor two's exit is sealed behind the Guardian — walk into its arena and the way back shuts until one of you falls. Beat it, and you claim its shadow helm, which also unlocks Wither: a once-per-floor curse that halves a target's remaining health and the damage it deals. Choose the Petmancer and a wolf companion joins you from floor two onward, growing fiercer with every kill, fully grown into Fenrir after 300 — each stage lands its own named move (Paw Pounce through Ragnarok Bite) and carries its own health bar, starting fragile but ending up tougher than you; keep it alive with Pet Armor and Dog Biscuits from the supply cache. Hell belongs to one thing alone: the Arch Demon commands the entire floor, with no lesser zombies to hide behind. Beat it and your knife is reforged into the Demon Knife, trading its stationary swipe for a burning dash strike. Past Hell, a cursed desert's rooted Cacti drop trap charges instead of souls — plant one with key 9 and let it do the work. Beyond the desert lies the crypt where the king buried everyone he destroyed — the hardest lineup of lesser horrors in the game. At the very end, the Demon God waits alone on its own throne, and falling it for good grants a permanent damage boost and ends the run. Between floors, spend what you've looted at the supply cache — though it charges more the deeper you go.</p>
       <div class="soulKeyLegend">
         <div class="legendRow"><span class="swatch grunt"></span> Shambler — fodder, no soul</div>
         <div class="legendRow"><span class="swatch brute"></span> Brute — soul loads a <b>heavy 3x-damage shot</b></div>
@@ -75,6 +75,8 @@
         <div><b>Fused shot:</b> Key 0 cycles crafted fused shots, or hold two souls' keys together (e.g. 2+5) to load that pair</div>
         <div><b>Potion:</b> Q (heals 30 HP on the spot — buy at the supply cache, holds up to 5)</div>
         <div><b>Biscuit:</b> E (heals your wolf 50 HP on the spot — buy at the supply cache, holds up to 5)</div>
+        <div><b>Parry:</b> B (Samurai only — blocks the next hit and counters everything nearby)</div>
+        <div><b>Class abilities:</b> C / Z / V (unlocked at class levels 5/10/15 — see Classes below)</div>
         <div><b>Wither:</b> R (once per floor, unlocked by the Shadow Helm)</div>
       </div>
       <button id="startBtn">ENTER THE TEMPLE</button>
@@ -92,22 +94,22 @@
   <div id="classScreen" class="overlay hidden">
     <div class="panel">
       <h1>CHOOSE YOUR <span class="accent">CLASS</span></h1>
-      <p class="lore">Floor one is done — time to stop fighting bare-handed. Pick how you want to fight for the rest of the run. You'll level up as you rack up kills, with a damage buff every 5 levels.</p>
+      <p class="lore">Floor one is done — time to stop fighting bare-handed. Pick how you want to fight for the rest of the run. You'll level up as you rack up kills, with a damage buff every 5 levels and a new ability unlocked at levels 5, 10, and 15 — bound to C, Z, and V for every class.</p>
       <div class="classChoices">
         <button id="chooseSamuraiBtn" class="classCard">
           <div class="classIcon">⚔️</div>
           <div class="className">Samurai</div>
-          <div class="classDesc">A katana instead of a knife — shorter range than the gun, but hits much harder, and can parry (C) an incoming hit.</div>
+          <div class="classDesc">A massive katana instead of a knife — shorter range than the gun, but hits much harder, and can parry (B) an incoming hit. Abilities: Dragon Slash, Shadow Step, Samurai Storm.</div>
         </button>
         <button id="chooseSniperBtn" class="classCard">
           <div class="classIcon">🎯</div>
           <div class="className">Sniper</div>
-          <div class="classDesc">The standard gun and soul-ammo kit, with a touch less damage than the other classes.</div>
+          <div class="classDesc">The standard gun and soul-ammo kit, with a touch less damage than the other classes. Abilities: Deadeye, Piercing Shot, Hawk Eye.</div>
         </button>
         <button id="choosePetmancerBtn" class="classCard">
           <div class="classIcon">🐺</div>
           <div class="className">Petmancer</div>
-          <div class="classDesc">No gun of your own — command a wolf companion instead, growing fiercer the more you fight.</div>
+          <div class="classDesc">No gun of your own — command a wolf companion instead, growing fiercer the more you fight. Abilities: Pack Command, Pet Swap, Beast Fury.</div>
         </button>
       </div>
     </div>
@@ -146,6 +148,9 @@
         <button id="tcPotion" class="tcBtn tcSmall" aria-label="Drink potion">POTION</button>
         <button id="tcBiscuit" class="tcBtn tcSmall" aria-label="Feed biscuit to wolf">BISCUIT</button>
         <button id="tcParry" class="tcBtn tcSmall" aria-label="Parry">PARRY</button>
+        <button id="tcAbility1" class="tcBtn tcSmall" aria-label="Ability 1">C</button>
+        <button id="tcAbility2" class="tcBtn tcSmall" aria-label="Ability 2">Z</button>
+        <button id="tcAbility3" class="tcBtn tcSmall" aria-label="Ability 3">V</button>
       </div>
       <button id="tcAmmo" class="tcBtn tcSmall" aria-label="Switch ammo">AMMO</button>
       <button id="tcShoot" class="tcBtn tcShoot" aria-label="Shoot">FIRE</button>

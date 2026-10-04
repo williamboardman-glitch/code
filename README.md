@@ -23,11 +23,11 @@ Floor one is bare-handed — no gun, just fists — so the choice means
 something by the time you reach it. Clearing floor one opens a one-time
 class-select screen:
 
-- **⚔️ Samurai** — the knife slot is replaced by a **katana** that hits
-  noticeably harder than a plain knife swing, and **C** opens a brief parry
-  window: a hit landed during it does no damage and detonates a damage
-  pulse on everything close enough to have thrown it, instead of just
-  shrugging the hit off. The gun and soul-ammo system work exactly as
+- **⚔️ Samurai** — the knife slot is replaced by a massive **katana** that
+  hits noticeably harder than a plain knife swing, and **B** opens a brief
+  parry window: a hit landed during it does no damage and detonates a
+  damage pulse on everything close enough to have thrown it, instead of
+  just shrugging the hit off. The gun and soul-ammo system work exactly as
   normal alongside it.
 - **🎯 Sniper** — the standard gun and soul-ammo kit, unchanged, at a
   touch less damage than the other classes.
@@ -39,6 +39,23 @@ class-select screen:
 Kills earn class levels independently of your overall kill count, with a
 permanent damage buff every 5 levels. Picking a class is permanent for the
 run — there's no second class-select screen later on.
+
+### Class abilities
+
+Every class unlocks three abilities as it levels up, each bound to the
+same three keys regardless of which class you picked: **C** (level 5),
+**Z** (level 10), and **V** (level 15). The HUD lists all three from the
+moment you pick a class — locked ones show the level they unlock at, so
+you always know what's coming.
+
+| Class | C (lv5) | Z (lv10) | V (lv15) |
+|---|---|---|---|
+| ⚔️ Samurai | **Dragon Slash** — a wide forward sword arc, harder-hitting than a normal katana swing | **Shadow Step** — teleport behind the nearest enemy and land a heavy hit | **Samurai Storm** — a short channel, pulsing damage to everything nearby three times |
+| 🎯 Sniper | **Deadeye** — a free, massive hit on the nearest enemy, no ammo spent | **Piercing Shot** — a bullet that keeps going through everything in its path instead of stopping at the first hit | **Hawk Eye** — a brief damage buff to every hit you land |
+| 🐺 Petmancer | **Pack Command** — directs your wolf at whatever you're facing, wherever it is, with a damage bonus on the hit | **Pet Swap** — recalls your wolf to your side with a burst of speed | **Beast Fury** — forces your wolf's attack immediately, at a damage bonus, ignoring its normal cooldown |
+
+Each ability has its own cooldown (shown in the HUD once unlocked), so
+they're a burst to lean on, not a replacement for your normal kit.
 
 ## Bullets & the knife
 
@@ -125,7 +142,8 @@ shared or synced anywhere.
 - **0** — cycle fused shots; or hold two souls' ammo keys together (e.g. **2+5**) to load that pair directly (see [Soul Fusion](#soul-fusion))
 - **Q** — drink a potion (heals 30 HP on the spot; bought at the supply cache, holds up to 5)
 - **E** — feed your wolf a biscuit (heals it 50 HP on the spot; bought at the supply cache, holds up to 5)
-- **C** — parry (Samurai only): blocks the next hit outright and counters nearby enemies
+- **B** — parry (Samurai only): blocks the next hit outright and counters nearby enemies
+- **C / Z / V** — class abilities, unlocked at class levels 5/10/15 (see [Class abilities](#class-abilities))
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 **Mobile (on-screen controls)**
@@ -137,6 +155,7 @@ shared or synced anywhere.
 - **POTION** — drink a potion (heals 30 HP on the spot)
 - **BISCUIT** — feed your wolf a biscuit (heals it 50 HP on the spot)
 - **PARRY** — parry (Samurai only)
+- **C / Z / V** — class abilities, unlocked at class levels 5/10/15
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 ## Enemies & souls
