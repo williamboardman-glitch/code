@@ -3059,6 +3059,28 @@
     }
   }
 
+  // The Samurai's katana — plain silver, roughly the player's own height
+  // end to end — drawn at a given angle around a local hand anchor so the
+  // same shape serves both the resting pose (held vertical) and the attack
+  // swing (sweeping toward horizontal).
+  function drawKatanaBlade(ax, ay, angle) {
+    ctx.save();
+    ctx.translate(ax, ay);
+    ctx.rotate(angle);
+    ctx.fillStyle = '#3a2418'; // hilt
+    ctx.fillRect(-7, -2, 7, 4);
+    ctx.fillStyle = '#c9a227'; // guard
+    ctx.fillRect(-1, -5, 3, 10);
+    ctx.fillStyle = '#c0c0c0'; // blade — silver
+    ctx.fillRect(2, -2, 18, 4);
+    ctx.fillStyle = '#f0f0f0'; // edge highlight
+    ctx.fillRect(2, -2, 18, 1);
+    ctx.beginPath(); // tip
+    ctx.moveTo(20, -2); ctx.lineTo(26, 0); ctx.lineTo(20, 2);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
   function drawPlayer() {
     const x = px(player.x - camX), y = px(player.y);
     const dying = player.deathTimer > 0;
@@ -3159,7 +3181,24 @@
     const gy = -2 + gunUp;
     ctx.fillStyle = flash ? '#fff' : '#8a7a52';
     ctx.fillRect(3, -4, 5, 6);
-    if (hasGun(player)) {
+    const samuraiBase = player.classType === 'samurai';
+    if (samuraiBase && player.knifeSwing <= 0) {
+      // The Samurai's base stance holds the katana itself, not a rifle —
+      // drawn at rest the same way the attack swing starts (blade up), so
+      // the two blend together.
+      drawKatanaBlade(5, gy - 1, -Math.PI / 2);
+      if (firing) {
+        const fx = 20, fy = gy - 1;
+        ctx.fillStyle = '#fff8c9';
+        ctx.fillRect(fx, fy - 3, 2, 7);
+        ctx.fillRect(fx - 3, fy, 8, 2);
+        ctx.fillStyle = '#ffcf4a';
+        ctx.fillRect(fx + 1, fy - 1, 4, 3);
+      }
+    } else if (samuraiBase) {
+      // Mid-swing: the katana-swing block below draws the full weapon, so
+      // skip a base weapon here to avoid a double blade.
+    } else if (hasGun(player)) {
       ctx.fillStyle = flash ? '#fff' : '#2b2418'; // barrel
       ctx.fillRect(7, gy - 1, 13, 3);
       ctx.fillStyle = flash ? '#fff' : '#4a4030'; // receiver body
@@ -3203,21 +3242,7 @@
         // the blade held straight up (base position) and comes down into a
         // clean horizontal slash at the strike.
         const angle = -Math.PI / 2 + t * (Math.PI / 2);
-        ctx.save();
-        ctx.translate(5, gy - 1);
-        ctx.rotate(angle);
-        ctx.fillStyle = '#3a2418'; // hilt
-        ctx.fillRect(-7, -2, 7, 4);
-        ctx.fillStyle = '#c9a227'; // guard
-        ctx.fillRect(-1, -5, 3, 10);
-        ctx.fillStyle = '#c0c0c0'; // blade — silver
-        ctx.fillRect(2, -2, 18, 4);
-        ctx.fillStyle = '#f0f0f0'; // edge highlight
-        ctx.fillRect(2, -2, 18, 1);
-        ctx.beginPath(); // tip
-        ctx.moveTo(20, -2); ctx.lineTo(26, 0); ctx.lineTo(20, 2);
-        ctx.closePath(); ctx.fill();
-        ctx.restore();
+        drawKatanaBlade(5, gy - 1, angle);
       } else if (hasGun(player)) {
         // A class with a gun (Sniper) still has an actual knife as its
         // out-of-ammo fallback — the original small arc-and-tip swipe.
