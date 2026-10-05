@@ -1627,6 +1627,21 @@
   function spawnReticle(x, y, color) {
     particles.push({ x, y, vx: 0, vy: 0, life: 0.5, maxLife: 0.5, color, size: 20, shape: 'reticle', grav: false });
   }
+  // A narrow cone of particles flying mostly forward in dir, rather than
+  // a radial burst — reads as a breath/spray instead of a plain hit.
+  function spawnFireBreath(x, y, dir, color) {
+    for (let i = 0; i < 10; i++) {
+      const spread = (Math.random() - 0.5) * 30;
+      particles.push({ x, y: y + spread * 0.3, vx: dir * (90 + Math.random() * 60), vy: spread, life: 0.22 + Math.random() * 0.15, color, size: 2.5 + Math.random() * 2, grav: false });
+    }
+  }
+  // Three parallel diagonal streaks — a claw rake mark.
+  function spawnClawSwipe(x, y, dir, color) {
+    for (let i = -1; i <= 1; i++) {
+      const oy = i * 7;
+      particles.push({ x: x - dir * 14, y: y - 14 + oy, x2: x + dir * 14, y2: y + 14 + oy, vx: 0, vy: 0, life: 0.18, maxLife: 0.18, color, size: 2.5, shape: 'streak', grav: false });
+    }
+  }
   // One frame of Shadow Step's afterimage trail — a flat silhouette left
   // behind at a point along the teleport path, fading fast.
   function spawnPlayerGhost(x, y, facing) {
@@ -3043,7 +3058,7 @@
   // growth stages, just keyed by ability tier instead of kill-count stage.
   function petSpecialAttack(pet, target) {
     const def = GEAR_ITEMS[pet.petKey];
-    spawnHitParticles(pet.x, pet.y, def.eye);
+    const dir = target.x >= pet.x ? 1 : -1;
     // Souls aren't just for the player's own weapon — a soul loaded as
     // ammo channels through whichever pet lands the next hit too.
     const soul = TRAIT_DMG[player.ammo] !== undefined && player.souls[player.ammo] > 0 ? player.ammo : null;
@@ -3057,32 +3072,49 @@
       } else if (tier >= 2) {
         applyDamage(target, dmg * 1.5);
         pet.hasteTimer = 3;
+        spawnFireBreath(pet.x, pet.y, dir, '#ff9d3d');
+        spawnEnergySparks(pet.x, pet.y, '#ffcf4a');
       } else if (tier >= 1) {
         applyDamage(target, dmg);
         if (!target.dead) { target.burnTimer = 2.5; target.burnTick = 0.5; }
+        spawnFireBreath(pet.x, pet.y, dir, '#ff9d3d');
       } else {
         applyDamage(target, dmg);
+        spawnHitParticles(pet.x, pet.y, def.eye);
       }
     } else if (pet.petKey === 'shadowPanther') {
       if (tier >= 3) {
         applyDamage(target, dmg * 1.3);
         if (!target.dead) { target.burnTimer = 2; target.burnTick = 0.4; } // bleed, reuses the DoT fields
+        spawnClawSwipe(target.x, target.y, dir, '#ff4a6a');
       } else if (tier >= 2) {
         applyDamage(target, dmg);
         pet.invuln = Math.max(pet.invuln, 1.5); // camouflage: brief extra safety after striking
+        spawnClawSwipe(target.x, target.y, dir, def.eye);
+        spawnImplosion(pet.x, pet.y, '#3a3a45');
       } else if (tier >= 1) {
         applyDamage(target, dmg);
         if (!target.dead) { target.speedMult = 0.5; target.slowTimer = Math.max(target.slowTimer, 1.5); }
+        spawnClawSwipe(target.x, target.y, dir, def.eye);
       } else {
         applyDamage(target, dmg);
+        spawnHitParticles(pet.x, pet.y, def.eye);
       }
     } else if (pet.petKey === 'lightningKitsune') {
       applyDamage(target, dmg);
       if (tier >= 1) {
         spawnLightningArc(pet.x, pet.y, target.x, target.y);
         chainLightning(target, dmg * 0.5, [target], 1);
+      } else {
+        spawnHitParticles(pet.x, pet.y, def.eye);
       }
-      if (tier >= 2) pet.invuln = Math.max(pet.invuln, 1.2); // static shield
+      if (tier >= 2) {
+        pet.invuln = Math.max(pet.invuln, 1.2); // static shield
+        // A staggered double-ring shimmer on the fox itself — a barrier,
+        // not another lightning arc.
+        spawnShockwave(pet.x, pet.y, 'rgba(79,214,255,0.7)', 18);
+        particles.push({ x: pet.x, y: pet.y, vx: 0, vy: 0, life: 0.4, maxLife: 0.4, color: 'rgba(234,243,255,0.5)', maxRadius: 28, shape: 'ring', grav: false });
+      }
       // tier 3's Foxfire Swirl is a periodic aura, handled in updatePets().
     }
     if (soul && !target.dead) {
