@@ -1040,7 +1040,10 @@
   function abilityScaledParry() {
     player.parryTimer = 0.5;
     player.knifeSwing = 0.15;
-    spawnShockwave(player.x, player.y, 'rgba(255,140,61,0.7)', 30);
+    // Two staggered rings rippling outward — a shimmer of scales hardening,
+    // not a single shockwave.
+    spawnShockwave(player.x, player.y, 'rgba(255,140,61,0.7)', 24);
+    particles.push({ x: player.x, y: player.y, vx: 0, vy: 0, life: 0.45, maxLife: 0.45, color: 'rgba(255,205,140,0.5)', maxRadius: 40, shape: 'ring', grav: false });
     sfx.parry();
   }
   // A short channel that pulses fire damage to everything nearby 3 times
@@ -1090,8 +1093,9 @@
     player.invuln = Math.max(player.invuln, 2);
     player.stealthTimer = 2;
     player.dmgBuffTimer = 2;
-    spawnShockwave(player.x, player.y, 'rgba(122,95,201,0.7)', 30);
-    spawnHitParticles(player.x, player.y, '#8a6fd1');
+    // Motes gather inward and vanish, rather than bursting outward — reads
+    // as fading from sight instead of striking.
+    spawnImplosion(player.x, player.y, '#8a6fd1');
     sfx.slide();
   }
   // A single precise strike that instantly finishes a low-HP enemy
@@ -1103,7 +1107,9 @@
     const dmg = lowHp ? target.hp + 9999 : playerBaseDmg(player, meleeDmgMult(player)) * 2.5;
     player.knifeSwing = 0.15;
     applyDamage(target, dmg);
-    spawnCrescentSlash(target.x, target.y, player.facing, 'rgba(122,95,201,0.9)', '#ffffff', 40);
+    // An X-shaped execution mark instead of a curved slash — reads as a
+    // finishing blow, not another swing.
+    spawnXSlash(target.x, target.y, lowHp ? '#ff4a4a' : '#d8c7ff');
     spawnImpactFlash(target.x, target.y, lowHp ? '#ff4a4a' : '#ffffff');
     shakeScreen(lowHp ? 7 : 4);
     sfx.demonSlash();
@@ -1116,8 +1122,9 @@
     const dir = player.facing;
     const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 1.6;
     player.knifeSwing = 0.15;
-    spawnCrescentSlash(player.x + dir * 16, player.y, dir, 'rgba(61,200,255,0.9)', '#d2f4ff', 60);
-    spawnShockwave(player.x, player.y, 'rgba(61,200,255,0.8)', 60);
+    // A curved wall of water sweeping forward, not a circular shockwave —
+    // it only travels the one way it's hitting.
+    spawnWaveFront(player.x, player.y, dir, 'rgba(61,200,255,0.9)', '#d2f4ff', 60);
     spawnHitParticles(player.x + dir * 16, player.y, '#3dc8ff');
     shakeScreen(5);
     sfx.demonSlash();
@@ -1139,7 +1146,9 @@
     const kx = player.x + dir * 20, ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
     const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 1.8;
     player.knifeSwing = 0.15;
-    spawnCrescentSlash(kx, ky, dir, 'rgba(61,200,255,0.9)', '#ffffff', 42);
+    // A straight diagonal cut, not a curved arc — a quicker, flatter slash
+    // than Tidal Wave's wall or Blazing Slash's crescent.
+    particles.push({ x: kx - dir * 16, y: ky - 14, x2: kx + dir * 16, y2: ky + 14, vx: 0, vy: 0, life: 0.16, maxLife: 0.16, color: '#eafcff', size: 5, shape: 'streak', grav: false });
     spawnHitParticles(kx, ky, '#3dc8ff');
     sfx.demonSlash();
     for (const e of enemies) {
@@ -1149,11 +1158,11 @@
   }
   // A wide slash that heals the player for every enemy it kills.
   function abilityRejuvenatingFlow() {
-    const dir = player.facing;
     const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 1.5;
     player.knifeSwing = 0.15;
-    spawnCrescentSlash(player.x, player.y, dir, 'rgba(94,242,154,0.9)', '#d2ffe4', 50);
-    spawnShockwave(player.x, player.y, 'rgba(94,242,154,0.7)', 50);
+    // A healing swirl gathering into the player, not another slash wave —
+    // reads as restorative rather than another hit.
+    spawnHealSpiral(player.x, player.y, '#5ef29a');
     sfx.demonSlash();
     for (const e of enemies) {
       if (e.dead) continue;
@@ -1185,13 +1194,15 @@
     if (player.aim === -1) vy = -500; else if (player.aim === 1 && !player.onGround) vy = 500; else vx = 500 * dir;
     const dmg = playerBaseDmg(player, gunDmgMult(player)) * 1.3;
     spawnShellCasing(player.x - dir * 2, player.y - 6, dir);
-    pBullets.push({ x: player.x, y: player.y - 2, vx, vy, kind: 'normal', dmg, pierce: true });
+    // A glowing beam, not another round pellet — reads as punching through.
+    pBullets.push({ x: player.x, y: player.y - 2, vx, vy, kind: 'beam', dmg, pierce: true });
     sfx.heavyShot();
   }
   // A brief damage buff, folded into playerBaseDmg() while active.
   function abilityOverload() {
     player.dmgBuffTimer = 6;
-    spawnShockwave(player.x, player.y, 'rgba(61,200,255,0.6)', 60);
+    // Sparks crackling upward — an overcharge, not another ring pulse.
+    spawnEnergySparks(player.x, player.y, '#8fe0ff');
     sfx.frost();
   }
 
@@ -1202,8 +1213,10 @@
     if (!target) { addMessage(player.x, player.y - 24, 'NO TARGET', '#c9b98f'); sfx.empty(); return false; }
     const dmg = playerBaseDmg(player, gunDmgMult(player)) * 5;
     applyDamage(target, dmg);
-    spawnShockwave(target.x, target.y, 'rgba(207,61,61,0.8)', 30);
-    spawnHitParticles(target.x, target.y, '#cf3d3d');
+    // A visible tracer from gun to target — reads as an instant long-range
+    // shot, not a melee-style poof appearing at the target.
+    spawnDashTrail(player.x, player.y - 2, target.x, target.y, 'rgba(207,61,61,0.9)');
+    spawnImpactFlash(target.x, target.y, '#ffb3a0');
     sfx.heavyShot();
   }
   // A shot that ignores hyperarmor outright — ignores a boss's invulnTimer
@@ -1214,15 +1227,22 @@
     const dmg = playerBaseDmg(player, gunDmgMult(player)) * 2.4;
     target.invulnTimer = 0;
     applyDamage(target, dmg);
-    spawnShockwave(target.x, target.y, 'rgba(207,61,61,0.8)', 24);
+    // The tracer continues past the target instead of stopping on it —
+    // reads as punching clean through rather than just landing on it.
+    const dx = target.x - player.x, dy = target.y - (player.y - 2), d = Math.hypot(dx, dy) || 1;
+    const pastX = target.x + (dx / d) * 30, pastY = target.y + (dy / d) * 30;
+    spawnDashTrail(player.x, player.y - 2, pastX, pastY, 'rgba(255,255,255,0.9)');
     spawnImpactFlash(target.x, target.y, '#ffffff');
     sfx.heavyShot();
   }
   // Locks onto the nearest enemy so the next few shots home in on it.
   function abilityTargetLock() {
+    const target = findNearestEnemy(player.x, player.y, 400);
     player.homingNext = true;
     player.dmgBuffTimer = 4;
-    spawnShockwave(player.x, player.y, 'rgba(207,61,61,0.6)', 40);
+    // A shrinking targeting bracket on the enemy itself — a lock-on marker,
+    // not a ring pulse at the player.
+    if (target) spawnReticle(target.x, target.y, '#cf3d3d');
     sfx.frost();
   }
 
@@ -1247,7 +1267,9 @@
   // A burst of speed for the player.
   function abilityVoltaicCharge() {
     player.hasteTimer = 4;
-    spawnShockwave(player.x, player.y, 'rgba(255,205,60,0.7)', 30);
+    // Motion-blur speed lines trailing behind, not a ring pulse — reads as
+    // a burst of speed rather than an AoE.
+    spawnSpeedLines(player.x, player.y, player.facing, '#ffcd3c');
     sfx.slide();
   }
 
@@ -1550,6 +1572,60 @@
         life: 0.25 + Math.random() * 0.15, color: icy ? '#bfe8ff' : '#5fb6ff', size: 3 + Math.random() * 2, grav: false,
       });
     }
+  }
+  // Jagged lines radiating outward from (x,y) — a ground-crack burst, for
+  // abilities that shake/roar rather than cut.
+  function spawnCrackBurst(x, y, color, n = 6, length = 30) {
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + Math.random() * 0.4;
+      const len = length * (0.7 + Math.random() * 0.5);
+      particles.push({ x, y, x2: x + Math.cos(a) * len, y2: y + Math.sin(a) * len * 0.5, vx: 0, vy: 0, life: 0.25, maxLife: 0.25, color, size: 2, shape: 'streak', grav: false });
+    }
+  }
+  // Motes gathering inward and vanishing — the opposite of a hit burst, for
+  // abilities that fade/stealth rather than strike outward.
+  function spawnImplosion(x, y, color) {
+    for (let i = 0; i < 10; i++) {
+      const a = Math.random() * Math.PI * 2, dist = 20 + Math.random() * 14;
+      particles.push({ x: x + Math.cos(a) * dist, y: y + Math.sin(a) * dist, vx: -Math.cos(a) * 90, vy: -Math.sin(a) * 90, life: 0.3, color, size: 2.5, grav: false });
+    }
+  }
+  // Two crossing slash streaks — an X-shaped execution mark.
+  function spawnXSlash(x, y, color, size = 26) {
+    particles.push({ x: x - size, y: y - size, x2: x + size, y2: y + size, vx: 0, vy: 0, life: 0.2, maxLife: 0.2, color, size: 4, shape: 'streak', grav: false });
+    particles.push({ x: x + size, y: y - size, x2: x - size, y2: y + size, vx: 0, vy: 0, life: 0.2, maxLife: 0.2, color, size: 4, shape: 'streak', grav: false });
+  }
+  // A curved band sweeping forward in dir and fading — a wave front,
+  // distinct from a shockwave since it only travels one way.
+  function spawnWaveFront(x, y, dir, color, color2, travel = 46) {
+    particles.push({ x, y, vx: 0, vy: 0, life: 0.3, maxLife: 0.3, color, color2, dir, radius: travel, shape: 'wave', grav: false });
+  }
+  // Particles gathering in from a ring and drifting up into the player — a
+  // healing swirl.
+  function spawnHealSpiral(x, y, color) {
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      const dist = 26 + Math.random() * 8;
+      particles.push({ x: x + Math.cos(a) * dist, y: y + Math.sin(a) * dist, vx: -Math.cos(a) * 30, vy: -Math.sin(a) * 30 - 40, life: 0.5, color, size: 2.5, grav: false });
+    }
+  }
+  // Vertical sparks rising off a point — an overcharge/buff crackle.
+  function spawnEnergySparks(x, y, color) {
+    for (let i = 0; i < 8; i++) {
+      particles.push({ x: x + (Math.random() - 0.5) * 20, y: y + 4, vx: (Math.random() - 0.5) * 20, vy: -70 - Math.random() * 50, life: 0.35, color, size: 2.5, grav: false });
+    }
+  }
+  // Short horizontal streaks trailing behind a point — a burst-of-speed
+  // motion-blur look, facing opposite dir.
+  function spawnSpeedLines(x, y, dir, color) {
+    for (let i = 0; i < 5; i++) {
+      const oy = (i - 2) * 5;
+      particles.push({ x: x - dir * 6, y: y + oy, x2: x - dir * (20 + Math.random() * 14), y2: y + oy, vx: 0, vy: 0, life: 0.2, maxLife: 0.2, color, size: 2, shape: 'streak', grav: false });
+    }
+  }
+  // A shrinking corner-bracket targeting marker — a lock-on reticle.
+  function spawnReticle(x, y, color) {
+    particles.push({ x, y, vx: 0, vy: 0, life: 0.5, maxLife: 0.5, color, size: 20, shape: 'reticle', grav: false });
   }
   // One frame of Shadow Step's afterimage trail — a flat silhouette left
   // behind at a point along the teleport path, fading fast.
@@ -2101,12 +2177,10 @@
       player.channelTick -= dt;
       if (player.channelTick <= 0) {
         player.channelTick = 0.2;
-        const pulseDir = player.channelPulseCount % 2 === 0 ? player.facing : -player.facing;
         if (player.channelKind === 'draconicRoar') {
           const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 0.9;
-          spawnCrescentSlash(player.x, player.y, pulseDir, 'rgba(255,140,61,0.85)', '#ffe8a3', 48);
-          spawnShockwave(player.x, player.y, 'rgba(255,140,61,0.6)', 45);
-          spawnHitParticles(player.x, player.y, '#ff9d3d');
+          spawnCrackBurst(player.x, player.y, '#ff9d3d', 8, 40);
+          spawnHitParticles(player.x, player.y, '#ffcf4a');
           shakeScreen(3);
           for (const e of enemies) {
             if (e.dead) continue;
@@ -4120,6 +4194,17 @@
       ctx.beginPath(); ctx.ellipse(2, 0, 7, 3.4, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff';
       ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === 'beam') {
+      // A piercing energy beam — a glowing line, not a round pellet, so it
+      // reads as punching through rather than another plain shot.
+      ctx.strokeStyle = 'rgba(61,200,255,0.5)';
+      ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.moveTo(-15, 0); ctx.lineTo(11, 0); ctx.stroke();
+      ctx.strokeStyle = '#eafcff';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-11, 0); ctx.lineTo(11, 0); ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(11, 0, 2.2, 0, Math.PI * 2); ctx.fill();
     } else {
       // normal (player default)
       ctx.fillStyle = '#2f8f5b';
@@ -4247,6 +4332,35 @@
       ctx.lineWidth = p.size || 3;
       ctx.beginPath();
       ctx.moveTo(x, y); ctx.lineTo(x2, y2);
+      ctx.stroke();
+    } else if (p.shape === 'wave') {
+      // A curved band that travels forward in p.dir and fades — a wave
+      // front, as opposed to 'ring's circular shockwave.
+      const t = 1 - p.life / p.maxLife;
+      const wx = x + p.dir * p.radius * t;
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 5 * (1 - t * 0.6);
+      ctx.beginPath();
+      ctx.moveTo(wx, y - 16);
+      ctx.quadraticCurveTo(wx + p.dir * 7, y, wx, y + 16);
+      ctx.stroke();
+      ctx.strokeStyle = p.color2 || '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(wx - p.dir * 3, y - 10);
+      ctx.quadraticCurveTo(wx + p.dir * 4, y, wx - p.dir * 3, y + 10);
+      ctx.stroke();
+    } else if (p.shape === 'reticle') {
+      // Four shrinking corner brackets — a lock-on marker.
+      const t = p.life / p.maxLife;
+      const s = p.size * (0.6 + t * 0.6), c = 4;
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x - s, y - s + c); ctx.lineTo(x - s, y - s); ctx.lineTo(x - s + c, y - s);
+      ctx.moveTo(x + s - c, y - s); ctx.lineTo(x + s, y - s); ctx.lineTo(x + s, y - s + c);
+      ctx.moveTo(x + s, y + s - c); ctx.lineTo(x + s, y + s); ctx.lineTo(x + s - c, y + s);
+      ctx.moveTo(x - s + c, y + s); ctx.lineTo(x - s, y + s); ctx.lineTo(x - s, y + s - c);
       ctx.stroke();
     } else {
       ctx.fillStyle = p.color;
