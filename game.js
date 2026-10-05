@@ -3199,8 +3199,10 @@
       } else if (samurai) {
         // A proper katana, not a knife — a long blade swept through a wide
         // arc, several times the sprite's own height, with a visible guard
-        // and hilt so it reads as a dedicated weapon at a glance.
-        const angle = -1.4 + t * 1.7;
+        // and hilt so it reads as a dedicated weapon at a glance. The swing
+        // starts from the blade held straight up (base position) and comes
+        // down into a clean horizontal slash at the strike.
+        const angle = -Math.PI / 2 + t * (Math.PI / 2);
         ctx.save();
         ctx.translate(5, gy - 1);
         ctx.rotate(angle);
