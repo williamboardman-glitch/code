@@ -3,11 +3,11 @@
 A pixel-art 2D run-and-gun platformer. Jump across eight crumbling floors —
 temple, dungeon, jungle, a frozen temple, Hell itself, a cursed desert, a
 bone crypt, and finally the Demon God's own throne — and take down whatever's
-guarding them. Floor one is fists-only; clearing it hands you a choice of
-class — Samurai, Sniper, or Petmancer — that shapes how you fight for the
-rest of the run (see [Classes](#classes)). Every clean kill leaves behind a
-soul you can load as special ammunition, on top of whatever your class gives
-you.
+guarding them. Floor one is fists-only; clearing it cracks open three loot
+chests, each offering a pick of 1 of 3 gear items — a sword, a gun, or a
+pet — that shapes how you fight for the rest of the run (see
+[Gear & Loadout](#gear--loadout)). Every clean kill leaves behind a soul you
+can load as special ammunition, on top of whatever your gear gives you.
 
 ## Story
 
@@ -17,68 +17,85 @@ what actually happened here: a king, a bargain with something that shouldn't
 have been bargained with, and exactly what he became. It builds to the
 throne room at the very end. Better experienced in order than spoiled here.
 
-## Classes
+## Gear & Loadout
 
-Floor one is bare-handed — no gun, just fists — so the choice means
-something by the time you reach it. Clearing floor one opens a one-time
-class-select screen:
+Floor one is bare-handed — no gun, just fists — so clearing it is the
+payoff: three loot chests crack open, one at a time, each revealing 3
+random candidates out of a pool of 9 gear items (3 swords, 3 guns, 3 pets).
+Pick one from each chest to keep — your final loadout is always exactly
+those 3 picked items.
 
-- **⚔️ Samurai** — no gun at all; the attack key always swings a massive
-  **katana** instead, which hits noticeably harder than a plain knife
-  swing, and **B** opens a brief parry window: a hit landed during it does
-  no damage and detonates a damage pulse on everything close enough to
-  have thrown it, instead of just shrugging the hit off. Souls still work —
-  a loaded soul infuses the blade with its trait instead of firing as a
-  bullet (see [Soul-infused slashes](#soul-infused-slashes)).
-- **🎯 Sniper** — the standard gun and soul-ammo kit, unchanged, at a
-  touch less damage than the other classes.
-- **🐺 Petmancer** — no gun at all, ever. A wolf companion joins you
-  instead (see [Wolf companion](#wolf-companion)), and the shop's gun/soul
-  items (Ammo Cache, Combine Souls) are hidden since there's nothing to
-  spend them on.
+Once you've picked, the game auto-equips from what you own:
 
-Kills earn class levels independently of your overall kill count, with a
-permanent damage buff every 5 levels. Picking a class is permanent for the
-run — there's no second class-select screen later on.
+- **One weapon, never two** — a sword and a gun can't both be equipped. If
+  you own at least one weapon, the first one you picked is the one that
+  goes on; any second or third weapon pick just sits owned, unequipped.
+- **One pet, or two if you skipped weapons entirely** — equipping a weapon
+  leaves room for a single pet. Give up the weapon slot completely (all 3
+  picks are pets) and both extra pet slots open up instead, letting a true
+  dual-pet build run two companions side by side.
+- A sword-equipped build fights in melee with **B** free to parry (a hit
+  landed during the parry window does no damage and detonates a damage
+  pulse on everything nearby); a gun-equipped build fights at range but
+  runs on bullets (see [Bullets & the knife](#bullets--the-knife)); a
+  pets-only build has no weapon abilities at all, relying on its
+  companions plus a backup knife swing.
 
-### Class abilities
+### Weapons
 
-Every class unlocks three abilities as it levels up, each bound to the
-same three keys regardless of which class you picked: **C** (level 5),
-**Z** (level 10), and **V** (level 15). The HUD lists all three from the
-moment you pick a class — locked ones show the level they unlock at, so
-you always know what's coming.
+Every sword and gun carries 3 named abilities, bound to the same three
+keys regardless of which one you're carrying: **C** (level 5), **Z**
+(level 10), and **V** (level 15) — levels earned purely from your kill
+count once a loadout is picked, with a permanent damage buff every 5
+levels on top. The HUD lists all three abilities from the moment you
+equip a weapon — locked ones show the level they unlock at.
 
-| Class | C (lv5) | Z (lv10) | V (lv15) |
+| Weapon | C (lv5) | Z (lv10) | V (lv15) |
 |---|---|---|---|
-| ⚔️ Samurai | **Dragon Slash** — a wide forward sword arc, harder-hitting than a normal katana swing | **Shadow Step** — teleport behind the nearest enemy and land a heavy hit | **Samurai Storm** — a short channel, pulsing damage to everything nearby three times |
-| 🎯 Sniper | **Deadeye** — a free, massive hit on the nearest enemy, no ammo spent | **Piercing Shot** — a bullet that keeps going through everything in its path instead of stopping at the first hit | **Hawk Eye** — a brief damage buff to every hit you land |
-| 🐺 Petmancer | **Pack Command** — directs your wolf at whatever you're facing, wherever it is, with a damage bonus on the hit | **Pet Swap** — recalls your wolf to your side with a burst of speed | **Beast Fury** — forces your wolf's attack immediately, at a damage bonus, ignoring its normal cooldown |
+| 🗡️ Dragon Tooth Katana | **Blazing Slash** — a wide fiery arc that burns everything it catches | **Scaled Parry** — an extra reflexive parry pulse | **Draconic Roar** — a short channel pulsing fire damage to everything nearby and slowing it |
+| 🗡️ Nightblade Shadow | **Shadow Step** — teleport behind the nearest enemy and land a heavy hit | **Veiled Strike** — brief invulnerability and invisibility, then your next hit lands harder | **Silent Execution** — instantly finishes a low-HP enemy outright, or hits hard otherwise |
+| 🗡️ Tsunami Blade | **Tidal Wave** — a wave of water that knocks enemies back with solid AoE damage | **Hydro-Slash** — a fast, heavier-hitting forward slash | **Rejuvenating Flow** — a wide slash that heals you for every kill it lands |
+| 🔫 Plasma Cannon | **Charged Shot** — a slow, heavy bolt that explodes in a wide radius | **Beam Wave** — a shot that pierces through everything in its path | **Overload** — a brief damage buff to every hit you land |
+| 🔫 Railgun Rifle | **Sonic Dart** — a free, massive hit on the nearest enemy, no ammo spent | **Armor Piercing** — ignores hyperarmor outright, even mid-boss-nova | **Target Lock** — your next few shots home in on the nearest enemy |
+| 🔫 Tesla Blipper | **Arc Lightning** — an instant bolt that chains to 2 more enemies | **EM Pulse** — an AoE pulse that damages and slows everything nearby | **Voltaic Charge** — a burst of movement speed |
 
 Each ability has its own cooldown (shown in the HUD once unlocked), so
-they're a burst to lean on, not a replacement for your normal kit.
+they're a burst to lean on, not a replacement for your normal attack.
 
-#### The Samurai's ultimate: Blade of the Fallen
+### Pets
 
-At class level 20, the Samurai alone gets a fourth ability — **F**,
-**Blade of the Fallen**, on a long 45s cooldown. It's a scripted
-5-phase combo rather than a single effect: a brief charge, an instant
-dash forward (leaving a trail of afterimages) that cuts through
-everything in its path, a 360° multi-slash flurry, a short leaping air
-slash, and a final downward strike that hits hard and knocks nearby
-enemies back. Player input is locked out for the ~0.7s it takes to
-play — dying or leaving the floor mid-combo cancels it outright.
+Every pet carries 3 named abilities too, but they're passive — no key to
+press. A pet fights entirely on its own, closing in on the nearest enemy
+and biting automatically; which named move replaces the plain bite is
+decided by the same level thresholds (5/10/15) as weapon abilities, read
+off your own kill-count level. Pet attacks also channel a loaded soul the
+same way your own weapon does (see
+[Soul-infused slashes](#soul-infused-slashes)) — a soul consumed on a pet's
+bite lands its elemental effect on whatever it hits.
+
+| Pet | Lv5 | Lv10 | Lv15 |
+|---|---|---|---|
+| 🐉 Crimson Whelp | **Fire Breath** — bite also sets the target burning | **Draconic Might** — heavier hit and a speed burst for the pet | **Winged Strike** — a fiery explosion on the target |
+| 🐆 Shadow Panther | **Pounce** — bite also slows the target | **Camouflage** — brief extra safety for the pet after striking | **Bleeding Claw** — heavier hit with a bleed effect |
+| 🦊 Lightning Kitsune | **Electric Discharge** — bite also chains a small lightning jolt to another enemy | **Static Shield** — brief extra safety for the pet after striking | **Foxfire Swirl** — a periodic damaging pulse around the pet itself |
+
+Each pet has its own health bar, shown in the HUD; melee enemies that
+touch it deal contact damage, same as they do to you. Keep pets alive and
+fighting with two supply-cache items: **Pet Armor** (-2 damage taken per
+hit, up to -8) and **Dog Biscuits** — a portable heal (50 HP to every pet
+at once, up to 5 held) fed to them anytime with **E**, the same pattern as
+your own Health Potions.
 
 ## Bullets & the knife
 
-Normal ammo isn't infinite — you start each run with 100 bullets (once
-you've picked the Sniper, the only class that actually fires a gun). Run
-out and shooting falls back to a short-range knife swing instead of
+Normal ammo isn't infinite — equip a gun and you start with 100 bullets.
+Run out and shooting falls back to a short-range knife swing instead of
 failing outright. Every kill restocks +2 bullets, even a soulless
 shambler, so staying aggressive keeps you stocked; the shop's Ammo Cache
 also tops bullets back up to 100 (never down) alongside its usual soul
-refill. The Samurai never touches bullets at all — the attack key always
-swings the katana, souls and all (see below).
+refill. A sword-equipped build never touches bullets at all — the attack
+key always swings the blade, souls and all (see below); a pets-only build
+has no weapon of its own either, and falls straight to the knife.
 
 Beat the Arch Demon and that knife is upgraded permanently into the
 **Demon Knife**: instead of a stationary swipe it becomes a short forward
@@ -90,11 +107,12 @@ manually anytime, bullets or not.
 
 ### Soul-infused slashes
 
-A soul loaded with keys **1-7** isn't bullet-only — any melee swing
-(Samurai's attack, or anyone else's out-of-ammo/manual knife) carries the
-same trait, just delivered by the blade instead of a shot, at the same
-relative damage weighting. Out of that soul and it quietly falls back to
-a plain swing, same as running dry does for bullets.
+A soul loaded with keys **1-7** isn't bullet-only — any melee swing (a
+sword-equipped build's attack, or anyone else's out-of-ammo/manual knife)
+carries the same trait, just delivered by the blade instead of a shot, at
+the same relative damage weighting. Out of that soul and it quietly falls
+back to a plain swing, same as running dry does for bullets. A pet's own
+bite channels a loaded soul the same way too (see [Pets](#pets)).
 
 | Soul | Slash effect |
 |---|---|
@@ -175,10 +193,9 @@ shared or synced anywhere.
 - **9** — place a trap (requires a trap charge, and being on the ground)
 - **0** — cycle fused shots; or hold two souls' ammo keys together (e.g. **2+5**) to load that pair directly (see [Soul Fusion](#soul-fusion))
 - **Q** — drink a potion (heals 30 HP on the spot; bought at the supply cache, holds up to 5)
-- **E** — feed your wolf a biscuit (heals it 50 HP on the spot; bought at the supply cache, holds up to 5)
-- **B** — parry (Samurai only): blocks the next hit outright and counters nearby enemies
-- **C / Z / V** — class abilities, unlocked at class levels 5/10/15 (see [Class abilities](#class-abilities))
-- **F** — Blade of the Fallen, the Samurai's level-20 ultimate (see [above](#the-samurais-ultimate-blade-of-the-fallen))
+- **E** — feed your pets a biscuit (heals all of them 50 HP on the spot; bought at the supply cache, holds up to 5)
+- **B** — parry (sword equipped only): blocks the next hit outright and counters nearby enemies
+- **C / Z / V** — weapon abilities, unlocked at gear levels 5/10/15 (see [Weapons](#weapons))
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 **Mobile (on-screen controls)**
@@ -188,10 +205,9 @@ shared or synced anywhere.
 - **TRAP** — place a trap (requires a trap charge, and being on the ground)
 - **FUSE** — cycle fused shots (see [Soul Fusion](#soul-fusion))
 - **POTION** — drink a potion (heals 30 HP on the spot)
-- **BISCUIT** — feed your wolf a biscuit (heals it 50 HP on the spot)
-- **PARRY** — parry (Samurai only)
-- **C / Z / V** — class abilities, unlocked at class levels 5/10/15
-- **F button** — Blade of the Fallen, the Samurai's level-20 ultimate
+- **BISCUIT** — feed your pets a biscuit (heals all of them 50 HP on the spot)
+- **PARRY** — parry (sword equipped only)
+- **C / Z / V** — weapon abilities, unlocked at gear levels 5/10/15
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 ## Enemies & souls
@@ -311,38 +327,6 @@ Like the other two arenas, crossing into the fight seals the way back until
 it's dead. Beating it grants a permanent +20% damage bonus and ends the run
 — reach the end of its floor to win.
 
-## Wolf companion
-
-Petmancer-only (see [Classes](#classes)) — picking any other class means no
-pet at all. Once chosen, a wolf pup joins your side and levels up purely
-from your running kill count — no feeding or separate XP to manage. It
-fights in melee, biting whatever's nearest, and gets stronger, faster, and
-tougher-looking at each stage: Puppy → Young Wolf → Wolf → Dire Wolf →
-Alpha Wolf → **Fenrir**, fully grown at 300 kills.
-
-The wolf has its own health bar, shown under the stage-progress bar in the
-HUD. The Puppy starts tanky with 140 max HP, already above your own
-starting 100, and every later stage climbs higher still, capping at 250 for
-Fenrir. It never truly dies; a losing fight just empties its HP bar out to
-0 rather than ending the run. Melee zombies that touch it deal contact
-damage, same as they do to you.
-
-Every stage lands its own named special move on a successful bite:
-
-| Stage | Move | Effect |
-|---|---|---|
-| Puppy | Paw Pounce | Small damage, briefly slows the target |
-| Young Wolf | Wolf Dash | Damages every enemy in a short line in front of it |
-| Wolf | Moon Fang | Extra damage, and heals the wolf a little |
-| Dire Wolf | Frost Howl | Damages and slows every enemy near the wolf |
-| Alpha Wolf | Alpha Roar | Damages every enemy near the wolf, and speeds up its own next few bites |
-| Fenrir | Ragnarok Bite | Massive damage, followed by a dark explosion around the target that also hits anything nearby |
-
-Keep it alive and fighting with two supply-cache items: **Pet Armor**
-(-2 damage taken per hit, up to -8) and **Dog Biscuits** — a portable heal
-(50 HP, up to 5 held at once) fed to the wolf anytime with **E**, the same
-pattern as your own Health Potions.
-
 ## Shop
 
 Between floors, spend your score at the supply cache on healing, ammo
@@ -350,11 +334,12 @@ refills, and permanent damage/health/armor upgrades, plus Health Potions —
 a portable heal (30 HP, up to 5 held at once) you can drink anytime with
 **Q**, unlike the instant full heal that only works at the cache itself.
 You can also roll out the Combine Souls panel to fuse your souls together
-(see [Soul Fusion](#soul-fusion)). Petmancer gets two more items in its
-place — Pet Armor and Dog Biscuits (the latter working like a Health
-Potion, but for your wolf) — while Ammo Cache and Combine Souls are hidden
-instead, since there's no gun to spend bullets or fused shots from (see
-[Classes](#classes)). Prices climb both with repeated purchases of the
+(see [Soul Fusion](#soul-fusion)). A build with a pet equipped gets two
+more items — Pet Armor and Dog Biscuits (the latter working like a Health
+Potion, but for your pets) — while a gun-less build has Ammo Cache and
+Combine Souls hidden instead, since there's no gun to spend bullets or
+fused shots from (see [Gear & Loadout](#gear--loadout)). Prices climb both
+with repeated purchases of the
 same upgrade and with how deep you are — every floor's cache after the
 temple's charges more than the last, and the Demon God's throne is the
 steepest of all.

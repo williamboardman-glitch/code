@@ -30,10 +30,9 @@
   const resumeSummaryEl = document.getElementById('resumeSummary');
   const resumeContinueBtn = document.getElementById('resumeContinueBtn');
   const resumeNewGameBtn = document.getElementById('resumeNewGameBtn');
-  const classScreen = document.getElementById('classScreen');
-  const chooseSamuraiBtn = document.getElementById('chooseSamuraiBtn');
-  const chooseSniperBtn = document.getElementById('chooseSniperBtn');
-  const choosePetmancerBtn = document.getElementById('choosePetmancerBtn');
+  const gearScreen = document.getElementById('gearScreen');
+  const gearChestLabel = document.getElementById('gearChestLabel');
+  const gearChoices = document.getElementById('gearChoices');
 
   // ---------- Virtual low-res buffer (gives the whole game its pixelated look) ----------
   const TILE = 30;
@@ -449,29 +448,130 @@
   const PET_ARMOR_MAX = 8;
   const BISCUIT_MAX = 5;
   const BISCUIT_HEAL = 50;
-  const KILLS_PER_LEVEL = 10; // one class level every 10 kills, once a class is chosen
-  const CLASS_NAMES = { samurai: 'Samurai', sniper: 'Sniper', petmancer: 'Petmancer' };
+  const KILLS_PER_LEVEL = 10; // one gear level every 10 kills, once a loadout is chosen
 
-  // Levels only start counting once a class is picked (end of floor 1).
+  // The full gacha pool: 3 swords, 3 pets, 3 guns, each with 3 abilities
+  // unlocked at gear level 5/10/15. Picked from 3 chests (one pick each,
+  // reveal-3-choose-1) right after floor 1, replacing the old fixed
+  // Samurai/Sniper/Petmancer class kits entirely.
+  const GEAR_ITEMS = {
+    dragonToothKatana: {
+      name: 'Dragon Tooth Katana', category: 'sword', icon: '🗡️',
+      color: '#ff7a3d', colorEdge: '#ffd199',
+      desc: 'A blazing katana wreathed in draconic heat.',
+      abilities: [
+        { name: 'Blazing Slash', level: 5, cooldown: 3, key: 'C' },
+        { name: 'Scaled Parry', level: 10, cooldown: 4, key: 'Z' },
+        { name: 'Draconic Roar', level: 15, cooldown: 9, key: 'V' },
+      ],
+    },
+    nightbladeShadow: {
+      name: 'Nightblade Shadow', category: 'sword', icon: '🗡️',
+      color: '#8a6fd1', colorEdge: '#d8c7ff',
+      desc: 'A dagger-fast blade that favors the shadows.',
+      abilities: [
+        { name: 'Shadow Step', level: 5, cooldown: 4, key: 'C' },
+        { name: 'Veiled Strike', level: 10, cooldown: 6, key: 'Z' },
+        { name: 'Silent Execution', level: 15, cooldown: 9, key: 'V' },
+      ],
+    },
+    tsunamiBlade: {
+      name: 'Tsunami Blade', category: 'sword', icon: '🗡️',
+      color: '#3dc8ff', colorEdge: '#d2f4ff',
+      desc: 'A blade that carries the weight of the tide.',
+      abilities: [
+        { name: 'Tidal Wave', level: 5, cooldown: 4, key: 'C' },
+        { name: 'Hydro-Slash', level: 10, cooldown: 3, key: 'Z' },
+        { name: 'Rejuvenating Flow', level: 15, cooldown: 10, key: 'V' },
+      ],
+    },
+    crimsonWhelp: {
+      name: 'Crimson Whelp', category: 'pet', icon: '🐉',
+      color: '#d8432a', dark: '#8a2a1a', belly: '#ffb380', eye: '#ffcf4a',
+      dmg: 10, biteRate: 1.1, range: 150, speed: 110, scale: 0.8, maxHp: 170,
+      desc: 'A young dragon that breathes real fire.',
+      abilities: [
+        { name: 'Fire Breath', level: 5 },
+        { name: 'Draconic Might', level: 10 },
+        { name: 'Winged Strike', level: 15 },
+      ],
+    },
+    shadowPanther: {
+      name: 'Shadow Panther', category: 'pet', icon: '🐆',
+      color: '#3a3a45', dark: '#17171c', belly: '#5a5a68', eye: '#c04aff',
+      dmg: 9, biteRate: 0.85, range: 140, speed: 150, scale: 0.8, maxHp: 150,
+      desc: 'A sleek hunter that strikes and vanishes.',
+      abilities: [
+        { name: 'Pounce', level: 5 },
+        { name: 'Camouflage', level: 10 },
+        { name: 'Bleeding Claw', level: 15 },
+      ],
+    },
+    lightningKitsune: {
+      name: 'Lightning Kitsune', category: 'pet', icon: '🦊',
+      color: '#eaf3ff', dark: '#b8d4f0', belly: '#ffffff', eye: '#4fd6ff',
+      dmg: 8, biteRate: 1.0, range: 160, speed: 130, scale: 0.75, maxHp: 140,
+      desc: 'A storm fox crackling with static charge.',
+      abilities: [
+        { name: 'Electric Discharge', level: 5 },
+        { name: 'Static Shield', level: 10 },
+        { name: 'Foxfire Swirl', level: 15 },
+      ],
+    },
+    plasmaCannon: {
+      name: 'Plasma Cannon', category: 'gun', icon: '🔫',
+      color: '#3dc8ff',
+      desc: 'Fires searing bolts of superheated plasma.',
+      abilities: [
+        { name: 'Charged Shot', level: 5, cooldown: 4, key: 'C' },
+        { name: 'Beam Wave', level: 10, cooldown: 6, key: 'Z' },
+        { name: 'Overload', level: 15, cooldown: 11, key: 'V' },
+      ],
+    },
+    railgunRifle: {
+      name: 'Railgun Rifle', category: 'gun', icon: '🔫',
+      color: '#cf3d3d',
+      desc: 'A precision rifle that punches through armor.',
+      abilities: [
+        { name: 'Sonic Dart', level: 5, cooldown: 4, key: 'C' },
+        { name: 'Armor Piercing', level: 10, cooldown: 5, key: 'Z' },
+        { name: 'Target Lock', level: 15, cooldown: 11, key: 'V' },
+      ],
+    },
+    teslaBlipper: {
+      name: 'Tesla Blipper', category: 'gun', icon: '🔫',
+      color: '#ffcd3c',
+      desc: 'A compact sidearm crackling with voltage.',
+      abilities: [
+        { name: 'Arc Lightning', level: 5, cooldown: 4, key: 'C' },
+        { name: 'EM Pulse', level: 10, cooldown: 7, key: 'Z' },
+        { name: 'Voltaic Charge', level: 15, cooldown: 12, key: 'V' },
+      ],
+    },
+  };
+  const GEAR_KEYS = Object.keys(GEAR_ITEMS);
+  function equippedWeaponItem(p) { return p.equippedWeapon ? GEAR_ITEMS[p.equippedWeapon] : null; }
+
+  // Levels only start counting once a loadout is picked (end of floor 1).
   // Every level raises damage a little; every 5th level is the "massive
-  // buff" milestone each class's abilities unlock on (wired per class).
-  function classLevel(p) { return p.classType ? Math.floor(p.classKills / KILLS_PER_LEVEL) : 0; }
-  function classDmgMult(p) { return p.classType ? 1 + 0.08 * Math.floor(classLevel(p) / 5) : 1; }
-  // No gun pre-class (floor 1 is fists-only) or as the Petmancer (pure
-  // melee/pets, no personal ranged attack).
-  function hasGun(p) { return !!p.classType && p.classType !== 'petmancer'; }
-  // The Samurai's katana replaces the plain knife swing with something that
-  // actually hits like a dedicated weapon rather than a last-resort fallback.
-  function meleeDmgMult(p) { return p.classType === 'samurai' ? 1.8 : 1; }
-  // "Normal kit, normal damage slightly lower" — the Sniper trades a little
-  // base damage for its ranged abilities.
-  function gunDmgMult(p) { return p.classType === 'sniper' ? 0.85 : 1; }
+  // buff" milestone every item's 3 abilities unlock on.
+  function classLevel(p) { return p.ownedItems.length ? Math.floor(p.gearKills / KILLS_PER_LEVEL) : 0; }
+  function classDmgMult(p) { return p.ownedItems.length ? 1 + 0.08 * Math.floor(classLevel(p) / 5) : 1; }
+  // No gun before the gear is picked (floor 1 is fists-only), or if the
+  // equipped weapon (if any) is a sword/none at all.
+  function hasGun(p) { const w = equippedWeaponItem(p); return !!w && w.category === 'gun'; }
+  function hasSword(p) { const w = equippedWeaponItem(p); return !!w && w.category === 'sword'; }
+  // Any equipped sword hits like a dedicated melee weapon rather than a
+  // last-resort fallback; all 3 swords share the same weighting, same as
+  // all 3 guns do — they're differentiated by their abilities, not raw dps.
+  function meleeDmgMult(p) { return hasSword(p) ? 1.8 : 1; }
+  function gunDmgMult(p) { return 1; }
   // Shared by every player-dealt hit (bullets, knife/katana, the parry
   // counter) so a future change to the formula can't desync between them —
   // weaponMult is whichever of gunDmgMult/meleeDmgMult/a flat bonus applies.
   function playerBaseDmg(p, weaponMult = 1) {
-    const hawkEyeMult = p.hawkEyeTimer > 0 ? 1.5 : 1;
-    return BASE_DMG * p.dmgMult * p.helmDmgBonus * p.godDmgBonus * classDmgMult(p) * weaponMult * hawkEyeMult;
+    const buffMult = p.dmgBuffTimer > 0 ? 1.5 : 1;
+    return BASE_DMG * p.dmgMult * p.helmDmgBonus * p.godDmgBonus * classDmgMult(p) * weaponMult * buffMult;
   }
 
   // ---------- State ----------
@@ -481,7 +581,7 @@
   let touchControlsShown = false;
   let autosaveTimer = 0;
   let settingsOpen = false;
-  let player, wolf, enemies, pBullets, eBullets, hazards, particles, messages, camX, respawn, elapsed, shake, levelBanner;
+  let player, pets, enemies, pBullets, eBullets, hazards, particles, messages, camX, respawn, elapsed, shake, levelBanner;
   // Shadow Step's afterimage trail — faded silhouettes left behind along
   // the teleport path, separate from the generic particle system since
   // they need the player's own facing to draw a recognizable silhouette.
@@ -492,9 +592,12 @@
       x: 1 * TILE + TILE / 2, y: (ROWS - 1) * TILE - 13, vx: 0, vy: 0, groundVx: 0, w: 14, h: 24,
       onGround: false, facing: 1, aim: 0, // aim: -1 up, 0 horizontal, 1 down
       hp: 100, maxHp: 100, lives: 3, score: 0, kills: 0,
-      // No class chosen yet (that happens at the end of floor 1), so you
-      // fight bare-handed — no gun until classType is set.
-      classType: null, classKills: 0,
+      // No gear chosen yet (that happens at the end of floor 1, via 3
+      // gacha chests), so you fight bare-handed until equippedWeapon is set.
+      // ownedItems: the 3 item keys kept from the chests. equippedWeapon: at
+      // most 1 (sword or gun, never both). equippedPets: up to 2 pet item
+      // keys, but only if equippedWeapon is null (see finalizeGearLoadout).
+      ownedItems: [], equippedWeapon: null, equippedPets: [], gearKills: 0,
       ammo: 'knife', bullets: 0, souls: { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0 },
       combos: {},
       fireCooldown: 0, invuln: 0, coyote: 0, jumpBuffer: 0, jumpsUsed: 0, walkT: 0, hurtFlash: 0,
@@ -507,25 +610,22 @@
       usedSpecialThisFloor: false, knifeSwing: 0, bigSlash: false, demonKnife: false, godDmgBonus: 1,
       slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
       parryTimer: 0, parryCooldown: 0,
-      // One cooldown per ability slot — 0/1/2 shared across all three
-      // classes (level 5/10/15), slot 3 is the Samurai's level-20 ultimate
-      // only (always present so indexing never goes out of bounds, just
-      // never read/written for the other two classes).
-      abilityCooldown: [0, 0, 0, 0],
-      stormTimer: 0, stormTick: 0, stormPulseCount: 0, // Samurai Storm's channeled multi-hit
-      // Blade of the Fallen: a scripted multi-phase ultimate combo. phase
-      // -1 means inactive; phaseHit is a fresh per-phase Set so each enemy
-      // only takes that phase's damage once no matter how many frames it
-      // overlaps the hitbox for.
-      ultimateTimer: 0, ultimatePhase: -1, ultimatePhaseHit: null, ultimateGhostTick: 0,
-      hawkEyeTimer: 0, // Sniper's Hawk Eye damage buff
+      // One cooldown per weapon ability slot (level 5/10/15, keys C/Z/V) —
+      // whichever weapon is equipped, regardless of which one.
+      abilityCooldown: [0, 0, 0],
+      // A generic multi-tick channel, reusable by any weapon ability that
+      // needs one (e.g. a short pulsing-damage channel) instead of a single
+      // instant effect — not tied to any one specific ability.
+      channelTimer: 0, channelTick: 0, channelPulseCount: 0, channelKind: null,
+      dmgBuffTimer: 0, hasteTimer: 0, stealthTimer: 0, // temp buffs a few abilities grant
       deathTimer: 0, potions: 0,
-      wolfHp: WOLF_STAGES[0].maxHp, wolfArmor: 0, biscuits: 0,
+      petArmor: 0, biscuits: 0,
     };
   }
 
-  function makeWolf(x, y) {
-    return { x, y, biteCooldown: 0, invuln: 0, hitFlash: 0, hasteTimer: 0, commandBonus: 1 };
+  function makePet(petKey, x, y, hp) {
+    const def = GEAR_ITEMS[petKey];
+    return { petKey, x, y, hp: hp != null ? hp : def.maxHp, biteCooldown: 0, invuln: 0, hitFlash: 0, hasteTimer: 0, facing: 1, moving: false };
   }
 
   function resetRun() {
@@ -533,7 +633,7 @@
     levelIndex = 0;
     buildMap();
     player = newPlayer();
-    wolf = null; // only the Petmancer class has a pet, chosen after floor 1
+    pets = []; // populated once gear is picked, end of floor 1
     enemies = currentLevel().spawnList.map(([type, col, row]) => spawnEnemy(type, col, row));
     pBullets = []; eBullets = []; hazards = []; particles = []; messages = []; playerGhosts = [];
     spawnFloorHazards();
@@ -554,14 +654,7 @@
     bossArenaSealed = false;
     player.x = x; player.y = y; player.vx = 0; player.vy = 0; player.groundVx = 0;
     player.knockX = 0; player.knockTimer = 0;
-    // A mid-combo Blade of the Fallen would otherwise keep locking movement
-    // and forcing its scripted dash/hop velocity at the new floor's spawn
-    // point — its own timer has no idea a floor transition just happened.
-    player.ultimatePhase = -1; player.ultimateTimer = 0;
-    // A Pack Command target (and its pending damage bonus) from the floor
-    // just left behind would otherwise keep the wolf locked onto a phantom
-    // enemy, or leak the bonus onto an unrelated hit on the new floor.
-    if (wolf) { wolf.x = x - 14; wolf.y = y; wolf.commandTarget = null; wolf.commandBonus = 1; } else if (player.classType === 'petmancer') { wolf = makeWolf(x - 14, y); }
+    pets.forEach((pet, i) => { pet.x = x - 14 - i * 16; pet.y = y; });
     respawn = { x, y };
   }
 
@@ -611,12 +704,6 @@
   }
 
   function loseLife(reason) {
-    // Dying mid-combo must cancel Blade of the Fallen immediately — it
-    // locks player movement and forces its own dash/hop velocity every
-    // frame it's active, which would otherwise keep running (and dashing
-    // the freshly-respawned player around with no input control) right
-    // through the death animation and the respawn that follows it.
-    player.ultimatePhase = -1; player.ultimateTimer = 0;
     player.lives--;
     sfx.death();
     shakeScreen(10);
@@ -651,9 +738,9 @@
     player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0 };
     player.combos = {};
     player.potions = 0;
-    player.wolfArmor = 0;
+    player.petArmor = 0;
     player.biscuits = 0;
-    player.wolfHp = WOLF_STAGES[wolfStage()].maxHp;
+    for (const pet of pets) pet.hp = GEAR_ITEMS[pet.petKey].maxHp;
     // No class yet means still-floor-1 fists-only; Petmancer never gets a
     // gun at all. Everyone else gets their bullets back.
     if (hasGun(player)) {
@@ -702,11 +789,11 @@
     e.deathTimer = ENEMY_DEATH_ANIM;
     player.score += e.cfg.points;
     player.kills++;
-    // No gun at all pre-class or as the Petmancer, so nothing to restock.
+    // No gun at all pre-gear or with a sword/no-weapon loadout, so nothing to restock.
     if (hasGun(player)) player.bullets += 2;
-    if (player.classType) {
+    if (player.ownedItems.length > 0) {
       const before = classLevel(player);
-      player.classKills++;
+      player.gearKills++;
       const after = classLevel(player);
       if (after > before) addMessage(player.x, player.y - 30, `LEVEL ${after}`, '#ffcd3c');
     }
@@ -843,25 +930,27 @@
     sfx.heal();
   }
 
-  // Same pattern as usePotion(), but heals the wolf companion instead of the
+  // Same pattern as usePotion(), but heals every equipped pet instead of the
   // player — capped stock, bought at the shop, used anytime with key E.
   function useBiscuit() {
-    if (!wolf) return;
+    if (pets.length === 0) return;
     if (player.biscuits <= 0) {
-      addMessage(wolf.x, wolf.y - 24, 'NO BISCUITS', '#c9b98f');
+      addMessage(pets[0].x, pets[0].y - 24, 'NO BISCUITS', '#c9b98f');
       sfx.empty();
       return;
     }
-    const maxHp = WOLF_STAGES[wolfStage()].maxHp;
-    if (player.wolfHp >= maxHp) {
-      addMessage(wolf.x, wolf.y - 24, 'FULL HEALTH', '#c9b98f');
+    if (pets.every(pet => pet.hp >= GEAR_ITEMS[pet.petKey].maxHp)) {
+      addMessage(pets[0].x, pets[0].y - 24, 'FULL HEALTH', '#c9b98f');
       sfx.empty();
       return;
     }
     player.biscuits--;
-    player.wolfHp = Math.min(maxHp, player.wolfHp + BISCUIT_HEAL);
-    spawnHitParticles(wolf.x, wolf.y, '#d9a066');
-    addMessage(wolf.x, wolf.y - 24, `+${BISCUIT_HEAL} HP`, '#d9a066');
+    for (const pet of pets) {
+      const maxHp = GEAR_ITEMS[pet.petKey].maxHp;
+      pet.hp = Math.min(maxHp, pet.hp + BISCUIT_HEAL);
+      spawnHitParticles(pet.x, pet.y, '#d9a066');
+      addMessage(pet.x, pet.y - 24, `+${BISCUIT_HEAL} HP`, '#d9a066');
+    }
     sfx.heal();
   }
 
@@ -887,7 +976,7 @@
   // thrown it, instead of just shrugging the hit off like the slide's
   // i-frames do.
   function tryParry() {
-    if (state !== 'playing' || player.classType !== 'samurai') return;
+    if (state !== 'playing' || !hasSword(player)) return;
     if (player.parryCooldown > 0) return;
     player.parryTimer = PARRY_WINDOW;
     player.parryCooldown = PARRY_COOLDOWN;
@@ -895,77 +984,76 @@
     spawnHitParticles(player.x + player.facing * 10, player.y, '#8fd0ff');
   }
 
-  // ---------- Class abilities (C/Z/V, unlocked at class level 5/10/15) ----------
-  // Same three keys for every class; which move they trigger depends on
-  // player.classType. Cooldowns live in player.abilityCooldown[slot].
-  const CLASS_ABILITIES = {
-    samurai: [
-      { name: 'Dragon Slash', level: 5, cooldown: 3, key: 'C' },
-      { name: 'Shadow Step', level: 10, cooldown: 4, key: 'Z' },
-      { name: 'Samurai Storm', level: 15, cooldown: 8, key: 'V' },
-      { name: 'Blade of the Fallen', level: 20, cooldown: 45, key: 'F' },
-    ],
-    sniper: [
-      { name: 'Deadeye', level: 5, cooldown: 4, key: 'C' },
-      { name: 'Piercing Shot', level: 10, cooldown: 5, key: 'Z' },
-      { name: 'Hawk Eye', level: 15, cooldown: 12, key: 'V' },
-    ],
-    petmancer: [
-      { name: 'Pack Command', level: 5, cooldown: 5, key: 'C' },
-      { name: 'Pet Swap', level: 10, cooldown: 6, key: 'Z' },
-      { name: 'Beast Fury', level: 15, cooldown: 8, key: 'V' },
-    ],
-  };
-
+  // ---------- Weapon abilities (C/Z/V, unlocked at gear level 5/10/15) ----------
+  // Same three keys for every weapon; which move they trigger depends on
+  // player.equippedWeapon. Metadata (name/level/cooldown/key) lives on
+  // GEAR_ITEMS[key].abilities; implementations are keyed the same way below.
   function useAbility(slot) {
-    if (state !== 'playing' || !player.classType) return;
-    // Blade of the Fallen scripts player position/velocity and locks normal
-    // input for its whole duration — another ability firing mid-combo (e.g.
-    // Shadow Step teleporting) would hijack that script out from under it.
-    // Its own slot is excluded only academically: it's already blocked by
-    // its own cooldown the instant it starts, so this never actually denies
-    // a legitimate re-press.
-    if (player.ultimatePhase >= 0 && slot !== 3) return;
-    const defs = CLASS_ABILITIES[player.classType];
-    if (!defs) return;
-    const def = defs[slot];
-    if (!def) return; // this class has no ability in this slot (e.g. the F-key ultimate is Samurai-only)
+    if (state !== 'playing' || !player.equippedWeapon) return;
+    const item = GEAR_ITEMS[player.equippedWeapon];
+    const def = item.abilities[slot];
+    if (!def) return;
     if (classLevel(player) < def.level) {
       addMessage(player.x, player.y - 24, `LOCKED — LV${def.level}`, '#c9b98f');
       sfx.empty();
       return;
     }
     if (player.abilityCooldown[slot] > 0) return;
-    const fired = ABILITY_IMPL[player.classType][slot]();
+    const fired = WEAPON_ABILITY_IMPL[player.equippedWeapon][slot]();
     if (fired === false) return; // ability declined to fire (e.g. no target) — no cooldown spent
     player.abilityCooldown[slot] = def.cooldown;
     addMessage(player.x, player.y - 30, def.name.toUpperCase(), '#8fd0ff');
   }
 
-  // A wide forward arc, bigger and harder-hitting than a plain katana swing —
-  // a serpentine icy-blue "dragon" ribbon sweeps out ahead of a big crescent
-  // slash-wave, reading as a dragon's-breath strike rather than a plain hit.
-  function abilityDragonSlash() {
+  // ===== Dragon Tooth Katana (fire sword) =====
+  // A wide forward arc, bigger and harder-hitting than a plain sword swing —
+  // a serpentine icy-blue... no, fiery — "dragon" ribbon sweeps out ahead of
+  // a big crescent slash-wave, and burns everything it catches.
+  function abilityBlazingSlash() {
     const dir = player.facing;
     const kx = player.x + dir * 20, ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
     const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 2;
-    player.knifeSwing = 0.15; // plays the same katana-swing sprite as a normal hit
+    player.knifeSwing = 0.15;
     spawnDragonWave(player.x, player.y - 4, dir);
-    spawnCrescentSlash(kx, ky, dir, 'rgba(143,208,255,0.9)', '#eaf6ff', 55);
-    spawnHitParticles(kx, ky, '#8fd0ff');
-    spawnImpactFlash(kx, ky, '#eaf6ff');
-    spawnShockwave(player.x, player.y, 'rgba(216,220,226,0.8)', 55);
+    spawnCrescentSlash(kx, ky, dir, 'rgba(255,140,61,0.9)', '#ffe8a3', 55);
+    spawnHitParticles(kx, ky, '#ff9d3d');
+    spawnImpactFlash(kx, ky, '#ffe8a3');
+    spawnShockwave(player.x, player.y, 'rgba(255,140,61,0.8)', 55);
     shakeScreen(5);
     sfx.demonSlash();
     for (const e of enemies) {
       if (e.dead) continue;
-      if (rectsOverlap(kx, ky, 60, 40, e.x, e.y, e.cfg.w, e.cfg.h)) applyDamage(e, dmg);
+      if (rectsOverlap(kx, ky, 60, 40, e.x, e.y, e.cfg.w, e.cfg.h)) {
+        applyDamage(e, dmg);
+        if (!e.dead) { e.burnTimer = 2.5; e.burnTick = 0.5; }
+      }
     }
   }
+  // A brief reflective stance — any hit landed on the player during it is
+  // fully blocked and thrown back as a damage pulse, scaled like dragon
+  // scales turning aside a blow rather than a timed sword-parry window.
+  function abilityScaledParry() {
+    player.parryTimer = 0.5;
+    player.knifeSwing = 0.15;
+    spawnShockwave(player.x, player.y, 'rgba(255,140,61,0.7)', 30);
+    sfx.parry();
+  }
+  // A short channel that pulses fire damage to everything nearby 3 times
+  // and leaves hit enemies feared (slowed), scaring off the fight instead
+  // of just hurting it.
+  function abilityDraconicRoar() {
+    player.channelTimer = 0.45;
+    player.channelTick = 0;
+    player.channelPulseCount = 0;
+    player.channelKind = 'draconicRoar';
+    player.knifeSwing = 0.15;
+    sfx.demonSlash();
+  }
 
-  // Teleports behind the nearest enemy and lands a heavy bonus-damage hit —
-  // leaves a trail of fading afterimages and a zip-line streak along the
-  // teleport path, like a ninja's instant dash.
+  // ===== Nightblade Shadow (stealth sword) =====
+  // Teleports behind the nearest enemy and lands a heavy bonus-damage
+  // (crit) hit — leaves a trail of fading afterimages and a zip-line
+  // streak along the teleport path, like a ninja's instant dash.
   function abilityShadowStep() {
     const target = findNearestEnemy(player.x, player.y, 260);
     if (!target) { addMessage(player.x, player.y - 24, 'NO TARGET', '#c9b98f'); sfx.empty(); return false; }
@@ -979,10 +1067,6 @@
     player.knifeSwing = 0.15;
     const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 2.2;
     applyDamage(target, dmg);
-    // Afterimages at the start, midpoint, and landing spot, plus a fading
-    // streak connecting start to end, so the teleport reads as a dash
-    // instead of an instant snap. Skipped when the teleport itself was
-    // blocked (landing spot solid) — there's no distance to trace.
     if (teleported) {
       spawnPlayerGhost(startX, startY, startFacing);
       spawnPlayerGhost(startX + (player.x - startX) * 0.5, startY + (player.y - startY) * 0.5, startFacing);
@@ -995,54 +1079,102 @@
     shakeScreen(4);
     sfx.demonSlash();
   }
-
-  // Channeled: 3 damage pulses to everything nearby, one every 0.2s. Timer
-  // is just inside the 3rd tick's boundary (0.4s) so a 4th can't sneak in.
-  function abilitySamuraiStorm() {
-    player.stormTimer = 0.45;
-    player.stormTick = 0;
-    player.stormPulseCount = 0;
-    player.knifeSwing = 0.15;
-    sfx.demonSlash();
+  // Slips into the shadows: briefly invulnerable and untargetable-feeling
+  // (faded on screen), then the next swing within the window hits harder.
+  function abilityVeiledStrike() {
+    player.invuln = Math.max(player.invuln, 2);
+    player.stealthTimer = 2;
+    player.dmgBuffTimer = 2;
+    spawnShockwave(player.x, player.y, 'rgba(122,95,201,0.7)', 30);
+    spawnHitParticles(player.x, player.y, '#8a6fd1');
+    sfx.slide();
   }
-
-  // Blade of the Fallen — the Samurai's level-20 ultimate: a scripted
-  // 5-phase combo (charge, dash, multi-slash, air slash, final strike).
-  // Phase boundaries are elapsed-time offsets from activation, driven in
-  // updatePlayer(); each phase's one-shot effect fires the frame elapsed
-  // time crosses into it. Player input is locked out for the duration (see
-  // the `ulting` branch in updatePlayer's movement code) and position
-  // during the dash/hop phases is driven by setting vx/vy here and letting
-  // the normal moveAndCollide() pipeline carry it, same as sliding does.
-  const ULTIMATE_DURATION = 0.68;
-  const ULTIMATE_PHASE_END = [0.10, 0.28, 0.44, 0.58, 0.68]; // charge, dash, multi-slash, air slash, final
-  const ULTIMATE_DASH_SPEED = 460;
-  function abilityBladeOfTheFallen() {
-    player.ultimateTimer = ULTIMATE_DURATION;
-    player.ultimatePhase = 0;
-    player.ultimatePhaseHit = new Set();
-    player.ultimateGhostTick = 0;
-    player.invuln = Math.max(player.invuln, ULTIMATE_DURATION + 0.1);
-    player.knifeSwing = 0.15;
-    spawnShockwave(player.x, player.y, 'rgba(216,220,226,0.9)', 30);
-    spawnImpactFlash(player.x, player.y, '#ffffff');
-    sfx.demonSlash();
-  }
-
-  // Instant massive damage to the nearest enemy, no ammo spent.
-  function abilityDeadeye() {
-    const target = findNearestEnemy(player.x, player.y, 400);
+  // A single precise strike that instantly finishes a low-HP enemy
+  // (at or below 30% of its max HP) outright, or otherwise hits hard.
+  function abilitySilentExecution() {
+    const target = findNearestEnemy(player.x, player.y, 90);
     if (!target) { addMessage(player.x, player.y - 24, 'NO TARGET', '#c9b98f'); sfx.empty(); return false; }
-    const dmg = playerBaseDmg(player, gunDmgMult(player)) * 5;
+    const lowHp = target.hp <= target.maxHp * 0.3;
+    const dmg = lowHp ? target.hp + 9999 : playerBaseDmg(player, meleeDmgMult(player)) * 2.5;
+    player.knifeSwing = 0.15;
     applyDamage(target, dmg);
-    spawnShockwave(target.x, target.y, 'rgba(255,205,60,0.8)', 30);
-    spawnHitParticles(target.x, target.y, '#ffcd3c');
+    spawnCrescentSlash(target.x, target.y, player.facing, 'rgba(122,95,201,0.9)', '#ffffff', 40);
+    spawnImpactFlash(target.x, target.y, lowHp ? '#ff4a4a' : '#ffffff');
+    shakeScreen(lowHp ? 7 : 4);
+    sfx.demonSlash();
+  }
+
+  // ===== Tsunami Blade (water sword) =====
+  // A wave of water bursts forward, knocking enemies back and dealing
+  // solid AoE damage.
+  function abilityTidalWave() {
+    const dir = player.facing;
+    const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 1.6;
+    player.knifeSwing = 0.15;
+    spawnCrescentSlash(player.x + dir * 16, player.y, dir, 'rgba(61,200,255,0.9)', '#d2f4ff', 60);
+    spawnShockwave(player.x, player.y, 'rgba(61,200,255,0.8)', 60);
+    spawnHitParticles(player.x + dir * 16, player.y, '#3dc8ff');
+    shakeScreen(5);
+    sfx.demonSlash();
+    for (const e of enemies) {
+      if (e.dead) continue;
+      if (Math.hypot(e.x - player.x, e.y - player.y) < 60) {
+        applyDamage(e, dmg);
+        if (!e.dead) {
+          const knockDir = e.x >= player.x ? 1 : -1;
+          const knockedX = e.x + knockDir * 24;
+          if (!isSolidPixel(knockedX, e.y)) e.x = knockedX;
+        }
+      }
+    }
+  }
+  // A fast forward slash with a heavier hit than a plain sword swing.
+  function abilityHydroSlash() {
+    const dir = player.facing;
+    const kx = player.x + dir * 20, ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
+    const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 1.8;
+    player.knifeSwing = 0.15;
+    spawnCrescentSlash(kx, ky, dir, 'rgba(61,200,255,0.9)', '#ffffff', 42);
+    spawnHitParticles(kx, ky, '#3dc8ff');
+    sfx.demonSlash();
+    for (const e of enemies) {
+      if (e.dead) continue;
+      if (rectsOverlap(kx, ky, 50, 36, e.x, e.y, e.cfg.w, e.cfg.h)) applyDamage(e, dmg);
+    }
+  }
+  // A wide slash that heals the player for every enemy it kills.
+  function abilityRejuvenatingFlow() {
+    const dir = player.facing;
+    const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 1.5;
+    player.knifeSwing = 0.15;
+    spawnCrescentSlash(player.x, player.y, dir, 'rgba(94,242,154,0.9)', '#d2ffe4', 50);
+    spawnShockwave(player.x, player.y, 'rgba(94,242,154,0.7)', 50);
+    sfx.demonSlash();
+    for (const e of enemies) {
+      if (e.dead) continue;
+      if (Math.hypot(e.x - player.x, e.y - player.y) < 50) {
+        const willKill = e.hp - dmg <= 0;
+        applyDamage(e, dmg);
+        if (willKill) {
+          player.hp = Math.min(player.maxHp, player.hp + 15);
+          spawnHitParticles(player.x, player.y, '#5ef29a');
+        }
+      }
+    }
+  }
+
+  // ===== Plasma Cannon (AoE gun) =====
+  // A slow, heavy plasma bolt that explodes in a wide radius on impact.
+  function abilityChargedShot() {
+    const dir = player.facing;
+    const dmg = playerBaseDmg(player, gunDmgMult(player)) * 2.2;
+    spawnShellCasing(player.x - dir * 2, player.y - 6, dir);
+    pBullets.push({ x: player.x, y: player.y - 2, vx: 260 * dir, vy: 0, kind: 'plasmaCharged', dmg });
     sfx.heavyShot();
   }
-
   // A bullet that keeps going through everything it hits instead of
   // stopping at the first enemy.
-  function abilityPiercingShot() {
+  function abilityBeamWave() {
     const dir = player.facing;
     let vx = 0, vy = 0;
     if (player.aim === -1) vy = -500; else if (player.aim === 1 && !player.onGround) vy = 500; else vx = 500 * dir;
@@ -1051,60 +1183,76 @@
     pBullets.push({ x: player.x, y: player.y - 2, vx, vy, kind: 'normal', dmg, pierce: true });
     sfx.heavyShot();
   }
-
   // A brief damage buff, folded into playerBaseDmg() while active.
-  function abilityHawkEye() {
-    player.hawkEyeTimer = 6;
-    spawnShockwave(player.x, player.y, 'rgba(255,205,60,0.6)', 60);
+  function abilityOverload() {
+    player.dmgBuffTimer = 6;
+    spawnShockwave(player.x, player.y, 'rgba(61,200,255,0.6)', 60);
     sfx.frost();
   }
 
-  // Locks the wolf onto the player's own nearest target and empowers its
-  // next bite — the closest single-wolf equivalent of "both pets focus
-  // fire" until there are two pets to actually coordinate.
-  function abilityPackCommand() {
-    if (!wolf) return false;
+  // ===== Railgun Rifle (precision gun) =====
+  // Instant massive damage to the nearest enemy, no ammo spent.
+  function abilitySonicDart() {
     const target = findNearestEnemy(player.x, player.y, 400);
-    if (!target) { addMessage(wolf.x, wolf.y - 24, 'NO TARGET', '#c9b98f'); sfx.empty(); return false; }
-    wolf.commandTarget = target;
-    wolf.commandBonus = 2;
-    wolf.biteCooldown = 0;
-    sfx.demonSlash();
+    if (!target) { addMessage(player.x, player.y - 24, 'NO TARGET', '#c9b98f'); sfx.empty(); return false; }
+    const dmg = playerBaseDmg(player, gunDmgMult(player)) * 5;
+    applyDamage(target, dmg);
+    spawnShockwave(target.x, target.y, 'rgba(207,61,61,0.8)', 30);
+    spawnHitParticles(target.x, target.y, '#cf3d3d');
+    sfx.heavyShot();
+  }
+  // A shot that ignores hyperarmor outright — ignores a boss's invulnTimer
+  // window instead of being wasted on it.
+  function abilityArmorPiercing() {
+    const target = findNearestEnemy(player.x, player.y, 400);
+    if (!target) { addMessage(player.x, player.y - 24, 'NO TARGET', '#c9b98f'); sfx.empty(); return false; }
+    const dmg = playerBaseDmg(player, gunDmgMult(player)) * 2.4;
+    target.invulnTimer = 0;
+    applyDamage(target, dmg);
+    spawnShockwave(target.x, target.y, 'rgba(207,61,61,0.8)', 24);
+    spawnImpactFlash(target.x, target.y, '#ffffff');
+    sfx.heavyShot();
+  }
+  // Locks onto the nearest enemy so the next few shots home in on it.
+  function abilityTargetLock() {
+    player.homingNext = true;
+    player.dmgBuffTimer = 4;
+    spawnShockwave(player.x, player.y, 'rgba(207,61,61,0.6)', 40);
+    sfx.frost();
   }
 
-  // Recalls the wolf to your side with a burst of speed — a single-pet
-  // stand-in for swapping which of two pets is in the fight.
-  function abilityPetSwap() {
-    if (!wolf) return false;
-    wolf.x = player.x - player.facing * 14;
-    wolf.y = player.y;
-    wolf.hasteTimer = Math.max(wolf.hasteTimer, 3);
-    spawnHitParticles(wolf.x, wolf.y, '#ffcf4a');
+  // ===== Tesla Blipper (lightning gun) =====
+  // An instant lightning bolt to the nearest enemy that chains to 2 more.
+  function abilityArcLightning() {
+    const target = findNearestEnemy(player.x, player.y, 320);
+    if (!target) { addMessage(player.x, player.y - 24, 'NO TARGET', '#c9b98f'); sfx.empty(); return false; }
+    const dmg = playerBaseDmg(player, gunDmgMult(player)) * 1.6;
+    spawnLightningArc(player.x, player.y, target.x, target.y);
+    applyDamage(target, dmg);
+    chainLightning(target, dmg * 0.6, [target], 2);
+    sfx.frost();
+  }
+  // An AoE pulse that damages and slows everything nearby.
+  function abilityEmPulse() {
+    explode(player.x, player.y, 70, playerBaseDmg(player, gunDmgMult(player)) * 1.4, {
+      palette: ['#d8c7ff', '#ffcd3c'], ringColor: 'rgba(255,205,60,0.85)',
+      slow: { mult: 0.4, time: 3 },
+    });
+  }
+  // A burst of speed for the player.
+  function abilityVoltaicCharge() {
+    player.hasteTimer = 4;
+    spawnShockwave(player.x, player.y, 'rgba(255,205,60,0.7)', 30);
     sfx.slide();
   }
 
-  // Forces the wolf's special attack immediately, at a damage bonus,
-  // regardless of its normal bite cooldown.
-  function abilityBeastFury() {
-    if (!wolf) return false;
-    const target = findNearestEnemy(wolf.x, wolf.y, 500);
-    if (!target) { addMessage(wolf.x, wolf.y - 24, 'NO TARGET', '#c9b98f'); sfx.empty(); return false; }
-    // Snap the wolf right next to the target first — several of its moves
-    // (Young Wolf's dash, Dire/Alpha Wolf's explosions) are centered on
-    // its own position, so they'd whiff entirely on a target this far
-    // from wherever the wolf currently happens to be standing.
-    wolf.x = target.x - 15;
-    wolf.y = target.y;
-    wolf.facing = 1; // target is always placed to the wolf's right above
-    wolf.commandBonus = 2.5;
-    wolfSpecialAttack(target, WOLF_STAGES[wolfStage()]);
-    wolf.commandBonus = 1;
-  }
-
-  const ABILITY_IMPL = {
-    samurai: [abilityDragonSlash, abilityShadowStep, abilitySamuraiStorm, abilityBladeOfTheFallen],
-    sniper: [abilityDeadeye, abilityPiercingShot, abilityHawkEye],
-    petmancer: [abilityPackCommand, abilityPetSwap, abilityBeastFury],
+  const WEAPON_ABILITY_IMPL = {
+    dragonToothKatana: [abilityBlazingSlash, abilityScaledParry, abilityDraconicRoar],
+    nightbladeShadow: [abilityShadowStep, abilityVeiledStrike, abilitySilentExecution],
+    tsunamiBlade: [abilityTidalWave, abilityHydroSlash, abilityRejuvenatingFlow],
+    plasmaCannon: [abilityChargedShot, abilityBeamWave, abilityOverload],
+    railgunRifle: [abilitySonicDart, abilityArmorPiercing, abilityTargetLock],
+    teslaBlipper: [abilityArcLightning, abilityEmPulse, abilityVoltaicCharge],
   };
 
   // Cycles ammo through whichever fused combos the player currently has
@@ -1180,9 +1328,9 @@
 
   function shoot() {
     if (player.fireCooldown > 0 || player.shockedTimer > 0) return;
-    // The Samurai fights with the katana alone — the attack key always
-    // swings it, never fires a bullet, regardless of selected ammo.
-    if (player.classType === 'samurai') { knifeAttack(); return; }
+    // A sword-equipped build fights with the blade alone — the attack key
+    // always swings it, never fires a bullet, regardless of selected ammo.
+    if (hasSword(player)) { knifeAttack(); return; }
     let ammo = player.ammo;
     if (ammo === 'knife') { knifeAttack(); return; }
     if (ammo.startsWith('combo:')) {
@@ -1488,7 +1636,7 @@
 
   const GAME_KEYS = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
-    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'KeyQ', 'KeyE', 'KeyB', 'KeyC', 'KeyZ', 'KeyV', 'KeyF', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
+    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'KeyQ', 'KeyE', 'KeyB', 'KeyC', 'KeyZ', 'KeyV', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
   ]);
 
   // Single source of truth for the Digit1-8 ammo hotkeys, also reused by the
@@ -1533,7 +1681,6 @@
     if (ev.code === 'KeyC') useAbility(0);
     if (ev.code === 'KeyZ') useAbility(1);
     if (ev.code === 'KeyV') useAbility(2);
-    if (ev.code === 'KeyF') useAbility(3);
     if (ev.code === 'Digit9') placeTrap();
     if (ev.code === 'Digit0') cycleComboAmmo();
     if (ev.code === 'KeyQ') usePotion();
@@ -1561,34 +1708,36 @@
   // an old save's levelIndex would otherwise silently resolve to the wrong
   // floor (everything from the crypt onward shifted up by one), so a save
   // written by the previous floor layout must not be reused as-is.
-  // Bumped again to v3 for the class system: classType is legitimately null
-  // in a perfectly valid save (floor 1, before the class-select screen), so
-  // there's no reliable way to tell that apart from a save written before
-  // classes existed at all — a clean break avoids guessing wrong either way.
-  const SAVE_KEY = 'templeOfBones_save_v3';
+  // Bumped to v4 for the gacha gear system: the old classType/classKills/
+  // wolfHp fields are gone, replaced by ownedItems/equippedWeapon/
+  // equippedPets/gearKills plus a separate pets array — a clean break
+  // rather than trying to migrate a fixed class into arbitrary gear picks.
+  const SAVE_KEY = 'templeOfBones_save_v4';
 
   function saveGame() {
     if (state !== 'playing') return;
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        v: 3,
+        v: 4,
         levelIndex,
         mobileControlsEnabled,
         respawn: { x: respawn.x, y: respawn.y },
         player: {
           hp: player.hp, maxHp: player.maxHp, lives: player.lives,
           score: player.score, kills: player.kills,
-          classType: player.classType, classKills: player.classKills,
+          ownedItems: [...player.ownedItems], equippedWeapon: player.equippedWeapon,
+          equippedPets: [...player.equippedPets], gearKills: player.gearKills,
           ammo: player.ammo, bullets: player.bullets,
           souls: { ...player.souls },
           combos: { ...player.combos },
           potions: player.potions,
-          wolfHp: player.wolfHp, wolfArmor: player.wolfArmor, biscuits: player.biscuits,
+          petArmor: player.petArmor, biscuits: player.biscuits,
           dmgMult: player.dmgMult, armor: player.armor,
           upgrades: { ...player.upgrades },
           shadowHelm: player.shadowHelm, helmDmgBonus: player.helmDmgBonus,
           demonKnife: player.demonKnife, godDmgBonus: player.godDmgBonus,
         },
+        pets: pets.map(pet => ({ petKey: pet.petKey, hp: pet.hp })),
       }));
     } catch (e) { /* storage unavailable/full — saving is a convenience, never block play */ }
   }
@@ -1599,7 +1748,7 @@
       if (!raw) return null;
       const data = JSON.parse(raw);
       if (
-        !data || data.v !== 3 || !LEVEL_DEFS[data.levelIndex] ||
+        !data || data.v !== 4 || !LEVEL_DEFS[data.levelIndex] ||
         !data.respawn || typeof data.respawn.x !== 'number' || typeof data.respawn.y !== 'number' ||
         !data.player || typeof data.player !== 'object'
       ) return null;
@@ -1623,10 +1772,7 @@
     player.souls = { berserker: 0, pyromancer: 0, frost: 0, lightning: 0, acid: 0, shadow: 0, trap: 0, ...save.player.souls };
     player.combos = { ...save.player.combos };
     player.upgrades = { damage: 0, vitality: 0, armor: 0, ...save.player.upgrades };
-    // Pre-wolf-HP saves won't have a wolfHp field — default it to a full bar
-    // for whatever stage the restored kill count puts the wolf at, rather
-    // than leaving it at newPlayer()'s Puppy-level default.
-    if (save.player.wolfHp == null) player.wolfHp = WOLF_STAGES[wolfStage()].maxHp;
+    pets = (save.pets || []).map(p => makePet(p.petKey, player.x - 14, player.y, p.hp));
     elapsed = 0; shake = { t: 0, mag: 0 };
     enterLevelEntitiesAt(save.respawn.x, save.respawn.y);
     levelBanner = { text: `FLOOR ${levelIndex + 1} — ${currentLevel().name.toUpperCase()}`, t: 3 };
@@ -1636,7 +1782,7 @@
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
     shopScreen.classList.add('hidden');
-    classScreen.classList.add('hidden');
+    gearScreen.classList.add('hidden');
     skipCutsceneBtn.classList.add('hidden');
     if (currentLevel().hasBoss) startBossMusic();
     sfx.checkpoint();
@@ -1744,14 +1890,6 @@
     releaseKey('KeyV');
   });
   tcAbility3Btn.addEventListener('contextmenu', (ev) => ev.preventDefault());
-
-  const tcAbility4Btn = document.getElementById('tcAbility4');
-  tcAbility4Btn.addEventListener('pointerdown', (ev) => {
-    ev.preventDefault();
-    pressKey('KeyF');
-    releaseKey('KeyF');
-  });
-  tcAbility4Btn.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
   const tcAmmoBtn = document.getElementById('tcAmmo');
   tcAmmoBtn.addEventListener('pointerdown', (ev) => {
@@ -1870,25 +2008,21 @@
       touchControlsShown = show;
       touchControls.classList.toggle('hidden', !show);
     }
-    // Hide the class-specific buttons that would otherwise just silently
-    // no-op for whichever class isn't using them — a gunless Petmancer has
-    // no use for FUSE/AMMO, only a Samurai can PARRY, and only a Petmancer
-    // (the only class with a wolf) has a BISCUIT to feed it. Only matters
-    // once a player object actually exists (state 'playing' already implies
-    // that, same as every other player.* read gated on it elsewhere).
+    // Hide the loadout-specific buttons that would otherwise just silently
+    // no-op for whichever gear isn't equipped — a gunless loadout has no use
+    // for FUSE/AMMO, only a sword can PARRY, and only an owned pet has a
+    // BISCUIT to feed it. Only matters once a player object actually exists
+    // (state 'playing' already implies that, same as every other player.*
+    // read gated on it elsewhere).
     if (state === 'playing') {
-      tcParryBtn.classList.toggle('hidden', player.classType !== 'samurai');
-      tcBiscuitBtn.classList.toggle('hidden', !wolf);
+      tcParryBtn.classList.toggle('hidden', !hasSword(player));
+      tcBiscuitBtn.classList.toggle('hidden', pets.length === 0);
       tcComboBtn.classList.toggle('hidden', !hasGun(player));
       tcAmmoBtn.classList.toggle('hidden', !hasGun(player));
-      const noClass = !player.classType;
-      tcAbility1Btn.classList.toggle('hidden', noClass);
-      tcAbility2Btn.classList.toggle('hidden', noClass);
-      tcAbility3Btn.classList.toggle('hidden', noClass);
-      // The 4th slot (ultimate) only exists for classes with one — right
-      // now just the Samurai — instead of every class getting a dead button.
-      const defs = CLASS_ABILITIES[player.classType];
-      tcAbility4Btn.classList.toggle('hidden', !defs || defs.length < 4);
+      const noWeapon = !player.equippedWeapon;
+      tcAbility1Btn.classList.toggle('hidden', noWeapon);
+      tcAbility2Btn.classList.toggle('hidden', noWeapon);
+      tcAbility3Btn.classList.toggle('hidden', noWeapon);
     }
   }
 
@@ -1950,120 +2084,35 @@
     for (let i = 0; i < player.abilityCooldown.length; i++) {
       player.abilityCooldown[i] = Math.max(0, player.abilityCooldown[i] - dt);
     }
-    player.hawkEyeTimer = Math.max(0, player.hawkEyeTimer - dt);
-    // Samurai Storm: a short channel that pulses damage to everything
-    // nearby every 0.2s instead of landing all at once.
-    if (player.stormTimer > 0) {
-      player.stormTimer -= dt;
-      player.stormTick -= dt;
-      if (player.stormTick <= 0) {
-        player.stormTick = 0.2;
-        const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 0.9;
-        // Each pulse fans a crescent slash out a different way (alternating
-        // left/right, then straight ahead) so the channel reads as a flurry
-        // of cuts rather than the same ring expanding three times in place.
-        const pulseDir = player.stormPulseCount % 2 === 0 ? player.facing : -player.facing;
-        spawnCrescentSlash(player.x, player.y, pulseDir, 'rgba(143,208,255,0.85)', '#ffffff', 48);
-        spawnShockwave(player.x, player.y, 'rgba(143,208,255,0.6)', 45);
-        spawnHitParticles(player.x, player.y, '#bfe8ff');
-        shakeScreen(3);
-        player.stormPulseCount++;
-        for (const e of enemies) {
-          if (e.dead) continue;
-          if (Math.hypot(e.x - player.x, e.y - player.y) < 45) applyDamage(e, dmg);
-        }
-      }
-    }
-    // Blade of the Fallen: advances through its 5 fixed phases by elapsed
-    // time. Each phase's one-shot effect fires the frame elapsed time
-    // crosses into it; the dash phase (1) also needs a per-frame check
-    // since the player is moving continuously through it.
-    if (player.ultimatePhase >= 0) {
-      player.ultimateTimer -= dt;
-      const ut = ULTIMATE_DURATION - player.ultimateTimer;
-      let phaseIdx = 0;
-      while (phaseIdx < ULTIMATE_PHASE_END.length - 1 && ut >= ULTIMATE_PHASE_END[phaseIdx]) phaseIdx++;
-      const udir = player.facing;
-
-      if (phaseIdx !== player.ultimatePhase) {
-        player.ultimatePhase = phaseIdx;
-        player.ultimatePhaseHit = new Set();
-        // Re-trigger the katana-swing sprite at every phase so the blade
-        // keeps visibly swinging through the whole combo instead of
-        // settling back into its idle pose a tenth of a second in.
-        if (phaseIdx > 0) player.knifeSwing = 0.15;
-        if (phaseIdx === 2) {
-          // MULTI-SLASH: a flurry of crescents around the player, one AoE
-          // damage application (not a repeated tick) to keep the numbers
-          // predictable even though it reads as several cuts.
-          const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 1.4;
-          spawnCrescentSlash(player.x, player.y, udir, 'rgba(255,255,255,0.9)', '#8fd0ff', 50);
-          spawnCrescentSlash(player.x, player.y, -udir, 'rgba(255,255,255,0.9)', '#8fd0ff', 40);
-          spawnHitParticles(player.x, player.y, '#ffffff');
-          shakeScreen(5);
+    player.dmgBuffTimer = Math.max(0, player.dmgBuffTimer - dt);
+    player.hasteTimer = Math.max(0, player.hasteTimer - dt);
+    player.stealthTimer = Math.max(0, player.stealthTimer - dt);
+    // A generic multi-tick channel, reused by any weapon ability that needs
+    // one (currently just Draconic Roar) — 3 pulses, one every 0.2s. Timer
+    // is just inside the 3rd tick's boundary (0.4s) so a 4th can't sneak in.
+    if (player.channelTimer > 0) {
+      player.channelTimer -= dt;
+      player.channelTick -= dt;
+      if (player.channelTick <= 0) {
+        player.channelTick = 0.2;
+        const pulseDir = player.channelPulseCount % 2 === 0 ? player.facing : -player.facing;
+        if (player.channelKind === 'draconicRoar') {
+          const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 0.9;
+          spawnCrescentSlash(player.x, player.y, pulseDir, 'rgba(255,140,61,0.85)', '#ffe8a3', 48);
+          spawnShockwave(player.x, player.y, 'rgba(255,140,61,0.6)', 45);
+          spawnHitParticles(player.x, player.y, '#ff9d3d');
+          shakeScreen(3);
           for (const e of enemies) {
             if (e.dead) continue;
-            if (Math.hypot(e.x - player.x, e.y - player.y) < 55) applyDamage(e, dmg);
-          }
-        } else if (phaseIdx === 3) {
-          // AIR SLASH: a short hop with a downward crescent in front.
-          player.vy = -190;
-          const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 1.3;
-          const ax = player.x + udir * 14, ay = player.y - 6;
-          spawnCrescentSlash(ax, ay, udir, 'rgba(143,208,255,0.9)', '#ffffff', 40);
-          spawnHitParticles(ax, ay, '#bfe8ff');
-          for (const e of enemies) {
-            if (e.dead) continue;
-            if (rectsOverlap(ax, ay, 55, 45, e.x, e.y, e.cfg.w, e.cfg.h)) applyDamage(e, dmg);
-          }
-        } else if (phaseIdx === 4) {
-          // FINAL STRIKE: the big payoff — massive damage plus a one-time
-          // knockback nudge (enemies have no persistent knockback field, so
-          // this is a direct position offset, same approach the Shadow
-          // soul's bullet pull already uses).
-          const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 2.8;
-          spawnExplosionParticles(player.x, player.y, ['#eaf6ff', '#8fd0ff']);
-          spawnShockwave(player.x, player.y, 'rgba(255,255,255,0.9)', 70);
-          spawnImpactFlash(player.x, player.y, '#ffffff');
-          shakeScreen(9);
-          sfx.explosion();
-          for (const e of enemies) {
-            if (e.dead) continue;
-            if (Math.hypot(e.x - player.x, e.y - player.y) < 65) {
+            if (Math.hypot(e.x - player.x, e.y - player.y) < 45) {
               applyDamage(e, dmg);
-              if (!e.dead) {
-                const knockDir = e.x >= player.x ? 1 : -1;
-                const knockedX = e.x + knockDir * 26;
-                if (!isSolidPixel(knockedX, e.y)) e.x = knockedX;
-              }
+              if (!e.dead) { e.speedMult = 0.5; e.slowTimer = Math.max(e.slowTimer, 2); }
             }
           }
         }
+        player.channelPulseCount++;
       }
-
-      if (phaseIdx === 0 && Math.random() < dt * 30) {
-        // CHARGE: sparkle burst rising from the feet while gathering energy.
-        particles.push({ x: player.x + (Math.random() - 0.5) * 10, y: player.y + 12, vx: (Math.random() - 0.5) * 20, vy: -60 - Math.random() * 40, life: 0.3, color: '#eaf6ff', size: 2, grav: false });
-      }
-      if (phaseIdx === 1) {
-        // DASH: a steady stream of afterimages, plus per-frame enemy hits
-        // along the path (deduped so a slow enemy isn't hit every frame).
-        player.ultimateGhostTick -= dt;
-        if (player.ultimateGhostTick <= 0) {
-          player.ultimateGhostTick = 0.025;
-          spawnPlayerGhost(player.x, player.y, udir);
-        }
-        const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 0.5;
-        for (const e of enemies) {
-          if (e.dead || player.ultimatePhaseHit.has(e)) continue;
-          if (rectsOverlap(player.x, player.y, 26, 30, e.x, e.y, e.cfg.w, e.cfg.h)) {
-            applyDamage(e, dmg);
-            player.ultimatePhaseHit.add(e);
-          }
-        }
-      }
-
-      if (player.ultimateTimer <= 0) player.ultimatePhase = -1;
+      if (player.channelTimer <= 0) player.channelKind = null;
     }
     // Leaving the ground (walking off a ledge) ends the slide immediately —
     // otherwise its forced speed, locked aim, and invulnerability would carry
@@ -2071,31 +2120,26 @@
     // air distance and i-frames over a pit or incoming attack.
     if (player.slideTimer > 0 && !player.onGround) player.slideTimer = 0;
 
-    // Blade of the Fallen scripts the player's position itself (the dash
-    // and the air-slash hop) for its whole duration — normal movement
-    // input is locked out the same way sliding already locks it, just for
-    // longer and with per-phase forced velocity instead of one fixed speed.
-    const ulting = player.ultimatePhase >= 0;
-    const left = held('ArrowLeft', 'KeyA') && !ulting, right = held('ArrowRight', 'KeyD') && !ulting;
-    const up = held('ArrowUp', 'KeyW') && !ulting, down = held('ArrowDown', 'KeyS') && !ulting;
+    const left = held('ArrowLeft', 'KeyA'), right = held('ArrowRight', 'KeyD');
+    const up = held('ArrowUp', 'KeyW'), down = held('ArrowDown', 'KeyS');
     const sliding = player.slideTimer > 0;
     // The Frozen Temple's floor is slippery — ease toward the target speed
     // instead of snapping to it, so stopping or turning around takes a
     // moment of coasting instead of being instant. Top speed is unchanged
     // (still MOVE_SPEED), so existing gap widths stay just as crossable.
     const icy = currentLevel().theme === 'ice' && player.onGround;
+    // Tesla Blipper's Voltaic Charge: a flat speed multiplier on top of
+    // everything else, rather than a separate movement mode.
+    const speedMult = player.hasteTimer > 0 ? 1.5 : 1;
     // player.groundVx is the clean, input-derived component of player.vx —
     // kept separate from knockback (added to vx itself, below) so easing
     // toward it on ice can't partially re-absorb last frame's knockback and
     // compound it frame over frame instead of letting knockX decay on its own.
-    if (ulting) {
-      player.vx = player.ultimatePhase === 1 ? player.facing * ULTIMATE_DASH_SPEED : 0;
-      player.groundVx = player.vx;
-    } else if (sliding) {
+    if (sliding) {
       player.vx = player.slideDir * SLIDE_SPEED;
       player.groundVx = player.vx;
     } else {
-      const targetVx = left && !right ? -MOVE_SPEED : (right && !left ? MOVE_SPEED : 0);
+      const targetVx = (left && !right ? -MOVE_SPEED : (right && !left ? MOVE_SPEED : 0)) * speedMult;
       if (targetVx !== 0) player.facing = Math.sign(targetVx);
       if (icy) {
         player.groundVx += (targetVx - player.groundVx) * Math.min(1, 7 * dt);
@@ -2117,7 +2161,7 @@
       player.vx = player.groundVx;
     }
 
-    player.aim = (sliding || ulting) ? 0 : up ? -1 : (down && !player.onGround ? 1 : 0);
+    player.aim = sliding ? 0 : up ? -1 : (down && !player.onGround ? 1 : 0);
 
     if (sliding) {
       player.slideDustTimer -= dt;
@@ -2128,7 +2172,7 @@
     }
 
     if (player.onGround) { player.coyote = 0.09; player.jumpsUsed = 0; }
-    if (player.jumpBuffer > 0 && (player.coyote > 0 || player.jumpsUsed < 2) && !ulting) {
+    if (player.jumpBuffer > 0 && (player.coyote > 0 || player.jumpsUsed < 2)) {
       const isDoubleJump = player.coyote <= 0;
       player.vy = JUMP_VELOCITY * (isDoubleJump ? 0.85 : 1);
       player.jumpsUsed = Math.max(player.jumpsUsed, 1) + (isDoubleJump ? 1 : 0);
@@ -2143,7 +2187,7 @@
       }
     }
     const jumpHeld = held('KeyW', 'ArrowUp');
-    if (player.vy < 0 && !jumpHeld && !ulting) player.vy *= 0.55; // variable jump height
+    if (player.vy < 0 && !jumpHeld) player.vy *= 0.55; // variable jump height
 
     player.vy = Math.min(MAX_FALL, player.vy + GRAVITY * dt);
 
@@ -2220,7 +2264,7 @@
           if (nextCutscene) playCutscene(nextCutscene, () => openShop(next));
           else openShop(next);
         };
-        if (next === 1 && !player.classType) showClassSelect(proceed);
+        if (next === 1 && player.ownedItems.length === 0) showGearSelect(proceed);
         else proceed();
       } else {
         state = 'win';
@@ -2255,16 +2299,16 @@
     if (player.hp <= 0) loseLife('hp');
   }
 
-  // The wolf can be hurt by whatever melee zombie it's brawling with, but
+  // A pet can be hurt by whatever melee zombie it's brawling with, but
   // never truly dies — its HP can empty out to 0, hurt but still fighting.
   // Pet Armor (shop) reduces the damage; Dog Biscuits (shop, key E) heal it.
-  function hurtWolf(dmg) {
-    if (!wolf || wolf.invuln > 0) return;
-    dmg = Math.max(1, dmg - player.wolfArmor);
-    player.wolfHp = Math.max(0, player.wolfHp - dmg);
-    wolf.invuln = 0.6;
-    wolf.hitFlash = 0.2;
-    spawnHitParticles(wolf.x, wolf.y, '#fff');
+  function hurtPet(pet, dmg) {
+    if (pet.invuln > 0) return;
+    dmg = Math.max(1, dmg - player.petArmor);
+    pet.hp = Math.max(0, pet.hp - dmg);
+    pet.invuln = 0.6;
+    pet.hitFlash = 0.2;
+    spawnHitParticles(pet.x, pet.y, '#fff');
   }
 
   // ---------- Boss AI ----------
@@ -2668,7 +2712,6 @@
   }
 
   function updateEnemies(dt) {
-    const wolfCfg = wolf ? WOLF_STAGES[wolfStage()] : null;
     for (const e of enemies) {
       if (e.dead) {
         if (e.deathTimer > 0) e.deathTimer -= dt;
@@ -2743,8 +2786,11 @@
         if (rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, player.x, player.y, player.w, player.h)) {
           hurtPlayer(e.cfg.dmg * e.weakDmgMult);
         }
-        if (wolf && rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, wolf.x, wolf.y, 20 * wolfCfg.scale, 16 * wolfCfg.scale)) {
-          hurtWolf(e.cfg.dmg * e.weakDmgMult);
+        for (const pet of pets) {
+          const petDef = GEAR_ITEMS[pet.petKey];
+          if (rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, pet.x, pet.y, 20 * petDef.scale, 16 * petDef.scale)) {
+            hurtPet(pet, e.cfg.dmg * e.weakDmgMult);
+          }
         }
       } else if (e.cfg.ranged) {
         // Long-range snipers: engage from well off-screen-adjacent distance
@@ -2796,6 +2842,8 @@
         if (rectsOverlap(b.x, b.y, 4, 4, e.x, e.y, e.cfg.w, e.cfg.h)) {
           if (b.kind === 'pyro') {
             explode(b.x, b.y, 55, b.dmg, { burn: true, palette: ['#ff9d3d', '#ffe27a'], ringColor: 'rgba(255,120,40,0.9)' });
+          } else if (b.kind === 'plasmaCharged') {
+            explode(b.x, b.y, 50, b.dmg, { palette: ['#3dc8ff', '#d2f4ff'], ringColor: 'rgba(61,200,255,0.9)' });
           } else if (b.kind === 'berserker') {
             applyDamage(e, b.dmg);
             explode(b.x, b.y, 60, 20, { palette: ['#ffe98a', '#fff5cc'], ringColor: 'rgba(255,220,140,0.95)' });
@@ -2891,7 +2939,7 @@
     updatePlayer(dt);
     if (state !== 'playing') { updateParticles(dt); return; }
     updateEnemies(dt);
-    updateWolf(dt);
+    updatePets(dt);
     updateBullets(dt);
     updateHazards(dt);
     updateParticles(dt);
@@ -2899,106 +2947,115 @@
     if (levelBanner.t > 0) levelBanner.t -= dt;
   }
 
-  // Starts as a puppy at the hunter's side and grows with every kill — a
-  // slow melee companion rather than a gun, so it reads as a wolf, not a
-  // second turret. Fully grown into Fenrir once the kill count caps out.
-  // Puppy's maxHp (140) is above the player's base 100 so it can soak hits
-  // early on without emptying out too fast; every later stage climbs
-  // higher still. Each stage's named move is what shows in the floating
-  // popup on a landed bite.
-  // Palette matches the reference art: a golden-tan floppy-eared puppy,
-  // grey wolves with a darker saddle and a pale belly/muzzle, amber eyes
-  // through Alpha Wolf, and a near-black Fenrir with an icy blue glow.
-  const WOLF_STAGES = [
-    { name: 'Puppy', dmg: 4, biteRate: 1.4, range: 100, speed: 90, scale: 0.55, color: '#d8a35c', dark: '#9c6a34', belly: '#f3e0b8', eye: '#ffe9b0', maxHp: 140, move: 'Paw Pounce' },
-    { name: 'Young Wolf', dmg: 7, biteRate: 1.2, range: 130, speed: 100, scale: 0.7, color: '#8a8a92', dark: '#55555e', belly: '#dcd8cc', eye: '#8fd0ff', maxHp: 155, move: 'Wolf Dash' },
-    { name: 'Wolf', dmg: 11, biteRate: 1.0, range: 160, speed: 110, scale: 0.85, color: '#75757e', dark: '#45454e', belly: '#d2cdc0', eye: '#ffd25a', maxHp: 170, move: 'Moon Fang' },
-    { name: 'Dire Wolf', dmg: 16, biteRate: 0.85, range: 190, speed: 120, scale: 1.0, color: '#64646f', dark: '#383842', belly: '#c6d2da', eye: '#ffcf6b', maxHp: 190, move: 'Frost Howl' },
-    { name: 'Alpha Wolf', dmg: 22, biteRate: 0.7, range: 220, speed: 135, scale: 1.15, color: '#45454f', dark: '#26262c', belly: '#8e8e96', eye: '#ffcf4a', maxHp: 215, move: 'Alpha Roar' },
-    { name: 'Fenrir', dmg: 32, biteRate: 0.5, range: 260, speed: 155, scale: 1.4, color: '#1c1c24', dark: '#000000', belly: '#2b2b3a', eye: '#4fd6ff', maxHp: 250, move: 'Ragnarok Bite' },
-  ];
-  const WOLF_MAX_KILLS = 300;
-  function wolfStage() { return Math.min(WOLF_STAGES.length - 1, Math.floor(player.kills / (WOLF_MAX_KILLS / (WOLF_STAGES.length - 1)))); }
-
-  // Each stage's named move has its own effect, not just extra damage:
-  // Paw Pounce briefly slows its target, Wolf Dash hits everyone in a line,
-  // Moon Fang bites for extra and heals the wolf, Frost Howl and Alpha Roar
-  // hit everything nearby (the roar also speeds up the wolf's next few
-  // bites), and Ragnarok Bite follows up its hit with a dark explosion.
-  function wolfSpecialAttack(target, cfg) {
-    spawnHitParticles(wolf.x, wolf.y, cfg.eye);
-    // The Petmancer's per-5-level damage buff has no gun to apply to, so it
-    // goes to the wolf's bites instead — otherwise leveling up would do
-    // nothing for the one class that actually leans on it. commandBonus is
-    // Pack Command/Beast Fury's one-shot damage multiplier, consumed here.
-    const dmg = cfg.dmg * classDmgMult(player) * (wolf.commandBonus || 1);
-    wolf.commandBonus = 1;
-    switch (cfg.name) {
-      case 'Puppy':
-        applyDamage(target, dmg);
-        if (!target.dead) { target.speedMult = 0.6; target.slowTimer = Math.max(target.slowTimer, 1.2); }
-        break;
-      case 'Young Wolf': {
-        const dashLen = 80, dashWidth = 24, facing = wolf.facing || 1;
-        for (const e of enemies) {
-          if (e.dead) continue;
-          const relX = (e.x - wolf.x) * facing;
-          const relY = Math.abs(e.y - wolf.y);
-          if (relX >= -10 && relX <= dashLen && relY <= dashWidth) applyDamage(e, dmg);
-        }
-        break;
-      }
-      case 'Wolf':
-        applyDamage(target, dmg * 1.5);
-        player.wolfHp = Math.min(cfg.maxHp, player.wolfHp + 6);
-        break;
-      case 'Dire Wolf':
-        explode(wolf.x, wolf.y, 90, dmg, { palette: ['#bfe8ff', '#eaf7ff'], ringColor: 'rgba(130,210,255,0.8)', slow: { mult: 0.4, time: 3 } });
-        break;
-      case 'Alpha Wolf':
-        explode(wolf.x, wolf.y, 110, dmg, { palette: ['#ff9d5c', '#ffd199'], ringColor: 'rgba(255,140,61,0.8)' });
-        wolf.hasteTimer = 4;
-        break;
-      case 'Fenrir':
-        applyDamage(target, dmg * 1.8);
-        explode(target.x, target.y, 70, dmg, { palette: ['#8a2be2', '#1a0a2e'], ringColor: 'rgba(192,74,255,0.85)' });
-        break;
-    }
+  // Which of a pet's 3 abilities is currently active (0 = none yet, plain
+  // bite) — same gear-level curve as weapons, so the strongest unlocked
+  // ability replaces the bite outright rather than stacking with weaker ones.
+  function petAbilityTier(pet) {
+    const abilities = GEAR_ITEMS[pet.petKey].abilities;
+    const lvl = classLevel(player);
+    let tier = 0;
+    for (let i = 0; i < abilities.length; i++) if (lvl >= abilities[i].level) tier = i + 1;
+    return tier;
   }
 
-  function updateWolf(dt) {
-    if (!wolf) return;
-    const cfg = WOLF_STAGES[wolfStage()];
-    wolf.biteCooldown = Math.max(0, wolf.biteCooldown - dt);
-    wolf.invuln = Math.max(0, wolf.invuln - dt);
-    wolf.hitFlash = Math.max(0, wolf.hitFlash - dt);
-    wolf.hasteTimer = Math.max(0, (wolf.hasteTimer || 0) - dt);
-    player.wolfHp = Math.min(player.wolfHp, cfg.maxHp); // clamp down if it just leveled down a stage somehow, or up a stage raised the ceiling
-    // Pack Command overrides the normal nearest-to-wolf targeting with
-    // whatever the player picked, until it lands one bite on it.
-    let target = (wolf.commandTarget && !wolf.commandTarget.dead) ? wolf.commandTarget : null;
-    if (!target) { wolf.commandTarget = null; target = findNearestEnemy(wolf.x, wolf.y, cfg.range); }
-    if (target) {
-      const dx = target.x - wolf.x, dy = target.y - wolf.y, d = Math.hypot(dx, dy) || 1;
-      wolf.facing = dx >= 0 ? 1 : -1;
-      if (d > 12) { wolf.x += (dx / d) * cfg.speed * dt; wolf.y += (dy / d) * cfg.speed * dt; wolf.moving = true; }
-      else {
-        wolf.moving = false;
-        if (wolf.biteCooldown <= 0) {
-          wolf.biteCooldown = wolf.hasteTimer > 0 ? cfg.biteRate * 0.5 : cfg.biteRate;
-          wolfSpecialAttack(target, cfg);
-          if (wolf.commandTarget === target) wolf.commandTarget = null;
-          sfx.hit();
-          addMessage(wolf.x, wolf.y - 20, cfg.move.toUpperCase(), cfg.eye);
+  // Each pet's bite becomes its highest-unlocked ability instead of a plain
+  // hit, the same "named move replaces the bite" pattern as the old wolf's
+  // growth stages, just keyed by ability tier instead of kill-count stage.
+  function petSpecialAttack(pet, target) {
+    const def = GEAR_ITEMS[pet.petKey];
+    spawnHitParticles(pet.x, pet.y, def.eye);
+    // Souls aren't just for the player's own weapon — a soul loaded as
+    // ammo channels through whichever pet lands the next hit too.
+    const soul = TRAIT_DMG[player.ammo] !== undefined && player.souls[player.ammo] > 0 ? player.ammo : null;
+    if (soul) player.souls[soul]--;
+    const dmg = def.dmg * classDmgMult(player) * (soul ? TRAIT_DMG[soul] : 1);
+    const tier = petAbilityTier(pet);
+    const moveName = tier === 0 ? 'Bite' : def.abilities[tier - 1].name;
+    if (pet.petKey === 'crimsonWhelp') {
+      if (tier >= 3) {
+        explode(target.x, target.y, 55, dmg * 1.3, { palette: ['#ff9d3d', '#ffcf4a'], ringColor: 'rgba(255,140,61,0.85)', burn: true });
+      } else if (tier >= 2) {
+        applyDamage(target, dmg * 1.5);
+        pet.hasteTimer = 3;
+      } else if (tier >= 1) {
+        applyDamage(target, dmg);
+        if (!target.dead) { target.burnTimer = 2.5; target.burnTick = 0.5; }
+      } else {
+        applyDamage(target, dmg);
+      }
+    } else if (pet.petKey === 'shadowPanther') {
+      if (tier >= 3) {
+        applyDamage(target, dmg * 1.3);
+        if (!target.dead) { target.burnTimer = 2; target.burnTick = 0.4; } // bleed, reuses the DoT fields
+      } else if (tier >= 2) {
+        applyDamage(target, dmg);
+        pet.invuln = Math.max(pet.invuln, 1.5); // camouflage: brief extra safety after striking
+      } else if (tier >= 1) {
+        applyDamage(target, dmg);
+        if (!target.dead) { target.speedMult = 0.5; target.slowTimer = Math.max(target.slowTimer, 1.5); }
+      } else {
+        applyDamage(target, dmg);
+      }
+    } else if (pet.petKey === 'lightningKitsune') {
+      applyDamage(target, dmg);
+      if (tier >= 1) {
+        spawnLightningArc(pet.x, pet.y, target.x, target.y);
+        chainLightning(target, dmg * 0.5, [target], 1);
+      }
+      if (tier >= 2) pet.invuln = Math.max(pet.invuln, 1.2); // static shield
+      // tier 3's Foxfire Swirl is a periodic aura, handled in updatePets().
+    }
+    if (soul && !target.dead) {
+      spawnHitParticles(target.x, target.y, SOUL_SWING_COLOR[soul] || def.eye);
+      if (soul === 'frost') applyFrost(target);
+      else if (soul === 'acid') { target.acidTimer = 2.5; target.acidTick = 0.4; }
+      else if (soul === 'lightning' && pet.petKey !== 'lightningKitsune') chainLightning(target, dmg * 0.5, [target], 1);
+      else if (soul === 'berserker') explode(target.x, target.y, 55, 16, { palette: ['#ffe98a', '#fff5cc'], ringColor: 'rgba(255,220,140,0.95)' });
+      else if (soul === 'pyromancer') { target.burnTimer = 2.5; target.burnTick = 0.5; }
+      else if (soul === 'shadow') { target.burnTimer = Math.max(target.burnTimer || 0, 1.5); target.burnTick = 0.4; }
+    }
+    addMessage(pet.x, pet.y - 20, moveName.toUpperCase(), def.eye);
+  }
+
+  function updatePets(dt) {
+    for (const pet of pets) {
+      const def = GEAR_ITEMS[pet.petKey];
+      pet.biteCooldown = Math.max(0, pet.biteCooldown - dt);
+      pet.invuln = Math.max(0, pet.invuln - dt);
+      pet.hitFlash = Math.max(0, pet.hitFlash - dt);
+      pet.hasteTimer = Math.max(0, (pet.hasteTimer || 0) - dt);
+      pet.hp = Math.min(pet.hp, def.maxHp); // clamp down if armor/level changes raised or lowered the ceiling
+      if (pet.petKey === 'lightningKitsune' && petAbilityTier(pet) >= 3) {
+        pet.auraCooldown = (pet.auraCooldown || 0) - dt;
+        if (pet.auraCooldown <= 0) {
+          pet.auraCooldown = 3;
+          explode(pet.x, pet.y, 50, def.dmg * classDmgMult(player) * 0.6, { palette: ['#eaf3ff', '#4fd6ff'], ringColor: 'rgba(79,214,255,0.8)' });
         }
       }
-    } else {
-      const targetX = player.x - player.facing * 20, targetY = player.y + 2;
-      const dx = targetX - wolf.x;
-      wolf.facing = Math.abs(dx) > 2 ? (dx >= 0 ? 1 : -1) : (wolf.facing || 1);
-      wolf.moving = Math.hypot(targetX - wolf.x, targetY - wolf.y) > 2;
-      wolf.x += (targetX - wolf.x) * Math.min(1, dt * 4);
-      wolf.y += (targetY - wolf.y) * Math.min(1, dt * 4);
+      const target = findNearestEnemy(pet.x, pet.y, def.range);
+      if (target) {
+        const dx = target.x - pet.x, dy = target.y - pet.y, d = Math.hypot(dx, dy) || 1;
+        pet.facing = dx >= 0 ? 1 : -1;
+        if (d > 12) { pet.x += (dx / d) * def.speed * dt; pet.y += (dy / d) * def.speed * dt; pet.moving = true; }
+        else {
+          pet.moving = false;
+          if (pet.biteCooldown <= 0) {
+            pet.biteCooldown = pet.hasteTimer > 0 ? def.biteRate * 0.5 : def.biteRate;
+            petSpecialAttack(pet, target);
+            sfx.hit();
+          }
+        }
+      } else {
+        // Follow the player, offset per pet index so 2 active pets don't
+        // stack exactly on top of each other.
+        const idx = pets.indexOf(pet);
+        const targetX = player.x - player.facing * (20 + idx * 14), targetY = player.y + 2;
+        const dx = targetX - pet.x;
+        pet.facing = Math.abs(dx) > 2 ? (dx >= 0 ? 1 : -1) : (pet.facing || 1);
+        pet.moving = Math.hypot(targetX - pet.x, targetY - pet.y) > 2;
+        pet.x += (targetX - pet.x) * Math.min(1, dt * 4);
+        pet.y += (targetY - pet.y) * Math.min(1, dt * 4);
+      }
     }
   }
 
@@ -3358,7 +3415,7 @@
   // end to end — drawn at a given angle around a local hand anchor so the
   // same shape serves both the resting pose (held vertical) and the attack
   // swing (sweeping toward horizontal).
-  function drawKatanaBlade(ax, ay, angle, scale = 1) {
+  function drawKatanaBlade(ax, ay, angle, scale = 1, color = '#c0c0c0', colorEdge = '#f0f0f0') {
     ctx.save();
     ctx.translate(ax, ay);
     ctx.rotate(angle);
@@ -3367,9 +3424,9 @@
     ctx.fillRect(-7, -2, 7, 4);
     ctx.fillStyle = '#c9a227'; // guard
     ctx.fillRect(-1, -5, 3, 10);
-    ctx.fillStyle = '#c0c0c0'; // blade — silver
+    ctx.fillStyle = color; // blade
     ctx.fillRect(2, -2, 18, 4);
-    ctx.fillStyle = '#f0f0f0'; // edge highlight
+    ctx.fillStyle = colorEdge; // edge highlight
     ctx.fillRect(2, -2, 18, 1);
     ctx.beginPath(); // tip
     ctx.moveTo(20, -2); ctx.lineTo(26, 0); ctx.lineTo(20, 2);
@@ -3380,10 +3437,7 @@
   function drawPlayer() {
     const x = px(player.x - camX), y = px(player.y);
     const dying = player.deathTimer > 0;
-    // Blade of the Fallen grants invuln for its whole scripted duration —
-    // blinking at the usual post-hit i-frame rate the entire time would
-    // make the combo's own VFX unreadable, so skip the blink while it runs.
-    if (!dying && player.ultimatePhase < 0 && player.invuln > 0 && Math.floor(elapsed * 20) % 2 === 0) return;
+    if (!dying && player.invuln > 0 && Math.floor(elapsed * 20) % 2 === 0) return;
     const dir = player.facing;
     const moving = !dying && player.onGround && player.vx !== 0;
     // A slow breathing sway while standing still (grounded, not moving) so
@@ -3399,6 +3453,7 @@
     ctx.save();
     ctx.translate(x, y + bob);
     ctx.scale(dir, 1);
+    if (player.stealthTimer > 0) ctx.globalAlpha *= 0.45;
     if (dying) {
       // Topple over and fade out instead of an instant cut to the
       // game-over screen — pivots around the feet like the slide lean.
@@ -3480,12 +3535,13 @@
     const gy = -2 + gunUp;
     ctx.fillStyle = flash ? '#fff' : '#8a7a52';
     ctx.fillRect(3, -4, 5, 6);
-    const samuraiBase = player.classType === 'samurai';
-    if (samuraiBase && player.knifeSwing <= 0) {
-      // The Samurai's base stance holds the katana itself, not a rifle —
-      // drawn at rest the same way the attack swing starts (blade up), so
-      // the two blend together.
-      drawKatanaBlade(5, gy - 1, -Math.PI / 2);
+    const swordEquipped = hasSword(player);
+    if (swordEquipped && player.knifeSwing <= 0) {
+      // A sword's base stance holds the blade itself, not a rifle — drawn
+      // at rest the same way the attack swing starts (blade up), so the
+      // two blend together.
+      const swordColor = equippedWeaponItem(player);
+      drawKatanaBlade(5, gy - 1, -Math.PI / 2, 1, swordColor.color, swordColor.colorEdge);
       if (firing) {
         const fx = 20, fy = gy - 1;
         ctx.fillStyle = '#fff8c9';
@@ -3494,11 +3550,11 @@
         ctx.fillStyle = '#ffcf4a';
         ctx.fillRect(fx + 1, fy - 1, 4, 3);
       }
-    } else if (samuraiBase) {
-      // Mid-swing: the katana-swing block below draws the full weapon, so
+    } else if (swordEquipped) {
+      // Mid-swing: the sword-swing block below draws the full weapon, so
       // skip a base weapon here to avoid a double blade.
     } else if (hasGun(player)) {
-      ctx.fillStyle = flash ? '#fff' : '#2b2418'; // barrel
+      ctx.fillStyle = flash ? '#fff' : (equippedWeaponItem(player).color || '#2b2418'); // barrel
       ctx.fillRect(7, gy - 1, 13, 3);
       ctx.fillStyle = flash ? '#fff' : '#4a4030'; // receiver body
       ctx.fillRect(3, gy - 2, 6, 5);
@@ -3522,7 +3578,7 @@
     if (player.knifeSwing > 0) {
       const t = 1 - player.knifeSwing / 0.15;
       const demon = player.demonKnife;
-      const samurai = player.classType === 'samurai';
+      const samurai = hasSword(player);
       if (demon) {
         // Plain knife stays at its original size — only the Demon Knife
         // (the Arch Demon's reward) gets the bigger, showier slash.
@@ -3535,14 +3591,15 @@
         ctx.fillStyle = '#ffcf4a';
         ctx.fillRect(sx, sy, 11, 6);
       } else if (samurai) {
-        // A proper katana, not a knife — a plain silver blade, roughly the
-        // player's own height end to end, with a visible guard and hilt so
-        // it reads as a dedicated weapon at a glance. The swing starts from
-        // the blade held straight up (base position) and comes down into a
-        // clean horizontal slash at the strike. A Shadow soul swells the
-        // blade itself for that one swing, instead of a pull effect.
+        // Whichever sword is equipped, roughly the player's own height end
+        // to end, with a visible guard and hilt so it reads as a dedicated
+        // weapon at a glance. The swing starts from the blade held straight
+        // up (base position) and comes down into a clean horizontal slash
+        // at the strike. A Shadow soul swells the blade itself for that
+        // one swing, instead of a pull effect.
         const angle = -Math.PI / 2 + t * (Math.PI / 2);
-        drawKatanaBlade(5, gy - 1, angle, player.bigSlash ? 1.8 : 1);
+        const swordColor = equippedWeaponItem(player);
+        drawKatanaBlade(5, gy - 1, angle, player.bigSlash ? 1.8 : 1, swordColor.color, swordColor.colorEdge);
       } else if (hasGun(player)) {
         // A class with a gun (Sniper) still has an actual knife as its
         // out-of-ammo fallback — the original small arc-and-tip swipe.
@@ -3579,71 +3636,65 @@
     ctx.restore();
   }
 
-  // Modeled on the reference art: a golden floppy-eared puppy that grows
-  // into a grey wolf with a darker saddle along its back, a pale belly and
-  // muzzle, perked ears, and (at Fenrir) a near-black coat with a glowing
-  // blue eye and aura instead of the puppy's plain dark one.
-  function drawWolf(w) {
-    const cfg = WOLF_STAGES[wolfStage()];
-    const x = px(w.x - camX), y = px(w.y);
-    const bob = w.moving ? Math.sin(elapsed * 10) * 1.5 : Math.sin(elapsed * 2) * 0.6;
-    const legSwing = w.moving ? Math.sin(elapsed * 10) * 2 : 0;
-    const facing = w.facing || 1;
-    const flash = w.hitFlash > 0;
+  // Same silhouette for all 3 pets — tail, legs, saddle-striped body, pale
+  // belly/muzzle, perked ears, glowing eye — recolored per GEAR_ITEMS entry.
+  // The Lightning Kitsune additionally gets a soft glow aura to read as
+  // "crackling with static" at a glance.
+  function drawPet(pet) {
+    const def = GEAR_ITEMS[pet.petKey];
+    const x = px(pet.x - camX), y = px(pet.y);
+    const bob = pet.moving ? Math.sin(elapsed * 10) * 1.5 : Math.sin(elapsed * 2) * 0.6;
+    const legSwing = pet.moving ? Math.sin(elapsed * 10) * 2 : 0;
+    const facing = pet.facing || 1;
+    const flash = pet.hitFlash > 0;
     const col = (c) => flash ? '#fff' : c;
-    const puppy = cfg.name === 'Puppy';
     ctx.save();
     ctx.translate(x, y + bob);
-    ctx.scale(facing * cfg.scale, cfg.scale);
+    ctx.scale(facing * def.scale, def.scale);
 
-    if (cfg.name === 'Fenrir') {
-      ctx.fillStyle = 'rgba(70,170,255,0.3)';
+    if (pet.petKey === 'lightningKitsune') {
+      ctx.fillStyle = 'rgba(79,214,255,0.3)';
       ctx.beginPath(); ctx.arc(0, -2, 17, 0, Math.PI * 2); ctx.fill();
     }
 
     // tail: sweeps up and back behind the body, darker at the tip
-    ctx.fillStyle = col(cfg.color);
+    ctx.fillStyle = col(def.color);
     ctx.fillRect(-15, -6, 4, 3);
-    ctx.fillStyle = col(cfg.dark);
+    ctx.fillStyle = col(def.dark);
     ctx.fillRect(-18, -9, 4, 3);
 
     // rear + front legs, with a little swing while moving
-    ctx.fillStyle = col(cfg.dark);
+    ctx.fillStyle = col(def.dark);
     ctx.fillRect(-9, 1 - legSwing * 0.3, 4, 7);
     ctx.fillRect(4, 1 + legSwing * 0.3, 4, 7);
 
     // body: main coat, a darker saddle along the back, a pale belly underneath
-    ctx.fillStyle = col(cfg.color);
+    ctx.fillStyle = col(def.color);
     ctx.fillRect(-10, -6, 19, 8);
-    ctx.fillStyle = col(cfg.dark);
+    ctx.fillStyle = col(def.dark);
     ctx.fillRect(-10, -6, 19, 3);
-    ctx.fillStyle = col(cfg.belly);
+    ctx.fillStyle = col(def.belly);
     ctx.fillRect(-8, 0, 15, 2);
 
     // neck/chest leading into the head
-    ctx.fillStyle = col(cfg.color);
+    ctx.fillStyle = col(def.color);
     ctx.fillRect(7, -8, 4, 9);
 
     // head + pale muzzle + nose
-    ctx.fillStyle = col(cfg.color);
+    ctx.fillStyle = col(def.color);
     ctx.fillRect(9, -11, 8, 8);
-    ctx.fillStyle = col(cfg.belly);
+    ctx.fillStyle = col(def.belly);
     ctx.fillRect(15, -7, 6, 3);
     ctx.fillStyle = col('#1a1410');
     ctx.fillRect(20, -6, 1, 1);
 
-    // ears: floppy on the puppy, perked and pointed on every wolf stage —
-    // drawn after the head so they sit on top of it instead of underneath
-    ctx.fillStyle = col(cfg.dark);
-    if (puppy) {
-      ctx.fillRect(8, -8, 3, 7);
-    } else {
-      ctx.fillRect(10, -14, 2, 4);
-      ctx.fillRect(13, -15, 2, 5);
-    }
+    // ears: drawn after the head so they sit on top of it instead of underneath
+    ctx.fillStyle = col(def.dark);
+    ctx.fillRect(10, -14, 2, 4);
+    ctx.fillRect(13, -15, 2, 5);
 
-    // eye: a plain dark dot on the puppy, a colored glow on every wolf stage
-    ctx.fillStyle = puppy ? col('#2a1810') : col(cfg.eye);
+    // eye: a colored glow
+    ctx.fillStyle = col(def.eye);
     ctx.fillRect(13, -9, 2, 2);
 
     ctx.restore();
@@ -4237,7 +4288,7 @@
     // Fixed slot width (enough for the icon + "xN" text to stay legible) —
     // wraps to further rows below rather than shrinking slots, so owning
     // many combos at once crowds the HUD vertically, never illegibly.
-    // Capped at 10/row to stay clear of the wolf readout (left, x<70) and
+    // Capped at 10/row to stay clear of the pet readout (left, x<70) and
     // the score (right, x>450).
     const slotW = 30, rowH = 13, maxPerRow = 10;
     ctx.font = '8px monospace';
@@ -4286,44 +4337,37 @@
     const HUD_LINE = 11;
     ctx.font = '8px monospace';
 
-    if (player.classType) {
+    if (player.ownedItems.length > 0) {
+      const weaponItem = equippedWeaponItem(player);
       ctx.fillStyle = '#ffcd3c';
-      ctx.fillText(`${CLASS_NAMES[player.classType].toUpperCase()} LV${classLevel(player)}`, 8, hudY);
+      ctx.fillText(`${(weaponItem ? weaponItem.name : 'LOADOUT').toUpperCase()} LV${classLevel(player)}`, 8, hudY);
       hudY += HUD_LINE;
     }
 
-    // wolf companion: name + progress toward its next stage (Fenrir at 300 kills)
-    if (wolf) {
-      const stage = wolfStage();
-      const wcfg = WOLF_STAGES[stage];
-      const perStage = WOLF_MAX_KILLS / (WOLF_STAGES.length - 1);
-      const wPct = stage >= WOLF_STAGES.length - 1 ? 1 : (player.kills % perStage) / perStage;
-      ctx.fillStyle = wcfg.eye;
-      ctx.fillText(wcfg.name.toUpperCase(), 8, hudY);
+    // Equipped pet(s): name + HP bar each (up to 2, if no weapon is equipped).
+    for (const pet of pets) {
+      const def = GEAR_ITEMS[pet.petKey];
+      ctx.fillStyle = def.eye;
+      ctx.fillText(def.name.toUpperCase(), 8, hudY);
+      const petHpPct = Math.max(0, pet.hp / def.maxHp);
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.fillRect(8, hudY + 2, 60, 3);
-      ctx.fillStyle = wcfg.eye;
-      ctx.fillRect(8, hudY + 2, 60 * Math.max(0, Math.min(1, wPct)), 3);
-
-      const wHpPct = Math.max(0, player.wolfHp / wcfg.maxHp);
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.fillRect(8, hudY + 7, 60, 3);
-      ctx.fillStyle = wHpPct > 0.5 ? '#6ecb63' : wHpPct > 0.2 ? '#e6c14a' : '#c0392b';
-      ctx.fillRect(8, hudY + 7, 60 * wHpPct, 3);
-      hudY += HUD_LINE * 2;
+      ctx.fillStyle = petHpPct > 0.5 ? '#6ecb63' : petHpPct > 0.2 ? '#e6c14a' : '#c0392b';
+      ctx.fillRect(8, hudY + 2, 60 * petHpPct, 3);
+      hudY += HUD_LINE + 4;
     }
 
-    // Parry: Samurai-only, ready/on-cooldown readout
-    if (player.classType === 'samurai') {
+    // Parry: only with a sword equipped, ready/on-cooldown readout
+    if (hasSword(player)) {
       ctx.fillStyle = player.parryCooldown > 0 ? 'rgba(143,208,255,0.4)' : '#8fd0ff';
       ctx.fillText(player.parryCooldown > 0 ? 'PARRY: COOLDOWN' : 'PARRY (B): READY', 8, hudY);
       hudY += HUD_LINE;
     }
 
-    // Class abilities: C/Z/V, unlocked at level 5/10/15 — shown locked
+    // Weapon abilities: C/Z/V, unlocked at level 5/10/15 — shown locked
     // (dim) ahead of time so the player knows what's coming.
-    if (player.classType) {
-      const defs = CLASS_ABILITIES[player.classType];
+    if (player.equippedWeapon) {
+      const defs = GEAR_ITEMS[player.equippedWeapon].abilities;
       const lvl = classLevel(player);
       for (let i = 0; i < defs.length; i++) {
         const def = defs[i];
@@ -4355,7 +4399,7 @@
       hudY += HUD_LINE;
     }
 
-    // Biscuits: bought at the shop, fed to the wolf anytime with E
+    // Biscuits: bought at the shop, fed to your pets anytime with E
     if (player.biscuits > 0) {
       ctx.fillStyle = '#d9a066';
       ctx.fillText(`BISCUIT (E): x${player.biscuits}`, 8, hudY);
@@ -4411,7 +4455,7 @@
       ctx.fillText('FIST', VIEW_W / 2, sy + 13);
       ctx.textAlign = 'left';
     } else {
-    const meleeLabel = player.classType === 'samurai' ? 'KATANA' : 'KNIFE';
+    const meleeLabel = hasSword(player) ? 'KATANA' : 'KNIFE';
     const slots = [
       { key: 'normal', label: '1', color: player.bullets > 0 ? '#5ef29a' : (player.demonKnife ? '#ff8a3d' : '#c9b98f'), count: player.bullets > 0 ? player.bullets : meleeLabel },
       { key: 'berserker', label: '2', color: SOUL_META.berserker.color, count: player.souls.berserker },
@@ -4487,7 +4531,7 @@
     for (const e of enemies) drawEnemy(e);
     drawGhosts();
     drawPlayer();
-    if (wolf) drawWolf(wolf);
+    for (const pet of pets) drawPet(pet);
     for (const b of pBullets) drawBullet(b, b.kind);
     for (const b of eBullets) drawBullet(b, b.kind);
     for (const p of particles) drawParticle(p);
@@ -4592,7 +4636,7 @@
 
   function endCutscene() {
     // The intro cutscene's own onEnd (beginGameplay) already hides this, but
-    // a floor-transition cutscene's onEnd (openShop/showClassSelect) never
+    // a floor-transition cutscene's onEnd (openShop/showGearSelect) never
     // did — leaving it stuck visible over actual gameplay, where a stray
     // click would fall through to the beginGameplay() fallback below and
     // silently wipe the run. Hiding it here, the one place every cutscene
@@ -4937,7 +4981,7 @@
     vitality: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="3" y="3" width="3" height="3" fill="#c0392b"/><rect x="10" y="3" width="3" height="3" fill="#c0392b"/><rect x="2" y="5" width="12" height="4" fill="#c0392b"/><rect x="3" y="9" width="10" height="2" fill="#c0392b"/><rect x="5" y="11" width="6" height="2" fill="#c0392b"/><rect x="7" y="13" width="2" height="1" fill="#c0392b"/></svg>',
     armor: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="4" y="2" width="8" height="6" fill="#8a94a0"/><rect x="5" y="8" width="6" height="3" fill="#8a94a0"/><rect x="6" y="11" width="4" height="2" fill="#8a94a0"/><rect x="7" y="13" width="2" height="1" fill="#8a94a0"/><rect x="6" y="4" width="4" height="4" fill="#5a6470"/></svg>',
     potion: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="6" y="2" width="4" height="2" fill="#8a94a0"/><rect x="6" y="4" width="4" height="2" fill="#5a6470"/><rect x="4" y="6" width="8" height="2" fill="#e8e0c8"/><rect x="3" y="8" width="10" height="5" fill="#e8e0c8"/><rect x="3" y="10" width="10" height="3" fill="#c0392b"/><rect x="5" y="9" width="2" height="1" fill="#fff"/></svg>',
-    wolfArmor: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="2" y="7" width="12" height="3" fill="#6b4423"/><rect x="2" y="7" width="2" height="3" fill="#4a2f18"/><rect x="12" y="7" width="2" height="3" fill="#4a2f18"/><rect x="7" y="7" width="2" height="3" fill="#d9a066"/><rect x="7" y="10" width="2" height="2" fill="#d9a066"/></svg>',
+    petArmor: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="2" y="7" width="12" height="3" fill="#6b4423"/><rect x="2" y="7" width="2" height="3" fill="#4a2f18"/><rect x="12" y="7" width="2" height="3" fill="#4a2f18"/><rect x="7" y="7" width="2" height="3" fill="#d9a066"/><rect x="7" y="10" width="2" height="2" fill="#d9a066"/></svg>',
     biscuit: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="1" y="6" width="3" height="2" fill="#d9a066"/><rect x="1" y="5" width="2" height="1" fill="#d9a066"/><rect x="1" y="8" width="2" height="1" fill="#d9a066"/><rect x="4" y="7" width="8" height="2" fill="#e8c187"/><rect x="12" y="6" width="3" height="2" fill="#d9a066"/><rect x="13" y="5" width="2" height="1" fill="#d9a066"/><rect x="13" y="8" width="2" height="1" fill="#d9a066"/></svg>',
   };
   const SHOP_ITEMS = [
@@ -4979,51 +5023,85 @@
       buy: (p) => { p.potions++; },
     },
     {
-      key: 'wolfArmor', name: 'Pet Armor', desc: "Reduce damage your wolf companion takes by 2 per hit (max -8, never below 1).",
-      visible: (p) => p.classType === 'petmancer',
-      cost: (p) => scaledCost(70 + (p.wolfArmor / 2) * 35),
-      canBuy: (p) => p.wolfArmor < PET_ARMOR_MAX,
-      buy: (p) => { p.wolfArmor = Math.min(PET_ARMOR_MAX, p.wolfArmor + 2); },
+      key: 'petArmor', name: 'Pet Armor', desc: "Reduce damage your pet(s) take by 2 per hit (max -8, never below 1).",
+      visible: (p) => pets.length > 0,
+      cost: (p) => scaledCost(70 + (p.petArmor / 2) * 35),
+      canBuy: (p) => p.petArmor < PET_ARMOR_MAX,
+      buy: (p) => { p.petArmor = Math.min(PET_ARMOR_MAX, p.petArmor + 2); },
     },
     {
-      key: 'biscuit', name: 'Dog Biscuit', desc: 'Carry a biscuit that heals your wolf 50 HP on the spot — press E anytime. Holds up to 5.',
-      visible: (p) => p.classType === 'petmancer',
+      key: 'biscuit', name: 'Dog Biscuit', desc: 'Carry a biscuit that heals all your pets 50 HP on the spot — press E anytime. Holds up to 5.',
+      visible: (p) => pets.length > 0,
       cost: (p) => scaledCost(20 + p.biscuits * 10),
       canBuy: (p) => p.biscuits < BISCUIT_MAX,
       buy: (p) => { p.biscuits++; },
     },
   ];
 
-  // Grants the chosen class's starting kit. Samurai/Sniper unlock the gun;
-  // Petmancer never gets one and instead spawns its wolf companion.
-  function applyClassChoice(type) {
-    player.classType = type;
-    player.classKills = 0;
-    if (type === 'petmancer') {
-      player.ammo = 'knife';
-      player.bullets = 0;
-      if (!wolf) wolf = makeWolf(player.x - 14, player.y);
-    } else {
+  // Settles the final loadout from the 3 chest picks: at most 1 weapon
+  // (sword or gun, whichever was picked first — a 2nd/3rd weapon pick is
+  // simply left unequipped, nothing currently lets you swap it in later),
+  // and up to 2 pets, but only if no weapon was picked at all — a true
+  // dual-pet "Petmancer-style" build gives up its weapon slot for it.
+  function finalizeGearLoadout() {
+    const weaponPick = player.ownedItems.find(k => GEAR_ITEMS[k].category !== 'pet');
+    player.equippedWeapon = weaponPick || null;
+    const petPicks = player.ownedItems.filter(k => GEAR_ITEMS[k].category === 'pet');
+    const maxPets = player.equippedWeapon ? 1 : 2;
+    player.equippedPets = petPicks.slice(0, maxPets);
+    pets = player.equippedPets.map((key, i) => makePet(key, player.x - 14 - i * 16, player.y));
+    if (hasGun(player)) {
       player.ammo = 'normal';
       player.bullets = 100;
+    } else {
+      player.ammo = 'knife';
+      player.bullets = 0;
     }
   }
 
-  // Shown once, right as floor 1 ends — picks the class that drives the
-  // rest of the run. onDone resumes whatever would normally happen next
-  // (a cutscene, then the shop).
-  function showClassSelect(onDone) {
+  // Picks n distinct random items from the full 9-item gear pool.
+  function pickRandomGear(n) {
+    const pool = [...GEAR_KEYS];
+    const picks = [];
+    for (let i = 0; i < n && pool.length; i++) {
+      const idx = Math.floor(Math.random() * pool.length);
+      picks.push(pool.splice(idx, 1)[0]);
+    }
+    return picks;
+  }
+
+  // Shown once, right as floor 1 ends — 3 gacha chests, each revealing 3
+  // random candidates to choose one from (so the final loadout is always
+  // exactly 3 owned items), replacing the old fixed class-select screen
+  // entirely. onDone resumes whatever would normally happen next (a
+  // cutscene, then the shop).
+  function showGearSelect(onDone) {
     state = 'classSelect';
-    classScreen.classList.remove('hidden');
-    const pick = (type) => {
-      applyClassChoice(type);
-      classScreen.classList.add('hidden');
-      state = 'playing';
-      onDone();
+    gearScreen.classList.remove('hidden');
+    let chestNum = 0;
+    const openChest = () => {
+      chestNum++;
+      gearChestLabel.textContent = `CHEST ${chestNum} OF 3`;
+      const candidates = pickRandomGear(3);
+      gearChoices.innerHTML = '';
+      for (const key of candidates) {
+        const item = GEAR_ITEMS[key];
+        const btn = document.createElement('button');
+        btn.className = 'classCard';
+        const abilityList = item.abilities.map(a => a.name).join(', ');
+        btn.innerHTML = `<div class="classIcon">${item.icon}</div><div class="className">${item.name}</div><div class="classDesc">${item.desc} Abilities: ${abilityList}.</div>`;
+        btn.onclick = () => {
+          player.ownedItems.push(key);
+          if (chestNum < 3) { openChest(); return; }
+          finalizeGearLoadout();
+          gearScreen.classList.add('hidden');
+          state = 'playing';
+          onDone();
+        };
+        gearChoices.appendChild(btn);
+      }
     };
-    chooseSamuraiBtn.onclick = () => pick('samurai');
-    chooseSniperBtn.onclick = () => pick('sniper');
-    choosePetmancerBtn.onclick = () => pick('petmancer');
+    openChest();
   }
 
   function openShop(nextLevel) {
@@ -5160,7 +5238,7 @@
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
     shopScreen.classList.add('hidden');
-    classScreen.classList.add('hidden');
+    gearScreen.classList.add('hidden');
     skipCutsceneBtn.classList.add('hidden');
   }
 
