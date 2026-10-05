@@ -58,6 +58,17 @@ you always know what's coming.
 Each ability has its own cooldown (shown in the HUD once unlocked), so
 they're a burst to lean on, not a replacement for your normal kit.
 
+#### The Samurai's ultimate: Blade of the Fallen
+
+At class level 20, the Samurai alone gets a fourth ability — **F**,
+**Blade of the Fallen**, on a long 45s cooldown. It's a scripted
+5-phase combo rather than a single effect: a brief charge, an instant
+dash forward (leaving a trail of afterimages) that cuts through
+everything in its path, a 360° multi-slash flurry, a short leaping air
+slash, and a final downward strike that hits hard and knocks nearby
+enemies back. Player input is locked out for the ~0.7s it takes to
+play — dying or leaving the floor mid-combo cancels it outright.
+
 ## Bullets & the knife
 
 Normal ammo isn't infinite — you start each run with 100 bullets (once
@@ -167,6 +178,7 @@ shared or synced anywhere.
 - **E** — feed your wolf a biscuit (heals it 50 HP on the spot; bought at the supply cache, holds up to 5)
 - **B** — parry (Samurai only): blocks the next hit outright and counters nearby enemies
 - **C / Z / V** — class abilities, unlocked at class levels 5/10/15 (see [Class abilities](#class-abilities))
+- **F** — Blade of the Fallen, the Samurai's level-20 ultimate (see [above](#the-samurais-ultimate-blade-of-the-fallen))
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 **Mobile (on-screen controls)**
@@ -179,6 +191,7 @@ shared or synced anywhere.
 - **BISCUIT** — feed your wolf a biscuit (heals it 50 HP on the spot)
 - **PARRY** — parry (Samurai only)
 - **C / Z / V** — class abilities, unlocked at class levels 5/10/15
+- **F button** — Blade of the Fallen, the Samurai's level-20 ultimate
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
 ## Enemies & souls

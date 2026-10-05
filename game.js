@@ -507,10 +507,17 @@
       usedSpecialThisFloor: false, knifeSwing: 0, bigSlash: false, demonKnife: false, godDmgBonus: 1,
       slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
       parryTimer: 0, parryCooldown: 0,
-      // One cooldown per ability slot (0/1/2), shared mechanism across all
-      // three classes — each one unlocks at class level 5/10/15.
-      abilityCooldown: [0, 0, 0],
+      // One cooldown per ability slot — 0/1/2 shared across all three
+      // classes (level 5/10/15), slot 3 is the Samurai's level-20 ultimate
+      // only (always present so indexing never goes out of bounds, just
+      // never read/written for the other two classes).
+      abilityCooldown: [0, 0, 0, 0],
       stormTimer: 0, stormTick: 0, stormPulseCount: 0, // Samurai Storm's channeled multi-hit
+      // Blade of the Fallen: a scripted multi-phase ultimate combo. phase
+      // -1 means inactive; phaseHit is a fresh per-phase Set so each enemy
+      // only takes that phase's damage once no matter how many frames it
+      // overlaps the hitbox for.
+      ultimateTimer: 0, ultimatePhase: -1, ultimatePhaseHit: null, ultimateGhostTick: 0,
       hawkEyeTimer: 0, // Sniper's Hawk Eye damage buff
       deathTimer: 0, potions: 0,
       wolfHp: WOLF_STAGES[0].maxHp, wolfArmor: 0, biscuits: 0,
@@ -547,6 +554,10 @@
     bossArenaSealed = false;
     player.x = x; player.y = y; player.vx = 0; player.vy = 0; player.groundVx = 0;
     player.knockX = 0; player.knockTimer = 0;
+    // A mid-combo Blade of the Fallen would otherwise keep locking movement
+    // and forcing its scripted dash/hop velocity at the new floor's spawn
+    // point — its own timer has no idea a floor transition just happened.
+    player.ultimatePhase = -1; player.ultimateTimer = 0;
     // A Pack Command target (and its pending damage bonus) from the floor
     // just left behind would otherwise keep the wolf locked onto a phantom
     // enemy, or leak the bonus onto an unrelated hit on the new floor.
@@ -600,6 +611,12 @@
   }
 
   function loseLife(reason) {
+    // Dying mid-combo must cancel Blade of the Fallen immediately — it
+    // locks player movement and forces its own dash/hop velocity every
+    // frame it's active, which would otherwise keep running (and dashing
+    // the freshly-respawned player around with no input control) right
+    // through the death animation and the respawn that follows it.
+    player.ultimatePhase = -1; player.ultimateTimer = 0;
     player.lives--;
     sfx.death();
     shakeScreen(10);
@@ -886,6 +903,7 @@
       { name: 'Dragon Slash', level: 5, cooldown: 3, key: 'C' },
       { name: 'Shadow Step', level: 10, cooldown: 4, key: 'Z' },
       { name: 'Samurai Storm', level: 15, cooldown: 8, key: 'V' },
+      { name: 'Blade of the Fallen', level: 20, cooldown: 45, key: 'F' },
     ],
     sniper: [
       { name: 'Deadeye', level: 5, cooldown: 4, key: 'C' },
@@ -901,9 +919,17 @@
 
   function useAbility(slot) {
     if (state !== 'playing' || !player.classType) return;
+    // Blade of the Fallen scripts player position/velocity and locks normal
+    // input for its whole duration — another ability firing mid-combo (e.g.
+    // Shadow Step teleporting) would hijack that script out from under it.
+    // Its own slot is excluded only academically: it's already blocked by
+    // its own cooldown the instant it starts, so this never actually denies
+    // a legitimate re-press.
+    if (player.ultimatePhase >= 0 && slot !== 3) return;
     const defs = CLASS_ABILITIES[player.classType];
     if (!defs) return;
     const def = defs[slot];
+    if (!def) return; // this class has no ability in this slot (e.g. the F-key ultimate is Samurai-only)
     if (classLevel(player) < def.level) {
       addMessage(player.x, player.y - 24, `LOCKED — LV${def.level}`, '#c9b98f');
       sfx.empty();
@@ -980,6 +1006,29 @@
     sfx.demonSlash();
   }
 
+  // Blade of the Fallen — the Samurai's level-20 ultimate: a scripted
+  // 5-phase combo (charge, dash, multi-slash, air slash, final strike).
+  // Phase boundaries are elapsed-time offsets from activation, driven in
+  // updatePlayer(); each phase's one-shot effect fires the frame elapsed
+  // time crosses into it. Player input is locked out for the duration (see
+  // the `ulting` branch in updatePlayer's movement code) and position
+  // during the dash/hop phases is driven by setting vx/vy here and letting
+  // the normal moveAndCollide() pipeline carry it, same as sliding does.
+  const ULTIMATE_DURATION = 0.68;
+  const ULTIMATE_PHASE_END = [0.10, 0.28, 0.44, 0.58, 0.68]; // charge, dash, multi-slash, air slash, final
+  const ULTIMATE_DASH_SPEED = 460;
+  function abilityBladeOfTheFallen() {
+    player.ultimateTimer = ULTIMATE_DURATION;
+    player.ultimatePhase = 0;
+    player.ultimatePhaseHit = new Set();
+    player.ultimateGhostTick = 0;
+    player.invuln = Math.max(player.invuln, ULTIMATE_DURATION + 0.1);
+    player.knifeSwing = 0.15;
+    spawnShockwave(player.x, player.y, 'rgba(216,220,226,0.9)', 30);
+    spawnImpactFlash(player.x, player.y, '#ffffff');
+    sfx.demonSlash();
+  }
+
   // Instant massive damage to the nearest enemy, no ammo spent.
   function abilityDeadeye() {
     const target = findNearestEnemy(player.x, player.y, 400);
@@ -1053,7 +1102,7 @@
   }
 
   const ABILITY_IMPL = {
-    samurai: [abilityDragonSlash, abilityShadowStep, abilitySamuraiStorm],
+    samurai: [abilityDragonSlash, abilityShadowStep, abilitySamuraiStorm, abilityBladeOfTheFallen],
     sniper: [abilityDeadeye, abilityPiercingShot, abilityHawkEye],
     petmancer: [abilityPackCommand, abilityPetSwap, abilityBeastFury],
   };
@@ -1439,7 +1488,7 @@
 
   const GAME_KEYS = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
-    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'KeyQ', 'KeyE', 'KeyB', 'KeyC', 'KeyZ', 'KeyV', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
+    'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'KeyQ', 'KeyE', 'KeyB', 'KeyC', 'KeyZ', 'KeyV', 'KeyF', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
   ]);
 
   // Single source of truth for the Digit1-8 ammo hotkeys, also reused by the
@@ -1484,6 +1533,7 @@
     if (ev.code === 'KeyC') useAbility(0);
     if (ev.code === 'KeyZ') useAbility(1);
     if (ev.code === 'KeyV') useAbility(2);
+    if (ev.code === 'KeyF') useAbility(3);
     if (ev.code === 'Digit9') placeTrap();
     if (ev.code === 'Digit0') cycleComboAmmo();
     if (ev.code === 'KeyQ') usePotion();
@@ -1695,6 +1745,14 @@
   });
   tcAbility3Btn.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
+  const tcAbility4Btn = document.getElementById('tcAbility4');
+  tcAbility4Btn.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    pressKey('KeyF');
+    releaseKey('KeyF');
+  });
+  tcAbility4Btn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
   const tcAmmoBtn = document.getElementById('tcAmmo');
   tcAmmoBtn.addEventListener('pointerdown', (ev) => {
     ev.preventDefault();
@@ -1827,6 +1885,10 @@
       tcAbility1Btn.classList.toggle('hidden', noClass);
       tcAbility2Btn.classList.toggle('hidden', noClass);
       tcAbility3Btn.classList.toggle('hidden', noClass);
+      // The 4th slot (ultimate) only exists for classes with one — right
+      // now just the Samurai — instead of every class getting a dead button.
+      const defs = CLASS_ABILITIES[player.classType];
+      tcAbility4Btn.classList.toggle('hidden', !defs || defs.length < 4);
     }
   }
 
@@ -1912,14 +1974,110 @@
         }
       }
     }
+    // Blade of the Fallen: advances through its 5 fixed phases by elapsed
+    // time. Each phase's one-shot effect fires the frame elapsed time
+    // crosses into it; the dash phase (1) also needs a per-frame check
+    // since the player is moving continuously through it.
+    if (player.ultimatePhase >= 0) {
+      player.ultimateTimer -= dt;
+      const ut = ULTIMATE_DURATION - player.ultimateTimer;
+      let phaseIdx = 0;
+      while (phaseIdx < ULTIMATE_PHASE_END.length - 1 && ut >= ULTIMATE_PHASE_END[phaseIdx]) phaseIdx++;
+      const udir = player.facing;
+
+      if (phaseIdx !== player.ultimatePhase) {
+        player.ultimatePhase = phaseIdx;
+        player.ultimatePhaseHit = new Set();
+        // Re-trigger the katana-swing sprite at every phase so the blade
+        // keeps visibly swinging through the whole combo instead of
+        // settling back into its idle pose a tenth of a second in.
+        if (phaseIdx > 0) player.knifeSwing = 0.15;
+        if (phaseIdx === 2) {
+          // MULTI-SLASH: a flurry of crescents around the player, one AoE
+          // damage application (not a repeated tick) to keep the numbers
+          // predictable even though it reads as several cuts.
+          const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 1.4;
+          spawnCrescentSlash(player.x, player.y, udir, 'rgba(255,255,255,0.9)', '#8fd0ff', 50);
+          spawnCrescentSlash(player.x, player.y, -udir, 'rgba(255,255,255,0.9)', '#8fd0ff', 40);
+          spawnHitParticles(player.x, player.y, '#ffffff');
+          shakeScreen(5);
+          for (const e of enemies) {
+            if (e.dead) continue;
+            if (Math.hypot(e.x - player.x, e.y - player.y) < 55) applyDamage(e, dmg);
+          }
+        } else if (phaseIdx === 3) {
+          // AIR SLASH: a short hop with a downward crescent in front.
+          player.vy = -190;
+          const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 1.3;
+          const ax = player.x + udir * 14, ay = player.y - 6;
+          spawnCrescentSlash(ax, ay, udir, 'rgba(143,208,255,0.9)', '#ffffff', 40);
+          spawnHitParticles(ax, ay, '#bfe8ff');
+          for (const e of enemies) {
+            if (e.dead) continue;
+            if (rectsOverlap(ax, ay, 55, 45, e.x, e.y, e.cfg.w, e.cfg.h)) applyDamage(e, dmg);
+          }
+        } else if (phaseIdx === 4) {
+          // FINAL STRIKE: the big payoff — massive damage plus a one-time
+          // knockback nudge (enemies have no persistent knockback field, so
+          // this is a direct position offset, same approach the Shadow
+          // soul's bullet pull already uses).
+          const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 2.8;
+          spawnExplosionParticles(player.x, player.y, ['#eaf6ff', '#8fd0ff']);
+          spawnShockwave(player.x, player.y, 'rgba(255,255,255,0.9)', 70);
+          spawnImpactFlash(player.x, player.y, '#ffffff');
+          shakeScreen(9);
+          sfx.explosion();
+          for (const e of enemies) {
+            if (e.dead) continue;
+            if (Math.hypot(e.x - player.x, e.y - player.y) < 65) {
+              applyDamage(e, dmg);
+              if (!e.dead) {
+                const knockDir = e.x >= player.x ? 1 : -1;
+                const knockedX = e.x + knockDir * 26;
+                if (!isSolidPixel(knockedX, e.y)) e.x = knockedX;
+              }
+            }
+          }
+        }
+      }
+
+      if (phaseIdx === 0 && Math.random() < dt * 30) {
+        // CHARGE: sparkle burst rising from the feet while gathering energy.
+        particles.push({ x: player.x + (Math.random() - 0.5) * 10, y: player.y + 12, vx: (Math.random() - 0.5) * 20, vy: -60 - Math.random() * 40, life: 0.3, color: '#eaf6ff', size: 2, grav: false });
+      }
+      if (phaseIdx === 1) {
+        // DASH: a steady stream of afterimages, plus per-frame enemy hits
+        // along the path (deduped so a slow enemy isn't hit every frame).
+        player.ultimateGhostTick -= dt;
+        if (player.ultimateGhostTick <= 0) {
+          player.ultimateGhostTick = 0.025;
+          spawnPlayerGhost(player.x, player.y, udir);
+        }
+        const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 0.5;
+        for (const e of enemies) {
+          if (e.dead || player.ultimatePhaseHit.has(e)) continue;
+          if (rectsOverlap(player.x, player.y, 26, 30, e.x, e.y, e.cfg.w, e.cfg.h)) {
+            applyDamage(e, dmg);
+            player.ultimatePhaseHit.add(e);
+          }
+        }
+      }
+
+      if (player.ultimateTimer <= 0) player.ultimatePhase = -1;
+    }
     // Leaving the ground (walking off a ledge) ends the slide immediately —
     // otherwise its forced speed, locked aim, and invulnerability would carry
     // into the air for the rest of its duration, turning it into free extra
     // air distance and i-frames over a pit or incoming attack.
     if (player.slideTimer > 0 && !player.onGround) player.slideTimer = 0;
 
-    const left = held('ArrowLeft', 'KeyA'), right = held('ArrowRight', 'KeyD');
-    const up = held('ArrowUp', 'KeyW'), down = held('ArrowDown', 'KeyS');
+    // Blade of the Fallen scripts the player's position itself (the dash
+    // and the air-slash hop) for its whole duration — normal movement
+    // input is locked out the same way sliding already locks it, just for
+    // longer and with per-phase forced velocity instead of one fixed speed.
+    const ulting = player.ultimatePhase >= 0;
+    const left = held('ArrowLeft', 'KeyA') && !ulting, right = held('ArrowRight', 'KeyD') && !ulting;
+    const up = held('ArrowUp', 'KeyW') && !ulting, down = held('ArrowDown', 'KeyS') && !ulting;
     const sliding = player.slideTimer > 0;
     // The Frozen Temple's floor is slippery — ease toward the target speed
     // instead of snapping to it, so stopping or turning around takes a
@@ -1930,7 +2088,10 @@
     // kept separate from knockback (added to vx itself, below) so easing
     // toward it on ice can't partially re-absorb last frame's knockback and
     // compound it frame over frame instead of letting knockX decay on its own.
-    if (sliding) {
+    if (ulting) {
+      player.vx = player.ultimatePhase === 1 ? player.facing * ULTIMATE_DASH_SPEED : 0;
+      player.groundVx = player.vx;
+    } else if (sliding) {
       player.vx = player.slideDir * SLIDE_SPEED;
       player.groundVx = player.vx;
     } else {
@@ -1956,7 +2117,7 @@
       player.vx = player.groundVx;
     }
 
-    player.aim = sliding ? 0 : up ? -1 : (down && !player.onGround ? 1 : 0);
+    player.aim = (sliding || ulting) ? 0 : up ? -1 : (down && !player.onGround ? 1 : 0);
 
     if (sliding) {
       player.slideDustTimer -= dt;
@@ -1967,7 +2128,7 @@
     }
 
     if (player.onGround) { player.coyote = 0.09; player.jumpsUsed = 0; }
-    if (player.jumpBuffer > 0 && (player.coyote > 0 || player.jumpsUsed < 2)) {
+    if (player.jumpBuffer > 0 && (player.coyote > 0 || player.jumpsUsed < 2) && !ulting) {
       const isDoubleJump = player.coyote <= 0;
       player.vy = JUMP_VELOCITY * (isDoubleJump ? 0.85 : 1);
       player.jumpsUsed = Math.max(player.jumpsUsed, 1) + (isDoubleJump ? 1 : 0);
@@ -1982,7 +2143,7 @@
       }
     }
     const jumpHeld = held('KeyW', 'ArrowUp');
-    if (player.vy < 0 && !jumpHeld) player.vy *= 0.55; // variable jump height
+    if (player.vy < 0 && !jumpHeld && !ulting) player.vy *= 0.55; // variable jump height
 
     player.vy = Math.min(MAX_FALL, player.vy + GRAVITY * dt);
 
@@ -3219,7 +3380,10 @@
   function drawPlayer() {
     const x = px(player.x - camX), y = px(player.y);
     const dying = player.deathTimer > 0;
-    if (!dying && player.invuln > 0 && Math.floor(elapsed * 20) % 2 === 0) return;
+    // Blade of the Fallen grants invuln for its whole scripted duration —
+    // blinking at the usual post-hit i-frame rate the entire time would
+    // make the combo's own VFX unreadable, so skip the blink while it runs.
+    if (!dying && player.ultimatePhase < 0 && player.invuln > 0 && Math.floor(elapsed * 20) % 2 === 0) return;
     const dir = player.facing;
     const moving = !dying && player.onGround && player.vx !== 0;
     // A slow breathing sway while standing still (grounded, not moving) so
