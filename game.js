@@ -1104,6 +1104,9 @@
 
   function shoot() {
     if (player.fireCooldown > 0 || player.shockedTimer > 0) return;
+    // The Samurai fights with the katana alone — the attack key always
+    // swings it, never fires a bullet, regardless of selected ammo.
+    if (player.classType === 'samurai') { knifeAttack(); return; }
     let ammo = player.ammo;
     if (ammo === 'knife') { knifeAttack(); return; }
     if (ammo.startsWith('combo:')) {

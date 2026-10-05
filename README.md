@@ -23,12 +23,11 @@ Floor one is bare-handed — no gun, just fists — so the choice means
 something by the time you reach it. Clearing floor one opens a one-time
 class-select screen:
 
-- **⚔️ Samurai** — the knife slot is replaced by a massive **katana** that
-  hits noticeably harder than a plain knife swing, and **B** opens a brief
-  parry window: a hit landed during it does no damage and detonates a
-  damage pulse on everything close enough to have thrown it, instead of
-  just shrugging the hit off. The gun and soul-ammo system work exactly as
-  normal alongside it.
+- **⚔️ Samurai** — no gun at all; the attack key always swings a massive
+  **katana** instead, which hits noticeably harder than a plain knife
+  swing, and **B** opens a brief parry window: a hit landed during it does
+  no damage and detonates a damage pulse on everything close enough to
+  have thrown it, instead of just shrugging the hit off.
 - **🎯 Sniper** — the standard gun and soul-ammo kit, unchanged, at a
   touch less damage than the other classes.
 - **🐺 Petmancer** — no gun at all, ever. A wolf companion joins you
@@ -60,11 +59,13 @@ they're a burst to lean on, not a replacement for your normal kit.
 ## Bullets & the knife
 
 Normal ammo isn't infinite — you start each run with 100 bullets (once
-you've picked a gun-carrying class). Run out and shooting falls back to a
-short-range knife swing instead of failing outright. Every kill restocks
-+2 bullets, even a soulless shambler, so staying aggressive keeps you
-stocked; the shop's Ammo Cache also tops bullets back up to 100 (never
-down) alongside its usual soul refill.
+you've picked the Sniper, the only class that actually fires a gun). Run
+out and shooting falls back to a short-range knife swing instead of
+failing outright. Every kill restocks +2 bullets, even a soulless
+shambler, so staying aggressive keeps you stocked; the shop's Ammo Cache
+also tops bullets back up to 100 (never down) alongside its usual soul
+refill. The Samurai never touches any of this — the attack key always
+swings the katana.
 
 Beat the Arch Demon and that knife is upgraded permanently into the
 **Demon Knife**: instead of a stationary swipe it becomes a short forward
