@@ -3231,19 +3231,22 @@
         ctx.fillRect(sx, sy, 4, 2);
       } else {
         // No gun at all (pre-class, or Petmancer) — a bare-fist jab with
-        // motion lines, no blade.
+        // motion lines, no blade. The fist swells as it extends, peaking
+        // near-double size right at full reach for a punchier hit.
+        const scale = 1 + t * 0.9;
         const fx = 8 + t * 10;
+        const fw = 7 * scale, fh = 6 * scale;
         ctx.fillStyle = '#d9a876';
-        ctx.fillRect(fx, gy - 3, 7, 6);
+        ctx.fillRect(fx, gy - fh / 2, fw, fh);
         ctx.fillStyle = '#b8875c';
-        ctx.fillRect(fx + 4, gy - 3, 3, 6);
+        ctx.fillRect(fx + fw - 3 * scale, gy - fh / 2, 3 * scale, fh);
         if (t > 0.55) {
           ctx.strokeStyle = 'rgba(255,255,255,0.8)';
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo(fx + 9, gy - 5); ctx.lineTo(fx + 14, gy - 7);
-          ctx.moveTo(fx + 9, gy); ctx.lineTo(fx + 15, gy);
-          ctx.moveTo(fx + 9, gy + 5); ctx.lineTo(fx + 14, gy + 7);
+          ctx.moveTo(fx + fw + 2, gy - 5); ctx.lineTo(fx + fw + 7, gy - 7);
+          ctx.moveTo(fx + fw + 2, gy); ctx.lineTo(fx + fw + 8, gy);
+          ctx.moveTo(fx + fw + 2, gy + 5); ctx.lineTo(fx + fw + 7, gy + 7);
           ctx.stroke();
         }
       }
