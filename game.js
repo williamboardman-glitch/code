@@ -3197,11 +3197,11 @@
         ctx.fillStyle = '#ffcf4a';
         ctx.fillRect(sx, sy, 11, 6);
       } else if (samurai) {
-        // A proper katana, not a knife — a long blade swept through a wide
-        // arc, several times the sprite's own height, with a visible guard
-        // and hilt so it reads as a dedicated weapon at a glance. The swing
-        // starts from the blade held straight up (base position) and comes
-        // down into a clean horizontal slash at the strike.
+        // A proper katana, not a knife — a plain silver blade, roughly the
+        // player's own height end to end, with a visible guard and hilt so
+        // it reads as a dedicated weapon at a glance. The swing starts from
+        // the blade held straight up (base position) and comes down into a
+        // clean horizontal slash at the strike.
         const angle = -Math.PI / 2 + t * (Math.PI / 2);
         ctx.save();
         ctx.translate(5, gy - 1);
@@ -3210,12 +3210,12 @@
         ctx.fillRect(-7, -2, 7, 4);
         ctx.fillStyle = '#c9a227'; // guard
         ctx.fillRect(-1, -5, 3, 10);
-        ctx.fillStyle = '#d8dce2'; // blade
-        ctx.fillRect(2, -2, 42, 4);
-        ctx.fillStyle = '#f2f4f8'; // edge highlight
-        ctx.fillRect(2, -2, 42, 1);
+        ctx.fillStyle = '#c0c0c0'; // blade — silver
+        ctx.fillRect(2, -2, 18, 4);
+        ctx.fillStyle = '#f0f0f0'; // edge highlight
+        ctx.fillRect(2, -2, 18, 1);
         ctx.beginPath(); // tip
-        ctx.moveTo(44, -2); ctx.lineTo(50, 0); ctx.lineTo(44, 2);
+        ctx.moveTo(20, -2); ctx.lineTo(26, 0); ctx.lineTo(20, 2);
         ctx.closePath(); ctx.fill();
         ctx.restore();
       } else if (hasGun(player)) {
