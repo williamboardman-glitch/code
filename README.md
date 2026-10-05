@@ -40,12 +40,11 @@ Once you've picked, the game auto-equips from what you own:
   Give up the weapon slot completely (all 3 picks are pets) and both extra
   pet slots open up instead, letting a true dual-pet build run two
   companions side by side.
-- A sword-equipped build fights in melee with **B** free to parry (a hit
-  landed during the parry window does no damage and detonates a damage
-  pulse on everything nearby); a gun-equipped build fights at range but
-  runs on bullets (see [Bullets & the knife](#bullets--the-knife)); a
-  pets-only build has no weapon abilities at all, relying on its
-  companions plus a backup knife swing.
+- A sword-equipped build fights in melee with **B** free to raise a guard
+  (see [Guard](#guard)); a gun-equipped build fights at range but runs on
+  bullets (see [Bullets & the knife](#bullets--the-knife)); a pets-only
+  build has no weapon abilities at all, relying on its companions plus a
+  backup knife swing.
 
 ### Weapons
 
@@ -58,7 +57,7 @@ equip a weapon — locked ones show the level they unlock at.
 
 | Weapon | C (lv5) | Z (lv10) | V (lv15) |
 |---|---|---|---|
-| 🗡️ Dragon Tooth Katana | **Blazing Slash** — a wide fiery arc that burns everything it catches | **Scaled Parry** — an extra reflexive parry pulse | **Draconic Roar** — a short channel pulsing fire damage to everything nearby and slowing it |
+| 🗡️ Dragon Tooth Katana | **Blazing Slash** — a wide fiery arc that burns everything it catches | **Scaled Parry** — a free instant full block (and counter-hit) for a moment, no guard stamina spent | **Draconic Roar** — a short channel pulsing fire damage to everything nearby and slowing it |
 | 🗡️ Nightblade Shadow | **Shadow Step** — teleport behind the nearest enemy and land a heavy hit | **Veiled Strike** — brief invulnerability and invisibility, then your next hit lands harder | **Silent Execution** — instantly finishes a low-HP enemy outright, or hits hard otherwise |
 | 🗡️ Tsunami Blade | **Tidal Wave** — a wave of water that knocks enemies back with solid AoE damage | **Hydro-Slash** — a fast, heavier-hitting forward slash | **Rejuvenating Flow** — a wide slash that heals you for every kill it lands |
 | 🔫 Plasma Cannon | **Charged Shot** — a slow, heavy bolt that explodes in a wide radius | **Beam Wave** — a shot that pierces through everything in its path | **Overload** — a brief damage buff to every hit you land |
@@ -91,6 +90,24 @@ fighting with two supply-cache items: **Pet Armor** (-2 damage taken per
 hit, up to -8) and **Dog Biscuits** — a portable heal (50 HP to every pet
 at once, up to 5 held) fed to them anytime with **E**, the same pattern as
 your own Health Potions.
+
+## Guard
+
+A sword-equipped build can hold **B** to raise a guard. While it's up,
+incoming damage is soaked out of a guard stamina bar (shown under HUD's
+"GUARD" label) instead of your HP — a hit for more than what's left in the
+bar drains it to empty and the remainder carries through as a normal,
+unblocked hit. An emptied bar also breaks the guard outright (a brief
+forced moment of vulnerability before you can raise it again), so holding
+B through everything isn't free. Let go of B (or run the bar dry) and it
+starts refilling again after a short delay. It only works with a sword
+equipped — a gun or a pets-only build has nothing to raise.
+
+Dragon Tooth Katana's **Scaled Parry** ability (see [Weapons](#weapons))
+is a separate, free full block: for a moment it blocks the next hit
+outright and throws a damage pulse at everything nearby, without touching
+the guard stamina bar at all — a burst to lean on in addition to the
+held guard, not a replacement for it.
 
 ## Bullets & the knife
 
@@ -200,7 +217,7 @@ shared or synced anywhere.
 - **0** — cycle fused shots; or hold two souls' ammo keys together (e.g. **2+5**) to load that pair directly (see [Soul Fusion](#soul-fusion))
 - **Q** — drink a potion (heals 30 HP on the spot; bought at the supply cache, holds up to 5)
 - **E** — feed your pets a biscuit (heals all of them 50 HP on the spot; bought at the supply cache, holds up to 5)
-- **B** — parry (sword equipped only): blocks the next hit outright and counters nearby enemies
+- **B** — hold to guard (sword equipped only): soaks damage out of a stamina bar instead of HP (see [Guard](#guard))
 - **C / Z / V** — weapon abilities, unlocked at gear levels 5/10/15 (see [Weapons](#weapons))
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 
@@ -212,7 +229,7 @@ shared or synced anywhere.
 - **FUSE** — cycle fused shots (see [Soul Fusion](#soul-fusion))
 - **POTION** — drink a potion (heals 30 HP on the spot)
 - **BISCUIT** — feed your pets a biscuit (heals all of them 50 HP on the spot)
-- **PARRY** — parry (sword equipped only)
+- **PARRY** — hold to guard (sword equipped only; see [Guard](#guard))
 - **C / Z / V** — weapon abilities, unlocked at gear levels 5/10/15
 - **R** — Wither (once per floor, unlocked by the Shadow Helm)
 

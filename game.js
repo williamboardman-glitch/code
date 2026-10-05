@@ -614,7 +614,7 @@
       homingNext: false, shadowHelm: false, helmDmgBonus: 1, knockX: 0, knockTimer: 0,
       usedSpecialThisFloor: false, knifeSwing: 0, bigSlash: false, demonKnife: false, godDmgBonus: 1,
       slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
-      parryTimer: 0, parryCooldown: 0,
+      parryStamina: PARRY_STAMINA_MAX, guarding: false, guardRegenWait: 0, autoParryTimer: 0,
       // One cooldown per weapon ability slot (level 5/10/15, keys C/Z/V) —
       // whichever weapon is equipped, regardless of which one.
       abilityCooldown: [0, 0, 0],
@@ -974,20 +974,9 @@
     sfx.slide();
   }
 
-  const PARRY_WINDOW = 0.25;
-  const PARRY_COOLDOWN = 1.0;
-  // Samurai-only: a brief window that blocks the next hit outright and
-  // counters with a pulse of damage to anything close enough to have
-  // thrown it, instead of just shrugging the hit off like the slide's
-  // i-frames do.
-  function tryParry() {
-    if (state !== 'playing' || !hasSword(player)) return;
-    if (player.parryCooldown > 0) return;
-    player.parryTimer = PARRY_WINDOW;
-    player.parryCooldown = PARRY_COOLDOWN;
-    sfx.parry();
-    spawnHitParticles(player.x + player.facing * 10, player.y, '#8fd0ff');
-  }
+  const PARRY_STAMINA_MAX = 100;
+  const PARRY_REGEN_RATE = 22; // per second, only while not actively guarding
+  const PARRY_REGEN_DELAY = 0.5; // seconds after releasing guard (or breaking) before regen resumes
 
   // ---------- Weapon abilities (C/Z/V, unlocked at gear level 5/10/15) ----------
   // Same three keys for every weapon; which move they trigger depends on
@@ -1035,10 +1024,11 @@
     }
   }
   // A brief reflective stance — any hit landed on the player during it is
-  // fully blocked and thrown back as a damage pulse, scaled like dragon
-  // scales turning aside a blow rather than a timed sword-parry window.
+  // fully blocked free of the guard-stamina bar and thrown back as a
+  // damage pulse, scaled like dragon scales turning aside a blow, layered
+  // on top of the regular holdable guard rather than drawing from its bar.
   function abilityScaledParry() {
-    player.parryTimer = 0.5;
+    player.autoParryTimer = 0.5;
     player.knifeSwing = 0.15;
     // Two staggered rings rippling outward — a shimmer of scales hardening,
     // not a single shockwave.
@@ -1781,7 +1771,6 @@
     if (ev.code === 'KeyW' || ev.code === 'ArrowUp') player.jumpBuffer = 0.12;
     if (ev.code === 'ArrowDown' || ev.code === 'KeyS') trySlide();
     if (ev.code === 'KeyR') useSpecialAttack();
-    if (ev.code === 'KeyB') tryParry();
     if (ev.code === 'KeyC') useAbility(0);
     if (ev.code === 'KeyZ') useAbility(1);
     if (ev.code === 'KeyV') useAbility(2);
@@ -1963,13 +1952,11 @@
   });
   tcBiscuitBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
+  // Guard is now hold-to-block rather than a tap, so it shares the same
+  // press-and-hold wiring as the D-pad/FIRE buttons instead of the
+  // press-then-immediately-release pattern every other action button uses.
   const tcParryBtn = document.getElementById('tcParry');
-  tcParryBtn.addEventListener('pointerdown', (ev) => {
-    ev.preventDefault();
-    pressKey('KeyB');
-    releaseKey('KeyB');
-  });
-  tcParryBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+  bindHoldButton(tcParryBtn, 'KeyB');
 
   const tcAbility1Btn = document.getElementById('tcAbility1');
   tcAbility1Btn.addEventListener('pointerdown', (ev) => {
@@ -2184,8 +2171,25 @@
     player.shockedTimer = Math.max(0, player.shockedTimer - dt);
     player.slideTimer = Math.max(0, player.slideTimer - dt);
     player.slideCooldown = Math.max(0, player.slideCooldown - dt);
-    player.parryTimer = Math.max(0, player.parryTimer - dt);
-    player.parryCooldown = Math.max(0, player.parryCooldown - dt);
+    player.autoParryTimer = Math.max(0, player.autoParryTimer - dt);
+    // Holding B raises a guard that soaks damage out of a stamina bar
+    // instead of HP, as long as a sword is equipped and the bar isn't
+    // empty. Releasing it (or running it dry) starts the bar regenerating
+    // again after a short delay — Scaled Parry's autoParryTimer above is a
+    // separate free perfect-block burst layered on top of this, not drawn
+    // from the bar at all.
+    if (state === 'playing' && hasSword(player) && held('KeyB') && player.parryStamina > 0) {
+      player.guarding = true;
+      player.guardRegenWait = PARRY_REGEN_DELAY;
+    } else {
+      player.guarding = false;
+    }
+    if (!player.guarding) {
+      player.guardRegenWait = Math.max(0, player.guardRegenWait - dt);
+      if (player.guardRegenWait <= 0) {
+        player.parryStamina = Math.min(PARRY_STAMINA_MAX, player.parryStamina + PARRY_REGEN_RATE * dt);
+      }
+    }
     for (let i = 0; i < player.abilityCooldown.length; i++) {
       player.abilityCooldown[i] = Math.max(0, player.abilityCooldown[i] - dt);
     }
@@ -2382,8 +2386,8 @@
 
   function hurtPlayer(dmg) {
     if (player.invuln > 0) return;
-    if (player.parryTimer > 0) {
-      player.parryTimer = 0;
+    if (player.autoParryTimer > 0) {
+      player.autoParryTimer = 0;
       sfx.parry();
       spawnShockwave(player.x, player.y, 'rgba(143,208,255,0.8)', 50);
       const counterDmg = playerBaseDmg(player, meleeDmgMult(player) * 1.5);
@@ -2392,6 +2396,25 @@
         if (Math.hypot(e.x - player.x, e.y - player.y) < 50) applyDamage(e, counterDmg);
       }
       return;
+    }
+    // Guard: a held block soaks damage out of the stamina bar 1-for-1
+    // instead of HP. A hit bigger than what's left drains the bar to 0 and
+    // carries the remainder through as a normal unblocked hit — "tanked"
+    // up to the bar's capacity, not an unlimited wall.
+    if (player.guarding && player.parryStamina > 0) {
+      const absorbed = Math.min(dmg, player.parryStamina);
+      player.parryStamina -= absorbed;
+      dmg -= absorbed;
+      sfx.parry();
+      spawnHitParticles(player.x + player.facing * 10, player.y, '#8fd0ff');
+      if (player.parryStamina <= 0) {
+        // The guard breaks outright on an empty bar — a beat of forced
+        // vulnerability so holding B through everything isn't free.
+        player.guarding = false;
+        player.invuln = 0.15;
+        spawnShockwave(player.x, player.y, 'rgba(255,90,60,0.7)', 36);
+      }
+      if (dmg <= 0) return;
     }
     dmg = Math.max(1, dmg - player.armor);
     player.hp -= dmg;
@@ -3753,6 +3776,21 @@
         }
       }
     }
+    // A shimmering shield arc held out in front while guard is up — the
+    // HUD bar says how much it can still take, this says it's actually raised.
+    if (player.guarding) {
+      const pulse = 0.65 + Math.sin(elapsed * 14) * 0.15;
+      ctx.strokeStyle = `rgba(143,208,255,${pulse})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(10, gy, 13, -0.95, 0.95);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(216,199,255,${pulse * 0.6})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(10, gy, 16, -0.8, 0.8);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -4517,11 +4555,18 @@
       hudY += HUD_LINE + 4;
     }
 
-    // Parry: only with a sword equipped, ready/on-cooldown readout
+    // Guard: only with a sword equipped — a label plus a stamina bar
+    // showing how much more damage holding B can still tank right now.
     if (hasSword(player)) {
-      ctx.fillStyle = player.parryCooldown > 0 ? 'rgba(143,208,255,0.4)' : '#8fd0ff';
-      ctx.fillText(player.parryCooldown > 0 ? 'PARRY: COOLDOWN' : 'PARRY (B): READY', 8, hudY);
-      hudY += HUD_LINE;
+      ctx.fillStyle = player.guarding ? '#ffe8a3' : '#8fd0ff';
+      ctx.fillText('GUARD (B)', 8, hudY);
+      const barY = hudY + 2, barW = 60;
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(8, barY, barW, 3);
+      const staminaPct = Math.max(0, player.parryStamina / PARRY_STAMINA_MAX);
+      ctx.fillStyle = staminaPct > 0.5 ? '#8fd0ff' : staminaPct > 0.2 ? '#e6c14a' : '#c0392b';
+      ctx.fillRect(8, barY, barW * staminaPct, 3);
+      hudY += HUD_LINE + 4;
     }
 
     // Weapon abilities: C/Z/V, unlocked at level 5/10/15 — shown locked
