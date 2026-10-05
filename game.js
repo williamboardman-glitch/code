@@ -5061,7 +5061,10 @@
 
   // Picks n distinct random items from the full 9-item gear pool.
   function pickRandomGear(n) {
-    const pool = [...GEAR_KEYS];
+    // Once a sword/gun has been picked, pets stop showing up as chest
+    // candidates — a weapon build only ever offers more weapons from here.
+    const hasWeaponOwned = player.ownedItems.some(k => GEAR_ITEMS[k].category !== 'pet');
+    const pool = hasWeaponOwned ? GEAR_KEYS.filter(k => GEAR_ITEMS[k].category !== 'pet') : [...GEAR_KEYS];
     const picks = [];
     for (let i = 0; i < n && pool.length; i++) {
       const idx = Math.floor(Math.random() * pool.length);

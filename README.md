@@ -30,10 +30,16 @@ Once you've picked, the game auto-equips from what you own:
 - **One weapon, never two** — a sword and a gun can't both be equipped. If
   you own at least one weapon, the first one you picked is the one that
   goes on; any second or third weapon pick just sits owned, unequipped.
+- **Pick a weapon and pets stop appearing** — the moment a sword or gun
+  lands in a chest, every chest after it offers only more swords and guns,
+  never a pet. Skip weapons entirely and pets keep showing up in all 3
+  chests, unlocking a second pet slot (see below) — so a true dual-pet
+  build has to go all-in from the first chest.
 - **One pet, or two if you skipped weapons entirely** — equipping a weapon
-  leaves room for a single pet. Give up the weapon slot completely (all 3
-  picks are pets) and both extra pet slots open up instead, letting a true
-  dual-pet build run two companions side by side.
+  leaves room for a single pet (if one was picked before any weapon was).
+  Give up the weapon slot completely (all 3 picks are pets) and both extra
+  pet slots open up instead, letting a true dual-pet build run two
+  companions side by side.
 - A sword-equipped build fights in melee with **B** free to parry (a hit
   landed during the parry window does no damage and detonates a damage
   pulse on everything nearby); a gun-equipped build fights at range but
