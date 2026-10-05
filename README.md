@@ -27,7 +27,9 @@ class-select screen:
   **katana** instead, which hits noticeably harder than a plain knife
   swing, and **B** opens a brief parry window: a hit landed during it does
   no damage and detonates a damage pulse on everything close enough to
-  have thrown it, instead of just shrugging the hit off.
+  have thrown it, instead of just shrugging the hit off. Souls still work —
+  a loaded soul infuses the blade with its trait instead of firing as a
+  bullet (see [Soul-infused slashes](#soul-infused-slashes)).
 - **🎯 Sniper** — the standard gun and soul-ammo kit, unchanged, at a
   touch less damage than the other classes.
 - **🐺 Petmancer** — no gun at all, ever. A wolf companion joins you
@@ -64,8 +66,8 @@ out and shooting falls back to a short-range knife swing instead of
 failing outright. Every kill restocks +2 bullets, even a soulless
 shambler, so staying aggressive keeps you stocked; the shop's Ammo Cache
 also tops bullets back up to 100 (never down) alongside its usual soul
-refill. The Samurai never touches any of this — the attack key always
-swings the katana.
+refill. The Samurai never touches bullets at all — the attack key always
+swings the katana, souls and all (see below).
 
 Beat the Arch Demon and that knife is upgraded permanently into the
 **Demon Knife**: instead of a stationary swipe it becomes a short forward
@@ -74,6 +76,26 @@ on fire (a damage-over-time burn), rather than just plain melee damage.
 
 The knife isn't just a last resort, either — key **8** switches to it
 manually anytime, bullets or not.
+
+### Soul-infused slashes
+
+A soul loaded with keys **1-7** isn't bullet-only — any melee swing
+(Samurai's attack, or anyone else's out-of-ammo/manual knife) carries the
+same trait, just delivered by the blade instead of a shot, at the same
+relative damage weighting. Out of that soul and it quietly falls back to
+a plain swing, same as running dry does for bullets.
+
+| Soul | Slash effect |
+|---|---|
+| Brute | Heavy hit (3x damage) plus a small splash explosion |
+| Fire Cultist | Fiery AoE burst around the hit, burning everything it catches |
+| Frost Priest | Freezes the enemy hit and anything else close by |
+| Lightning Trooper | Chains to two more nearby enemies after the hit |
+| Acid Spitter | Burns the hit enemy with acid and leaves a damaging puddle |
+| Shadow | The katana itself swells to roughly twice size for that one swing — a much wider reach instead of a pull |
+
+The Demon Knife keeps its own always-burning dash and doesn't take a
+soul — it's already fire-infused by default.
 
 ## Traps
 

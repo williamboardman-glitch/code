@@ -500,7 +500,7 @@
       // deaths wipe) so the Guardian's reward can survive a death that
       // doesn't put the boss back in play to be re-earned.
       homingNext: false, shadowHelm: false, helmDmgBonus: 1, knockX: 0, knockTimer: 0,
-      usedSpecialThisFloor: false, knifeSwing: 0, demonKnife: false, godDmgBonus: 1,
+      usedSpecialThisFloor: false, knifeSwing: 0, bigSlash: false, demonKnife: false, godDmgBonus: 1,
       slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
       parryTimer: 0, parryCooldown: 0,
       // One cooldown per ability slot (0/1/2), shared mechanism across all
@@ -1175,19 +1175,35 @@
     }
   }
 
+  // Colors for the melee hit-particles when a soul is infused into the
+  // blade — pyromancer has no entry since it bypasses this and explodes.
+  const SOUL_SWING_COLOR = { berserker: '#ffe98a', frost: '#9fe8f5', lightning: '#d8c7ff', acid: '#8bc34a', shadow: '#8a6fd1' };
+
   // Backup melee weapon once you're out of bullets — a short-range swipe
   // that can hit whatever's directly in front of (or above/below) you.
   // Beating the Arch Demon upgrades it into the Demon Knife: instead of a
   // stationary swipe, it's a short forward dash-strike that burns (DoT)
   // everything it cuts through along the way.
+  //
+  // A soul loaded as ammo (keys 1-7) infuses the blade with that soul's
+  // on-hit trait instead of firing it as a bullet — same TRAIT_DMG damage
+  // weighting, just delivered by the sword. This is how the Samurai (whose
+  // attack key always swings, never shoots) still gets to use souls at
+  // all. Out of that soul, or out of a crafted fused shot, and it quietly
+  // falls back to a plain swing, exactly like shoot() does for bullets.
   function knifeAttack() {
     player.fireCooldown = BASE_COOLDOWN;
     player.knifeSwing = 0.15;
     const dir = player.facing;
     const ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
-    const dmg = playerBaseDmg(player, meleeDmgMult(player));
 
     if (player.demonKnife) {
+      // The Demon Knife keeps its own always-burning dash identity rather
+      // than layering a soul on top — a selected soul is simply not spent
+      // or applied here (no bullet path reaches this either, so nothing
+      // is silently lost: the soul just sits in reserve until switched off).
+      player.bigSlash = false;
+      const dmg = playerBaseDmg(player, meleeDmgMult(player));
       const startX = player.x;
       const dashDist = 50, stepSize = 8;
       let remaining = dashDist;
@@ -1211,15 +1227,63 @@
       return;
     }
 
-    const range = 26;
+    let soul = null, combo = null;
+    if (TRAIT_DMG[player.ammo] !== undefined) {
+      if (player.souls[player.ammo] > 0) { soul = player.ammo; player.souls[soul]--; }
+      else { addMessage(player.x, player.y - 24, 'NO SOULS', '#c9b98f'); sfx.empty(); player.ammo = 'normal'; }
+    } else if (player.ammo.startsWith('combo:')) {
+      const key = player.ammo.slice(6);
+      if ((player.combos[key] || 0) > 0) { combo = key; player.combos[key]--; }
+      else { addMessage(player.x, player.y - 24, 'NO FUSED SHOTS', '#c9b98f'); sfx.empty(); player.ammo = 'normal'; }
+    }
+    player.bigSlash = soul === 'shadow';
+
+    const traitMult = soul ? TRAIT_DMG[soul]
+      : combo ? ((TRAIT_DMG[combo.split('+')[0]] + TRAIT_DMG[combo.split('+')[1]]) / 2) * 1.3
+      : 1;
+    const dmg = playerBaseDmg(player, meleeDmgMult(player)) * traitMult;
+
+    // Shadow infuses the blade itself into one much wider slash instead of
+    // a pull, so the soul still reads as "the sword got bigger" at a glance.
+    const range = soul === 'shadow' ? 70 : 26;
     const kx = player.x + dir * (range / 2 + 4);
     sfx.knife();
-    spawnHitParticles(kx, ky, '#e8e8e8');
+
+    if (soul === 'pyromancer') {
+      explode(kx, ky, 55, dmg, { burn: true, palette: ['#ff9d3d', '#ffe27a'], ringColor: 'rgba(255,120,40,0.9)' });
+      return;
+    }
+
+    spawnHitParticles(kx, ky, SOUL_SWING_COLOR[soul] || '#e8e8e8');
+    const hit = [];
     for (const e of enemies) {
       if (e.dead) continue;
       if (rectsOverlap(kx, ky, range, range, e.x, e.y, e.cfg.w, e.cfg.h)) {
         applyDamage(e, dmg);
+        hit.push(e);
       }
+    }
+    if (hit.length === 0) return;
+    if (soul === 'berserker') {
+      explode(kx, ky, 60, 20, { palette: ['#ffe98a', '#fff5cc'], ringColor: 'rgba(255,220,140,0.95)' });
+    } else if (soul === 'frost') {
+      for (const e of hit) applyFrost(e);
+      for (const o of enemies) if (!o.dead && !hit.includes(o) && Math.hypot(o.x - kx, o.y - ky) < 40) applyFrost(o);
+    } else if (soul === 'lightning') {
+      // One chain per swing, from a single origin — chaining from every
+      // directly-hit enemy separately would let a shared downstream target
+      // get hit twice when the (wide, for Shadow) arc catches more than one.
+      chainLightning(hit[0], dmg * 0.6, hit.slice(), 2);
+    } else if (soul === 'acid') {
+      for (const e of hit) { e.acidTimer = 2.5; e.acidTick = 0.4; }
+      spawnAcidPuddle(kx, ky);
+    } else if (soul === 'shadow') {
+      spawnShockwave(kx, ky, 'rgba(122,95,201,0.8)', 50);
+    } else if (combo) {
+      // Applied once per swing, not once per hit enemy — applyComboEffects
+      // already splashes every enemy within its own radius internally, so
+      // looping it over `hit` would double (or triple) that splash.
+      applyComboEffects({ x: kx, y: ky, comboA: combo.split('+')[0], comboB: combo.split('+')[1], dmg }, hit[0]);
     }
   }
 
@@ -3066,10 +3130,11 @@
   // end to end — drawn at a given angle around a local hand anchor so the
   // same shape serves both the resting pose (held vertical) and the attack
   // swing (sweeping toward horizontal).
-  function drawKatanaBlade(ax, ay, angle) {
+  function drawKatanaBlade(ax, ay, angle, scale = 1) {
     ctx.save();
     ctx.translate(ax, ay);
     ctx.rotate(angle);
+    if (scale !== 1) ctx.scale(scale, scale);
     ctx.fillStyle = '#3a2418'; // hilt
     ctx.fillRect(-7, -2, 7, 4);
     ctx.fillStyle = '#c9a227'; // guard
@@ -3243,9 +3308,10 @@
         // player's own height end to end, with a visible guard and hilt so
         // it reads as a dedicated weapon at a glance. The swing starts from
         // the blade held straight up (base position) and comes down into a
-        // clean horizontal slash at the strike.
+        // clean horizontal slash at the strike. A Shadow soul swells the
+        // blade itself for that one swing, instead of a pull effect.
         const angle = -Math.PI / 2 + t * (Math.PI / 2);
-        drawKatanaBlade(5, gy - 1, angle);
+        drawKatanaBlade(5, gy - 1, angle, player.bigSlash ? 1.8 : 1);
       } else if (hasGun(player)) {
         // A class with a gun (Sniper) still has an actual knife as its
         // out-of-ammo fallback — the original small arc-and-tip swipe.
