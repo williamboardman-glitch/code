@@ -63,7 +63,7 @@ equip a weapon — locked ones show the level they unlock at.
 | 🗡️ Tsunami Blade | **Tidal Wave** — a wave of water that knocks enemies back with solid AoE damage | **Hydro-Slash** — a fast, heavier-hitting forward slash | **Rejuvenating Flow** — a wide slash that heals you for every kill it lands |
 | 🔫 Plasma Cannon | **Charged Shot** — a slow, heavy bolt that explodes in a wide radius | **Beam Wave** — a shot that pierces through everything in its path | **Overload** — a brief damage buff to every hit you land |
 | 🔫 Railgun Rifle | **Sonic Dart** — a free, massive hit on the nearest enemy, no ammo spent | **Armor Piercing** — ignores hyperarmor outright, even mid-boss-nova | **Target Lock** — your next few shots home in on the nearest enemy |
-| 🔫 Tesla Blipper | **Arc Lightning** — an instant bolt that chains to 2 more enemies | **EM Pulse** — an AoE pulse that damages and slows everything nearby | **Voltaic Charge** — a burst of movement speed |
+| 🔫 Tesla Blipper | **Arc Lightning** — an instant bolt that chains to 2 more enemies | **EM Pulse** — an AoE pulse that damages and slows everything nearby | **Voltaic Charge** — a burst of movement speed plus a storm of lightning bolts striking everything nearby |
 
 Each ability has its own cooldown (shown in the HUD once unlocked), so
 they're a burst to lean on, not a replacement for your normal attack.

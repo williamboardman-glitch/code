@@ -1264,13 +1264,21 @@
       slow: { mult: 0.4, time: 3 },
     });
   }
-  // A burst of speed for the player.
+  // A burst of speed, plus a storm of lightning bolts striking down on
+  // everything nearby — a voltage surge that both speeds you up and
+  // discharges into the crowd.
   function abilityVoltaicCharge() {
     player.hasteTimer = 4;
-    // Motion-blur speed lines trailing behind, not a ring pulse — reads as
-    // a burst of speed rather than an AoE.
     spawnSpeedLines(player.x, player.y, player.facing, '#ffcd3c');
-    sfx.slide();
+    const dmg = playerBaseDmg(player, gunDmgMult(player)) * 1.3;
+    const struck = enemies.filter(e => !e.dead && Math.hypot(e.x - player.x, e.y - player.y) < 150).slice(0, 4);
+    for (const e of struck) {
+      spawnLightningArc(e.x, e.y - 90, e.x, e.y);
+      spawnImpactFlash(e.x, e.y, '#eafcff');
+      applyDamage(e, dmg);
+    }
+    if (struck.length > 0) shakeScreen(4);
+    sfx.frost();
   }
 
   const WEAPON_ABILITY_IMPL = {
