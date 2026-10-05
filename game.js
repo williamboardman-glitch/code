@@ -561,6 +561,11 @@
   // equipped weapon (if any) is a sword/none at all.
   function hasGun(p) { const w = equippedWeaponItem(p); return !!w && w.category === 'gun'; }
   function hasSword(p) { const w = equippedWeaponItem(p); return !!w && w.category === 'sword'; }
+  // Whether loaded ammo means anything yet — not gun-only, since a soul
+  // infuses a sword's swing or a pet's bite exactly the same way it infuses
+  // a bullet (see knifeAttack()/petSpecialAttack()). False only pre-chest-
+  // pick on floor 1, where there's no weapon or pet to carry it at all.
+  function canUseAmmo(p) { return p.ownedItems.length > 0; }
   // Any equipped sword hits like a dedicated melee weapon rather than a
   // last-resort fallback; all 3 swords share the same weighting, same as
   // all 3 guns do — they're differentiated by their abilities, not raw dps.
@@ -1259,7 +1264,7 @@
   // charges for (key 0 / the mobile FUSE button) — separate from the
   // Digit1-8 base-ammo row since combos are crafted, not fixed slots.
   function cycleComboAmmo() {
-    if (!hasGun(player)) return;
+    if (!canUseAmmo(player)) return;
     const owned = COMBO_LIST.filter(k => (player.combos[k] || 0) > 0);
     if (owned.length === 0) {
       addMessage(player.x, player.y - 24, 'NO FUSED SHOTS', '#c9b98f');
@@ -1666,8 +1671,8 @@
       return;
     }
     if (state !== 'playing') return;
-    if (DIGIT_AMMO[ev.code] && hasGun(player)) player.ammo = DIGIT_AMMO[ev.code];
-    if (DIGIT_SOUL[ev.code] && hasGun(player)) {
+    if (DIGIT_AMMO[ev.code] && canUseAmmo(player)) player.ammo = DIGIT_AMMO[ev.code];
+    if (DIGIT_SOUL[ev.code] && canUseAmmo(player)) {
       for (const code in DIGIT_SOUL) {
         if (code === ev.code || !keys[code]) continue;
         const comboKey = comboKeyFor(DIGIT_SOUL[ev.code], DIGIT_SOUL[code]);
@@ -1894,7 +1899,7 @@
   const tcAmmoBtn = document.getElementById('tcAmmo');
   tcAmmoBtn.addEventListener('pointerdown', (ev) => {
     ev.preventDefault();
-    if (state !== 'playing' || !hasGun(player)) return;
+    if (state !== 'playing' || !canUseAmmo(player)) return;
     const idx = AMMO_CYCLE.indexOf(player.ammo);
     player.ammo = AMMO_CYCLE[(idx + 1) % AMMO_CYCLE.length];
   });
@@ -2009,16 +2014,17 @@
       touchControls.classList.toggle('hidden', !show);
     }
     // Hide the loadout-specific buttons that would otherwise just silently
-    // no-op for whichever gear isn't equipped — a gunless loadout has no use
-    // for FUSE/AMMO, only a sword can PARRY, and only an owned pet has a
+    // no-op for whichever gear isn't equipped — FUSE/AMMO need a loadout
+    // picked at all (souls infuse a sword swing or a pet bite same as a
+    // bullet), only a sword can PARRY, and only an owned pet has a
     // BISCUIT to feed it. Only matters once a player object actually exists
     // (state 'playing' already implies that, same as every other player.*
     // read gated on it elsewhere).
     if (state === 'playing') {
       tcParryBtn.classList.toggle('hidden', !hasSword(player));
       tcBiscuitBtn.classList.toggle('hidden', pets.length === 0);
-      tcComboBtn.classList.toggle('hidden', !hasGun(player));
-      tcAmmoBtn.classList.toggle('hidden', !hasGun(player));
+      tcComboBtn.classList.toggle('hidden', !canUseAmmo(player));
+      tcAmmoBtn.classList.toggle('hidden', !canUseAmmo(player));
       const noWeapon = !player.equippedWeapon;
       tcAbility1Btn.classList.toggle('hidden', noWeapon);
       tcAbility2Btn.classList.toggle('hidden', noWeapon);
@@ -4441,9 +4447,11 @@
 
     drawComboHUD();
 
-    // ammo slots — no gun pre-class (floor 1) or as the Petmancer, so just
-    // show a single fists-only indicator instead of the full ammo bar
-    if (!hasGun(player)) {
+    // ammo slots — nothing to show pre-chest-pick on floor 1 (bare fists,
+    // no souls collected yet either), so just show a fists-only indicator;
+    // every loadout past that point shows the full ammo/soul bar, since a
+    // sword swing or a pet bite carries a loaded soul same as a bullet.
+    if (!canUseAmmo(player)) {
       const sy = VIEW_H - 22;
       ctx.fillStyle = 'rgba(255,205,60,0.3)';
       ctx.fillRect(VIEW_W / 2 - 24, sy, 48, 18);
@@ -4993,7 +5001,7 @@
     },
     {
       key: 'ammo', name: 'Ammo Cache', desc: '+1 soul of every special ammo type, +1 trap charge, and tops up bullets to 100.',
-      visible: (p) => hasGun(p),
+      visible: (p) => canUseAmmo(p),
       cost: () => scaledCost(50),
       canBuy: () => true,
       buy: (p) => { for (const k of Object.keys(p.souls)) p.souls[k]++; p.bullets = Math.max(p.bullets, 100); },
@@ -5115,10 +5123,10 @@
     comboPanelOpen = false;
     comboPanelEl.classList.add('collapsed');
     comboToggleEl.textContent = '⚗ COMBINE SOULS ▾';
-    // A fused shot still has to be fired, so it's pointless for a class
-    // with no gun (pre-class, or Petmancer) — don't let them spend souls
-    // crafting ammo they can never use.
-    comboToggleEl.classList.toggle('hidden', !hasGun(player));
+    // A fused shot has to be carried by something — a bullet, a sword
+    // swing, or a pet bite — so it's only pointless pre-chest-pick, before
+    // any of those exist at all.
+    comboToggleEl.classList.toggle('hidden', !canUseAmmo(player));
     shopScreen.classList.remove('hidden');
     sfx.win();
   }
