@@ -482,6 +482,10 @@
   let autosaveTimer = 0;
   let settingsOpen = false;
   let player, wolf, enemies, pBullets, eBullets, hazards, particles, messages, camX, respawn, elapsed, shake, levelBanner;
+  // Shadow Step's afterimage trail — faded silhouettes left behind along
+  // the teleport path, separate from the generic particle system since
+  // they need the player's own facing to draw a recognizable silhouette.
+  let playerGhosts = [];
 
   function newPlayer() {
     return {
@@ -506,7 +510,7 @@
       // One cooldown per ability slot (0/1/2), shared mechanism across all
       // three classes — each one unlocks at class level 5/10/15.
       abilityCooldown: [0, 0, 0],
-      stormTimer: 0, stormTick: 0, // Samurai Storm's channeled multi-hit
+      stormTimer: 0, stormTick: 0, stormPulseCount: 0, // Samurai Storm's channeled multi-hit
       hawkEyeTimer: 0, // Sniper's Hawk Eye damage buff
       deathTimer: 0, potions: 0,
       wolfHp: WOLF_STAGES[0].maxHp, wolfArmor: 0, biscuits: 0,
@@ -524,7 +528,7 @@
     player = newPlayer();
     wolf = null; // only the Petmancer class has a pet, chosen after floor 1
     enemies = currentLevel().spawnList.map(([type, col, row]) => spawnEnemy(type, col, row));
-    pBullets = []; eBullets = []; hazards = []; particles = []; messages = [];
+    pBullets = []; eBullets = []; hazards = []; particles = []; messages = []; playerGhosts = [];
     spawnFloorHazards();
     camX = 0; elapsed = 0; shake = { t: 0, mag: 0 };
     levelBanner = { text: '', t: 0 };
@@ -537,7 +541,7 @@
   // the player at the given spot.
   function enterLevelEntitiesAt(x, y) {
     enemies = currentLevel().spawnList.map(([type, col, row]) => spawnEnemy(type, col, row));
-    pBullets = []; eBullets = []; hazards = []; particles = []; messages = [];
+    pBullets = []; eBullets = []; hazards = []; particles = []; messages = []; playerGhosts = [];
     spawnFloorHazards();
     camX = 0;
     bossArenaSealed = false;
@@ -912,14 +916,20 @@
     addMessage(player.x, player.y - 30, def.name.toUpperCase(), '#8fd0ff');
   }
 
-  // A wide forward arc, bigger and harder-hitting than a plain katana swing.
+  // A wide forward arc, bigger and harder-hitting than a plain katana swing —
+  // a serpentine icy-blue "dragon" ribbon sweeps out ahead of a big crescent
+  // slash-wave, reading as a dragon's-breath strike rather than a plain hit.
   function abilityDragonSlash() {
     const dir = player.facing;
     const kx = player.x + dir * 20, ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
     const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 2;
     player.knifeSwing = 0.15; // plays the same katana-swing sprite as a normal hit
+    spawnDragonWave(player.x, player.y - 4, dir);
+    spawnCrescentSlash(kx, ky, dir, 'rgba(143,208,255,0.9)', '#eaf6ff', 55);
     spawnHitParticles(kx, ky, '#8fd0ff');
-    spawnShockwave(player.x, player.y, 'rgba(216,220,226,0.8)', 50);
+    spawnImpactFlash(kx, ky, '#eaf6ff');
+    spawnShockwave(player.x, player.y, 'rgba(216,220,226,0.8)', 55);
+    shakeScreen(5);
     sfx.demonSlash();
     for (const e of enemies) {
       if (e.dead) continue;
@@ -927,20 +937,36 @@
     }
   }
 
-  // Teleports behind the nearest enemy and lands a heavy bonus-damage hit.
+  // Teleports behind the nearest enemy and lands a heavy bonus-damage hit —
+  // leaves a trail of fading afterimages and a zip-line streak along the
+  // teleport path, like a ninja's instant dash.
   function abilityShadowStep() {
     const target = findNearestEnemy(player.x, player.y, 260);
     if (!target) { addMessage(player.x, player.y - 24, 'NO TARGET', '#c9b98f'); sfx.empty(); return false; }
     const side = target.x >= player.x ? 1 : -1;
     const landX = target.x + side * 18;
-    if (!isSolidPixel(landX, target.y)) { player.x = landX; player.y = target.y; }
+    const startX = player.x, startY = player.y, startFacing = player.facing;
+    const teleported = !isSolidPixel(landX, target.y);
+    if (teleported) { player.x = landX; player.y = target.y; }
     player.facing = -side;
     player.invuln = Math.max(player.invuln, 0.3);
     player.knifeSwing = 0.15;
     const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 2.2;
     applyDamage(target, dmg);
+    // Afterimages at the start, midpoint, and landing spot, plus a fading
+    // streak connecting start to end, so the teleport reads as a dash
+    // instead of an instant snap. Skipped when the teleport itself was
+    // blocked (landing spot solid) — there's no distance to trace.
+    if (teleported) {
+      spawnPlayerGhost(startX, startY, startFacing);
+      spawnPlayerGhost(startX + (player.x - startX) * 0.5, startY + (player.y - startY) * 0.5, startFacing);
+      spawnDashTrail(startX, startY, player.x, player.y, 'rgba(122,95,201,0.8)');
+    }
+    spawnHitParticles(startX, startY, '#5a4a8a');
     spawnShockwave(player.x, player.y, 'rgba(143,208,255,0.8)', 40);
+    spawnCrescentSlash(target.x, target.y, -side, 'rgba(143,208,255,0.9)', '#d8c7ff', 36);
     spawnHitParticles(target.x, target.y, '#8fd0ff');
+    shakeScreen(4);
     sfx.demonSlash();
   }
 
@@ -949,6 +975,7 @@
   function abilitySamuraiStorm() {
     player.stormTimer = 0.45;
     player.stormTick = 0;
+    player.stormPulseCount = 0;
     player.knifeSwing = 0.15;
     sfx.demonSlash();
   }
@@ -1296,6 +1323,36 @@
   }
   function spawnShockwave(x, y, color, maxRadius) {
     particles.push({ x, y, vx: 0, vy: 0, life: 0.3, maxLife: 0.3, color, maxRadius, shape: 'ring', grav: false });
+  }
+  // A sword-energy crescent sweep, opening toward dir — the bright curved
+  // slash-wave look the Samurai's abilities lean on.
+  function spawnCrescentSlash(x, y, dir, color, color2, radius = 44) {
+    particles.push({ x, y, vx: 0, vy: 0, life: 0.22, maxLife: 0.22, color, color2, dir, radius, shape: 'crescent', grav: false });
+  }
+  // A short, fading zip-line between two points — used for a dash trail.
+  function spawnDashTrail(x1, y1, x2, y2, color) {
+    particles.push({ x: x1, y: y1, x2, y2, vx: 0, vy: 0, life: 0.18, maxLife: 0.18, color, size: 3, shape: 'streak', grav: false });
+  }
+  // A serpentine ribbon of particles tracing a sine-wave path forward from
+  // (x,y) — reads as a "dragon" sweeping through the strike without needing
+  // actual dragon artwork.
+  function spawnDragonWave(x, y, dir) {
+    const n = 16;
+    for (let i = 0; i < n; i++) {
+      const t = i / n;
+      const wx = x + dir * t * 70;
+      const wy = y - Math.sin(t * Math.PI * 2.4) * 16;
+      const icy = i % 2 === 0;
+      particles.push({
+        x: wx, y: wy, vx: dir * (40 + Math.random() * 30), vy: (Math.random() - 0.5) * 30,
+        life: 0.25 + Math.random() * 0.15, color: icy ? '#bfe8ff' : '#5fb6ff', size: 3 + Math.random() * 2, grav: false,
+      });
+    }
+  }
+  // One frame of Shadow Step's afterimage trail — a flat silhouette left
+  // behind at a point along the teleport path, fading fast.
+  function spawnPlayerGhost(x, y, facing) {
+    playerGhosts.push({ x, y, facing, life: 0.2, maxLife: 0.2 });
   }
   function spawnDeathParticles(x, y, color) {
     for (let i = 0; i < 12; i++) {
@@ -1840,7 +1897,15 @@
       if (player.stormTick <= 0) {
         player.stormTick = 0.2;
         const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 0.9;
+        // Each pulse fans a crescent slash out a different way (alternating
+        // left/right, then straight ahead) so the channel reads as a flurry
+        // of cuts rather than the same ring expanding three times in place.
+        const pulseDir = player.stormPulseCount % 2 === 0 ? player.facing : -player.facing;
+        spawnCrescentSlash(player.x, player.y, pulseDir, 'rgba(143,208,255,0.85)', '#ffffff', 48);
         spawnShockwave(player.x, player.y, 'rgba(143,208,255,0.6)', 45);
+        spawnHitParticles(player.x, player.y, '#bfe8ff');
+        shakeScreen(3);
+        player.stormPulseCount++;
         for (const e of enemies) {
           if (e.dead) continue;
           if (Math.hypot(e.x - player.x, e.y - player.y) < 45) applyDamage(e, dmg);
@@ -2655,6 +2720,8 @@
     }
     particles = particles.filter(p => p.life > 0);
     messages = messages.filter(m => { m.life -= dt; m.y -= 18 * dt; return m.life > 0; });
+    for (const g of playerGhosts) g.life -= dt;
+    playerGhosts = playerGhosts.filter(g => g.life > 0);
   }
 
   function update(dt) {
@@ -3895,6 +3962,25 @@
     ctx.fillRect(x - 1, 0, 2, VIEW_H);
   }
 
+  // Shadow Step's afterimage trail — simplified purple silhouettes left
+  // behind along the teleport path, drawn under the real player sprite.
+  function drawGhosts() {
+    for (const g of playerGhosts) {
+      const x = px(g.x - camX), y = px(g.y);
+      ctx.globalAlpha = Math.max(0, (g.life / g.maxLife) * 0.55);
+      ctx.fillStyle = '#8a6fd1';
+      ctx.fillRect(x - 5, y - 20, 10, 8);
+      ctx.fillRect(x - 7, y - 8, 14, 12);
+      ctx.fillRect(x - 6, y + 3, 5, 10);
+      ctx.fillRect(x + 1, y + 3, 5, 10);
+      // A short blade-glint pointing the way the player was facing, so the
+      // silhouette reads as mid-swing rather than a static blob.
+      ctx.fillStyle = '#d8c7ff';
+      ctx.fillRect(x + g.facing * 6, y - 10, g.facing * 10, 3);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   function drawParticle(p) {
     const x = px(p.x - camX), y = px(p.y);
     ctx.globalAlpha = Math.max(0, p.maxLife ? p.life / p.maxLife : p.life);
@@ -3916,6 +4002,30 @@
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(x, y); ctx.lineTo(midx, midy); ctx.lineTo(x2, y2);
+      ctx.stroke();
+    } else if (p.shape === 'crescent') {
+      // A sword-energy crescent: a C-shaped sweep opening toward p.dir,
+      // growing slightly and fading over its short life.
+      const t = 1 - p.life / p.maxLife;
+      const r = p.radius * (0.75 + t * 0.4);
+      const baseAngle = p.dir >= 0 ? 0 : Math.PI;
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 4 * (1 - t * 0.4);
+      ctx.beginPath();
+      ctx.arc(x, y, r, baseAngle - 1.1, baseAngle + 1.1);
+      ctx.stroke();
+      ctx.strokeStyle = p.color2 || '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(1, r - 3), baseAngle - 1.1, baseAngle + 1.1);
+      ctx.stroke();
+    } else if (p.shape === 'streak') {
+      // A straight fading line between two points — a quick dash/zip trail.
+      const x2 = px(p.x2 - camX), y2 = px(p.y2);
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = p.size || 3;
+      ctx.beginPath();
+      ctx.moveTo(x, y); ctx.lineTo(x2, y2);
       ctx.stroke();
     } else {
       ctx.fillStyle = p.color;
@@ -4211,6 +4321,7 @@
     if (bossArenaSealed) drawArenaBarrier();
     for (const hz of hazards) drawHazard(hz);
     for (const e of enemies) drawEnemy(e);
+    drawGhosts();
     drawPlayer();
     if (wolf) drawWolf(wolf);
     for (const b of pBullets) drawBullet(b, b.kind);
