@@ -688,7 +688,7 @@
       shootTimer: 1 + Math.random() * (cfg.fireRate || 1),
       slowTimer: 0, burnTimer: 0, burnTick: 0, acidTimer: 0, acidTick: 0, speedMult: 1,
       hasteTimer: 0, hasteMult: 1, shriekTimer: 1.5 + Math.random(),
-      weakDmgMult: 1, weakened: false,
+      weakDmgMult: 1, weakened: false, stunTimer: 0,
     };
     if (cfg.isBoss) {
       e.attackState = 'idle'; e.attackTimer = 1.5;
@@ -1285,20 +1285,16 @@
       slow: { mult: 0.4, time: 3 },
     });
   }
-  // A burst of speed, plus a storm of lightning bolts striking down on
-  // everything nearby — a voltage surge that both speeds you up and
-  // discharges into the crowd.
+  // A burst of speed plus a short lightning storm: several bolts rain down
+  // on nearby enemies over about a second, each one stunning whatever it
+  // hits — a sustained squall rather than one instant volley.
   function abilityVoltaicCharge() {
     player.hasteTimer = 4;
     spawnSpeedLines(player.x, player.y, player.facing, '#ffcd3c');
-    const dmg = playerBaseDmg(player, gunDmgMult(player)) * 1.3;
-    const struck = enemies.filter(e => !e.dead && Math.hypot(e.x - player.x, e.y - player.y) < 150).slice(0, 4);
-    for (const e of struck) {
-      spawnLightningArc(e.x, e.y - 90, e.x, e.y);
-      spawnImpactFlash(e.x, e.y, '#eafcff');
-      applyDamage(e, dmg);
-    }
-    if (struck.length > 0) shakeScreen(4);
+    player.channelTimer = 0.85;
+    player.channelTick = 0;
+    player.channelPulseCount = 0;
+    player.channelKind = 'voltaicStorm';
     sfx.frost();
   }
 
@@ -2242,8 +2238,9 @@
     player.hasteTimer = Math.max(0, player.hasteTimer - dt);
     player.stealthTimer = Math.max(0, player.stealthTimer - dt);
     // A generic multi-tick channel, reused by any weapon ability that needs
-    // one (currently just Draconic Roar) — 3 pulses, one every 0.2s. Timer
-    // is just inside the 3rd tick's boundary (0.4s) so a 4th can't sneak in.
+    // one (Draconic Roar, Voltaic Charge) — pulses one every 0.2s. Timer is
+    // set just inside the last tick's boundary so an extra pulse can't
+    // sneak in (0.45 for 3 pulses, 0.85 for 5).
     if (player.channelTimer > 0) {
       player.channelTimer -= dt;
       player.channelTick -= dt;
@@ -2260,6 +2257,19 @@
               applyDamage(e, dmg);
               if (!e.dead) { e.speedMult = 0.5; e.slowTimer = Math.max(e.slowTimer, 2); }
             }
+          }
+        } else if (player.channelKind === 'voltaicStorm') {
+          const dmg = playerBaseDmg(player, gunDmgMult(player)) * 0.9;
+          const nearby = enemies.filter(e => !e.dead && Math.hypot(e.x - player.x, e.y - player.y) < 160);
+          const strikes = Math.min(nearby.length, 1 + (player.channelPulseCount % 2));
+          shakeScreen(2);
+          for (let i = 0; i < strikes; i++) {
+            const target = nearby[Math.floor(Math.random() * nearby.length)];
+            if (!target) continue;
+            spawnLightningArc(target.x, target.y - 100, target.x, target.y);
+            spawnImpactFlash(target.x, target.y, '#eafcff');
+            applyDamage(target, dmg);
+            if (!target.dead) target.stunTimer = Math.max(target.stunTimer, 1.6);
           }
         }
         player.channelPulseCount++;
@@ -2959,6 +2969,14 @@
         }
       }
       if (e.dead) continue;
+
+      if (e.stunTimer > 0) {
+        // Frozen mid-animation — no movement, no attacks, nothing but the
+        // DoT ticks above and the countdown — until it wears off.
+        e.stunTimer -= dt;
+        e.vx = 0;
+        continue;
+      }
 
       const distToPlayer = Math.hypot(e.x - player.x, e.y - player.y);
 
@@ -3961,6 +3979,21 @@
     ctx.restore();
   }
 
+  // Small sparks orbiting above a stunned enemy's head, so a frozen pose
+  // reads as "stunned" rather than just "stopped".
+  function drawStunIcon(e) {
+    const x = px(e.x - camX), y = px(e.y - e.cfg.h / 2 - 10);
+    ctx.save();
+    ctx.translate(x, y);
+    for (let i = 0; i < 3; i++) {
+      const a = elapsed * 8 + i * (Math.PI * 2 / 3);
+      const sx = Math.cos(a) * 7, sy = Math.sin(a) * 3;
+      ctx.fillStyle = '#eafcff';
+      ctx.fillRect(sx - 1, sy - 1, 2, 2);
+    }
+    ctx.restore();
+  }
+
   function drawEnemy(e) {
     if (e.dead && e.deathTimer <= 0) return;
     const c = e.cfg;
@@ -4900,6 +4933,7 @@
     if (bossArenaSealed) drawArenaBarrier();
     for (const hz of hazards) drawHazard(hz);
     for (const e of enemies) drawEnemy(e);
+    for (const e of enemies) { if (!e.dead && e.stunTimer > 0) drawStunIcon(e); }
     drawGhosts();
     drawPlayer();
     for (const pet of pets) drawPet(pet);
