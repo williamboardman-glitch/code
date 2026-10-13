@@ -128,7 +128,9 @@ without spending any ammo — a quick release pops a small, weak orb, and
 holding the full three seconds (the bar reads "CHARGED!" once it caps)
 releases the biggest, hardest-hitting one in the game. Holding past three
 seconds doesn't lose anything — it just holds at max charge until you
-let go. It's tied to the fire key itself, so it works the same for every
+let go. The orb pierces, too — it keeps traveling and exploding again on
+every fresh enemy along its path instead of stopping dead at the first
+one. It's tied to the fire key itself, so it works the same for every
 gun (Plasma Cannon, Railgun Rifle, Tesla Blipper) regardless of which
 one's equipped, and doesn't apply to a sword or a pets-only build.
 

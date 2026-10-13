@@ -1028,7 +1028,9 @@
     spawnImpactFlash(player.x, player.y - 2, item.color);
     shakeScreen(3 + scale * 5);
     sfx.heavyShot();
-    pBullets.push({ x: player.x, y: player.y - 2, vx: 160 * dir, vy: 0, kind: 'chargedOrb', dmg, color: item.color, scale, explodeRadius: radius });
+    // Pierces instead of dying on the first thing it touches — it keeps
+    // rolling through the whole line, exploding again on each fresh enemy.
+    pBullets.push({ x: player.x, y: player.y - 2, vx: 160 * dir, vy: 0, kind: 'chargedOrb', dmg, color: item.color, scale, explodeRadius: radius, pierce: true });
     addMessage(player.x, player.y - 32, scale >= 0.97 ? 'CHARGED SHOT!' : 'CHARGED SHOT', item.color);
   }
 
