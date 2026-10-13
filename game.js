@@ -982,11 +982,14 @@
   // Lightning Kitsune's Static Shield: a passive damage-absorbing barrier,
   // separate from (and checked before) the holdable sword guard above.
   const PLAYER_SHIELD_MAX = 60;
-  // Every gun's base attack — hold the fire key continuously and it builds
-  // toward one free, massive charged orb on top of your normal shots, a
-  // long-wind-up payoff like Clash Royale's Sparky rather than a per-gun
-  // ability (those stay on C/Z/V).
+  // Every gun's base attack — a quick tap still fires a normal ammo-based
+  // shot (souls, bullet count, all unchanged), but holding fire past
+  // FIRE_TAP_THRESHOLD switches over to charging instead of auto-firing,
+  // releasing one orb sized by how long it was held (up to GUN_CHARGE_TIME
+  // for the biggest one) — a long-wind-up payoff like Clash Royale's
+  // Sparky, not a per-gun ability (those stay on C/Z/V).
   const GUN_CHARGE_TIME = 3;
+  const FIRE_TAP_THRESHOLD = 0.15;
 
   // ---------- Weapon abilities (C/Z/V, unlocked at gear level 5/10/15) ----------
   // Same three keys for every weapon; which move they trigger depends on
@@ -1012,16 +1015,21 @@
   // Every gun's base attack, not a per-weapon C/Z/V ability — released once
   // the hold-fire charge above hits GUN_CHARGE_TIME. A slow, heavy orb with
   // a big splash on impact, tinted whichever gun fired it.
-  function fireChargedOrb() {
+  // scale is 0-1: how much of the full 3s charge window was actually held,
+  // so a quick release fires a small, weak orb and a full hold fires the
+  // massive one — the whole point of letting it go whenever, not just at
+  // the cap.
+  function fireChargedOrb(scale) {
     const dir = player.facing;
     const item = equippedWeaponItem(player);
-    const dmg = playerBaseDmg(player, gunDmgMult(player)) * 6;
-    spawnShockwave(player.x, player.y, item.color, 34);
+    const dmg = playerBaseDmg(player, gunDmgMult(player)) * (2 + scale * 4);
+    const radius = 24 + scale * 46;
+    spawnShockwave(player.x, player.y, item.color, 20 + scale * 20);
     spawnImpactFlash(player.x, player.y - 2, item.color);
-    shakeScreen(7);
+    shakeScreen(3 + scale * 5);
     sfx.heavyShot();
-    pBullets.push({ x: player.x, y: player.y - 2, vx: 160 * dir, vy: 0, kind: 'chargedOrb', dmg, color: item.color });
-    addMessage(player.x, player.y - 32, 'CHARGED SHOT!', item.color);
+    pBullets.push({ x: player.x, y: player.y - 2, vx: 160 * dir, vy: 0, kind: 'chargedOrb', dmg, color: item.color, scale, explodeRadius: radius });
+    addMessage(player.x, player.y - 32, scale >= 0.97 ? 'CHARGED SHOT!' : 'CHARGED SHOT', item.color);
   }
 
   // ===== Dragon Tooth Katana (fire sword) =====
@@ -1749,6 +1757,7 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) claimFocus(); });
   claimFocus();
 
+  const FIRE_KEYS = ['KeyX', 'KeyJ', 'ControlLeft', 'Space'];
   const GAME_KEYS = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
     'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'KeyQ', 'KeyE', 'KeyB', 'KeyC', 'KeyZ', 'KeyV', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
@@ -1803,6 +1812,17 @@
   function handleKeyUp(ev) {
     keys[ev.code] = false;
     if (GAME_KEYS.has(ev.code)) ev.preventDefault();
+    // Releasing a gun's fire key resolves whatever was building: a quick
+    // tap fires a normal ammo-based shot, a hold past the tap threshold
+    // releases a charged orb sized by how long it was held.
+    if (FIRE_KEYS.includes(ev.code) && !FIRE_KEYS.some(c => keys[c]) && state === 'playing' && hasGun(player)) {
+      if (player.gunChargeTimer > FIRE_TAP_THRESHOLD) {
+        fireChargedOrb(Math.min(1, player.gunChargeTimer / GUN_CHARGE_TIME));
+      } else if (player.gunChargeTimer > 0) {
+        shoot();
+      }
+      player.gunChargeTimer = 0;
+    }
   }
   // A single listener on window is enough — keyboard events bubble up to it
   // from whichever element has focus (the canvas, via claimFocus() above),
@@ -2356,19 +2376,21 @@
       }
     }
 
-    const fireHeld = held('KeyX', 'KeyJ', 'ControlLeft', 'Space');
-    if (fireHeld) shoot();
-    // Any gun's base attack: holding fire continuously also builds toward
-    // one free charged orb, on top of whatever's normally firing.
-    if (hasGun(player) && fireHeld) {
-      player.gunChargeTimer += dt;
-      if (player.gunChargeTimer >= GUN_CHARGE_TIME) {
-        player.gunChargeTimer = 0;
-        fireChargedOrb();
-      } else if (Math.random() < dt * 10) {
-        spawnEnergySparks(player.x, player.y, equippedWeaponItem(player).color);
+    const fireHeld = held(...FIRE_KEYS);
+    if (hasGun(player)) {
+      // A gun's base attack: a quick tap still fires a normal ammo-based
+      // shot (resolved on release, see handleKeyUp), but holding past the
+      // tap threshold switches to charging instead of auto-firing — no
+      // normal shots while a charge is building.
+      if (fireHeld) {
+        player.gunChargeTimer += dt;
+        if (player.gunChargeTimer > FIRE_TAP_THRESHOLD) {
+          player.gunChargeTimer = Math.min(GUN_CHARGE_TIME, player.gunChargeTimer);
+          if (Math.random() < dt * 10) spawnEnergySparks(player.x, player.y, equippedWeaponItem(player).color);
+        }
       }
     } else {
+      if (fireHeld) shoot();
       player.gunChargeTimer = 0;
     }
 
@@ -3012,7 +3034,7 @@
       b.dead = isSolidPixel(b.x, b.y);
       if (b.dead) {
         if (b.kind === 'acid') spawnAcidPuddle(b.x, b.y);
-        else if (b.kind === 'chargedOrb') explode(b.x, b.y, 75, b.dmg, { palette: [b.color, '#ffffff'], ringColor: b.color });
+        else if (b.kind === 'chargedOrb') explode(b.x, b.y, b.explodeRadius, b.dmg, { palette: [b.color, '#ffffff'], ringColor: b.color });
         continue;
       }
       for (const e of enemies) {
@@ -3026,9 +3048,10 @@
           } else if (b.kind === 'plasmaCharged') {
             explode(b.x, b.y, 50, b.dmg, { palette: ['#3dc8ff', '#d2f4ff'], ringColor: 'rgba(61,200,255,0.9)' });
           } else if (b.kind === 'chargedOrb') {
-            // The massive charged orb — biggest splash in the game, so it
-            // pays off holding fire for the full 3s.
-            explode(b.x, b.y, 75, b.dmg, { palette: [b.color, '#ffffff'], ringColor: b.color });
+            // Splash radius scales with how long it was charged — the
+            // biggest hit in the game at a full 3s hold, a small pop if
+            // released early.
+            explode(b.x, b.y, b.explodeRadius, b.dmg, { palette: [b.color, '#ffffff'], ringColor: b.color });
           } else if (b.kind === 'berserker') {
             applyDamage(e, b.dmg);
             explode(b.x, b.y, 60, 20, { palette: ['#ffe98a', '#fff5cc'], ringColor: 'rgba(255,220,140,0.95)' });
@@ -4381,24 +4404,26 @@
       ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(9, 0); ctx.stroke();
     } else if (kind === 'chargedOrb') {
       // Every gun's charged-release payload — a big, crackling orb, tinted
-      // whichever gun fired it, with jagged sparks orbiting the core so it
-      // reads as "massive" rather than another bullet.
+      // whichever gun fired it, sized by how long it was charged (a quick
+      // release is a small pop, a full 3s hold is the biggest hit in the
+      // game) with jagged sparks orbiting the core.
+      const s = 0.4 + (b.scale != null ? b.scale : 1) * 0.6;
       const pulse = 0.8 + Math.sin(elapsed * 22) * 0.2;
       ctx.globalAlpha = 0.35;
       ctx.fillStyle = b.color || '#3dc8ff';
-      ctx.beginPath(); ctx.arc(0, 0, 13 * pulse, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, 0, 13 * s * pulse, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 1;
       ctx.fillStyle = b.color || '#3dc8ff';
-      ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, 0, 8 * s, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, 0, 4 * s, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 1.5;
       for (let i = 0; i < 4; i++) {
         const a = elapsed * 10 + i * (Math.PI / 2);
         ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * 9, Math.sin(a) * 9);
-        ctx.lineTo(Math.cos(a) * 15, Math.sin(a) * 15);
+        ctx.moveTo(Math.cos(a) * 9 * s, Math.sin(a) * 9 * s);
+        ctx.lineTo(Math.cos(a) * 15 * s, Math.sin(a) * 15 * s);
         ctx.stroke();
       }
     } else {
