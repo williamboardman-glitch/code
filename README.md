@@ -59,9 +59,9 @@ equip a weapon — locked ones show the level they unlock at.
 |---|---|---|---|
 | 🗡️ Dragon Tooth Katana | **Blazing Slash** — a wide fiery arc that burns everything it catches | **Scaled Parry** — a free instant full block (and counter-hit) for a moment, no guard stamina spent | **Draconic Roar** — a short channel pulsing fire damage to everything nearby and slowing it |
 | 🗡️ Nightblade Shadow | **Shadow Step** — teleport behind the nearest enemy and land a heavy hit | **Veiled Strike** — brief invulnerability and invisibility, then your next hit lands harder | **Silent Execution** — instantly finishes a low-HP enemy outright, or hits hard otherwise |
-| 🗡️ Tsunami Blade | **Tidal Wave** — a wave of water that knocks enemies back with solid AoE damage | **Hydro-Slash** — a fast, heavier-hitting forward slash | **Rejuvenating Flow** — a wide slash that heals you for every kill it lands |
+| 🗡️ Tsunami Blade | **Tidal Wave** — a wave of water that knocks enemies back with solid AoE damage | **Hydro-Slash** — a fast crescent water blade that pierces through every enemy in its path | **Rejuvenating Flow** — a wide slash that heals you for every kill it lands |
 | 🔫 Plasma Cannon | **Charged Shot** — a slow, heavy bolt that explodes in a wide radius | **Beam Wave** — a shot that pierces through everything in its path | **Overload** — a brief damage buff to every hit you land |
-| 🔫 Railgun Rifle | **Sonic Dart** — a free, massive hit on the nearest enemy, no ammo spent | **Armor Piercing** — ignores hyperarmor outright, even mid-boss-nova | **Target Lock** — your next few shots home in on the nearest enemy |
+| 🔫 Railgun Rifle | **Sonic Dart** — a free, massive hit on the nearest enemy, no ammo spent | **Armor Piercing** — a round that pierces every enemy in its path, ignoring hyperarmor on each one, even mid-boss-nova | **Target Lock** — your next few shots home in on the nearest enemy |
 | 🔫 Tesla Blipper | **Arc Lightning** — an instant bolt that chains to 2 more enemies | **EM Pulse** — an AoE pulse that damages and slows everything nearby | **Voltaic Charge** — a burst of movement speed plus a storm of lightning bolts striking everything nearby |
 
 Each ability has its own cooldown (shown in the HUD once unlocked), so
@@ -80,9 +80,9 @@ bite lands its elemental effect on whatever it hits.
 
 | Pet | Lv5 | Lv10 | Lv15 |
 |---|---|---|---|
-| 🐉 Crimson Whelp | **Fire Breath** — bite also sets the target burning | **Draconic Might** — heavier hit and a speed burst for the pet | **Winged Strike** — a fiery explosion on the target |
+| 🐉 Crimson Whelp | **Fire Breath** — bite also sets the target burning | **Draconic Might** — heavier hit, a speed burst for the pet, and a brief damage buff for you | **Winged Strike** — a fiery explosion on the target, plus a dive at a second, more distant enemy if one's nearby |
 | 🐆 Shadow Panther | **Pounce** — bite also slows the target | **Camouflage** — brief extra safety for the pet after striking | **Bleeding Claw** — heavier hit with a bleed effect |
-| 🦊 Lightning Kitsune | **Electric Discharge** — bite also chains a small lightning jolt to another enemy | **Static Shield** — brief extra safety for the pet after striking | **Foxfire Swirl** — a periodic damaging pulse around the pet itself |
+| 🦊 Lightning Kitsune | **Electric Discharge** — bite also chains a lightning jolt to another enemy and bursts everything else nearby the target | **Static Shield** — grants you a damage-absorbing shield (separate from your sword guard, if any) | **Foxfire Swirl** — a periodic damaging pulse around the pet itself |
 
 Each pet has its own health bar, shown in the HUD; melee enemies that
 touch it deal contact damage, same as they do to you. Keep pets alive and
@@ -108,6 +108,12 @@ is a separate, free full block: for a moment it blocks the next hit
 outright and throws a damage pulse at everything nearby, without touching
 the guard stamina bar at all — a burst to lean on in addition to the
 held guard, not a replacement for it.
+
+A Lightning Kitsune pet's **Static Shield** ability (see [Pets](#pets))
+grants a third, independent layer: a flat damage-absorbing shield (shown
+as a thin cyan strip above your HP bar) that soaks hits automatically, no
+key held, draining before anything reaches your guard bar or HP. It works
+for any build — sword, gun, or pets-only — not just a sword-equipped one.
 
 ## Bullets & the knife
 

@@ -615,6 +615,7 @@
       usedSpecialThisFloor: false, knifeSwing: 0, bigSlash: false, demonKnife: false, godDmgBonus: 1,
       slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
       parryStamina: PARRY_STAMINA_MAX, guarding: false, guardRegenWait: 0, autoParryTimer: 0,
+      shieldHp: 0, shieldTimer: 0, // Lightning Kitsune's Static Shield
       // One cooldown per weapon ability slot (level 5/10/15, keys C/Z/V) —
       // whichever weapon is equipped, regardless of which one.
       abilityCooldown: [0, 0, 0],
@@ -977,6 +978,9 @@
   const PARRY_STAMINA_MAX = 100;
   const PARRY_REGEN_RATE = 22; // per second, only while not actively guarding
   const PARRY_REGEN_DELAY = 0.5; // seconds after releasing guard (or breaking) before regen resumes
+  // Lightning Kitsune's Static Shield: a passive damage-absorbing barrier,
+  // separate from (and checked before) the holdable sword guard above.
+  const PLAYER_SHIELD_MAX = 60;
 
   // ---------- Weapon abilities (C/Z/V, unlocked at gear level 5/10/15) ----------
   // Same three keys for every weapon; which move they trigger depends on
@@ -1131,20 +1135,18 @@
     }
   }
   // A fast forward slash with a heavier hit than a plain sword swing.
+  // Not a melee hitbox — a fast crescent-shaped water blade that pierces
+  // through every enemy in its path, the one sword ability that's actually
+  // a projectile.
   function abilityHydroSlash() {
     const dir = player.facing;
-    const kx = player.x + dir * 20, ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
     const dmg = playerBaseDmg(player, meleeDmgMult(player)) * 1.8;
     player.knifeSwing = 0.15;
-    // A straight diagonal cut, not a curved arc — a quicker, flatter slash
-    // than Tidal Wave's wall or Blazing Slash's crescent.
-    particles.push({ x: kx - dir * 16, y: ky - 14, x2: kx + dir * 16, y2: ky + 14, vx: 0, vy: 0, life: 0.16, maxLife: 0.16, color: '#eafcff', size: 5, shape: 'streak', grav: false });
-    spawnHitParticles(kx, ky, '#3dc8ff');
+    let vx = 0, vy = 0;
+    if (player.aim === -1) vy = -460; else if (player.aim === 1 && !player.onGround) vy = 460; else vx = 460 * dir;
+    spawnHitParticles(player.x + dir * 14, player.y, '#3dc8ff');
     sfx.demonSlash();
-    for (const e of enemies) {
-      if (e.dead) continue;
-      if (rectsOverlap(kx, ky, 50, 36, e.x, e.y, e.cfg.w, e.cfg.h)) applyDamage(e, dmg);
-    }
+    pBullets.push({ x: player.x + dir * 14, y: player.y - 2, vx, vy, kind: 'hydroSlash', dmg, pierce: true });
   }
   // A wide slash that heals the player for every enemy it kills.
   function abilityRejuvenatingFlow() {
@@ -1211,18 +1213,16 @@
   }
   // A shot that ignores hyperarmor outright — ignores a boss's invulnTimer
   // window instead of being wasted on it.
+  // A real piercing round, not an instant zap on one target — it travels
+  // and punches through every enemy in its path, ignoring hyperarmor on
+  // each one along the way.
   function abilityArmorPiercing() {
-    const target = findNearestEnemy(player.x, player.y, 400);
-    if (!target) { addMessage(player.x, player.y - 24, 'NO TARGET', '#c9b98f'); sfx.empty(); return false; }
+    const dir = player.facing;
     const dmg = playerBaseDmg(player, gunDmgMult(player)) * 2.4;
-    target.invulnTimer = 0;
-    applyDamage(target, dmg);
-    // The tracer continues past the target instead of stopping on it —
-    // reads as punching clean through rather than just landing on it.
-    const dx = target.x - player.x, dy = target.y - (player.y - 2), d = Math.hypot(dx, dy) || 1;
-    const pastX = target.x + (dx / d) * 30, pastY = target.y + (dy / d) * 30;
-    spawnDashTrail(player.x, player.y - 2, pastX, pastY, 'rgba(255,255,255,0.9)');
-    spawnImpactFlash(target.x, target.y, '#ffffff');
+    let vx = 0, vy = 0;
+    if (player.aim === -1) vy = -560; else if (player.aim === 1 && !player.onGround) vy = 560; else vx = 560 * dir;
+    spawnShellCasing(player.x - dir * 2, player.y - 6, dir);
+    pBullets.push({ x: player.x, y: player.y - 2, vx, vy, kind: 'armorPierce', dmg, pierce: true, ignoreHyperarmor: true });
     sfx.heavyShot();
   }
   // Locks onto the nearest enemy so the next few shots home in on it.
@@ -2172,6 +2172,8 @@
     player.slideTimer = Math.max(0, player.slideTimer - dt);
     player.slideCooldown = Math.max(0, player.slideCooldown - dt);
     player.autoParryTimer = Math.max(0, player.autoParryTimer - dt);
+    player.shieldTimer = Math.max(0, player.shieldTimer - dt);
+    if (player.shieldTimer <= 0) player.shieldHp = 0;
     // Holding B raises a guard that soaks damage out of a stamina bar
     // instead of HP, as long as a sword is equipped and the bar isn't
     // empty. Releasing it (or running it dry) starts the bar regenerating
@@ -2396,6 +2398,17 @@
         if (Math.hypot(e.x - player.x, e.y - player.y) < 50) applyDamage(e, counterDmg);
       }
       return;
+    }
+    // Static Shield: a passive barrier that absorbs damage on its own, no
+    // held key needed — checked before the guard below since it's meant to
+    // soak hits automatically while it's up, not something to manage.
+    if (player.shieldHp > 0) {
+      const absorbed = Math.min(dmg, player.shieldHp);
+      player.shieldHp -= absorbed;
+      dmg -= absorbed;
+      sfx.frost();
+      spawnHitParticles(player.x, player.y, '#4fd6ff');
+      if (dmg <= 0) return;
     }
     // Guard: a held block soaks damage out of the stamina bar 1-for-1
     // instead of HP. A hit bigger than what's left drains the bar to 0 and
@@ -2966,6 +2979,9 @@
       for (const e of enemies) {
         if (e.dead || (b.hitSet && b.hitSet.has(e))) continue;
         if (rectsOverlap(b.x, b.y, 4, 4, e.x, e.y, e.cfg.w, e.cfg.h)) {
+          // Armor Piercing: ignores hyperarmor outright on every enemy it
+          // pierces, not just a single target.
+          if (b.ignoreHyperarmor) e.invulnTimer = 0;
           if (b.kind === 'pyro') {
             explode(b.x, b.y, 55, b.dmg, { burn: true, palette: ['#ff9d3d', '#ffe27a'], ringColor: 'rgba(255,120,40,0.9)' });
           } else if (b.kind === 'plasmaCharged') {
@@ -3100,9 +3116,17 @@
     if (pet.petKey === 'crimsonWhelp') {
       if (tier >= 3) {
         explode(target.x, target.y, 55, dmg * 1.3, { palette: ['#ff9d3d', '#ffcf4a'], ringColor: 'rgba(255,140,61,0.85)', burn: true });
+        // Winged Strike also dives at a second, more distant enemy (if any)
+        // for ranged fire damage before "returning" to its owner's side.
+        const diveTarget = findNearestEnemy(pet.x, pet.y, 220, [target]);
+        if (diveTarget) {
+          explode(diveTarget.x, diveTarget.y, 45, dmg * 0.9, { palette: ['#ff9d3d', '#ffcf4a'], ringColor: 'rgba(255,140,61,0.7)', burn: true });
+        }
       } else if (tier >= 2) {
         applyDamage(target, dmg * 1.5);
         pet.hasteTimer = 3;
+        // Draconic Might also empowers its owner, not just the pet itself.
+        player.dmgBuffTimer = Math.max(player.dmgBuffTimer, 3);
         spawnFireBreath(pet.x, pet.y, dir, '#ff9d3d');
         spawnEnergySparks(pet.x, pet.y, '#ffcf4a');
       } else if (tier >= 1) {
@@ -3136,15 +3160,26 @@
       if (tier >= 1) {
         spawnLightningArc(pet.x, pet.y, target.x, target.y);
         chainLightning(target, dmg * 0.5, [target], 1);
+        // Electric Discharge is a burst, not just a single chain jump — it
+        // also damages and briefly slows ("paralyzes") everything else
+        // nearby the struck target.
+        for (const o of enemies) {
+          if (o.dead || o === target) continue;
+          if (Math.hypot(o.x - target.x, o.y - target.y) < 50) {
+            applyDamage(o, dmg * 0.4);
+            if (!o.dead) { o.speedMult = 0.4; o.slowTimer = Math.max(o.slowTimer, 1.2); }
+          }
+        }
       } else {
         spawnHitParticles(pet.x, pet.y, def.eye);
       }
       if (tier >= 2) {
-        pet.invuln = Math.max(pet.invuln, 1.2); // static shield
-        // A staggered double-ring shimmer on the fox itself — a barrier,
-        // not another lightning arc.
-        spawnShockwave(pet.x, pet.y, 'rgba(79,214,255,0.7)', 18);
-        particles.push({ x: pet.x, y: pet.y, vx: 0, vy: 0, life: 0.4, maxLife: 0.4, color: 'rgba(234,243,255,0.5)', maxRadius: 28, shape: 'ring', grav: false });
+        // Static Shield wraps the player in a damage-absorbing barrier,
+        // not just a brief pet invuln — see hurtPlayer()'s shieldHp check.
+        player.shieldHp = Math.min(PLAYER_SHIELD_MAX, player.shieldHp + 30);
+        player.shieldTimer = 6;
+        spawnShockwave(player.x, player.y, 'rgba(79,214,255,0.7)', 22);
+        particles.push({ x: player.x, y: player.y, vx: 0, vy: 0, life: 0.4, maxLife: 0.4, color: 'rgba(234,243,255,0.5)', maxRadius: 32, shape: 'ring', grav: false });
       }
       // tier 3's Foxfire Swirl is a periodic aura, handled in updatePets().
     }
@@ -4283,6 +4318,24 @@
       ctx.beginPath(); ctx.moveTo(-11, 0); ctx.lineTo(11, 0); ctx.stroke();
       ctx.fillStyle = '#ffffff';
       ctx.beginPath(); ctx.arc(11, 0, 2.2, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === 'hydroSlash') {
+      // A crescent-shaped water blade — Hydro-Slash's piercing projectile,
+      // not a melee hitbox.
+      ctx.strokeStyle = 'rgba(61,200,255,0.9)';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(0, 0, 11, -1.1, 1.1); ctx.stroke();
+      ctx.strokeStyle = '#eafcff';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(1, 0, 8, -1.1, 1.1); ctx.stroke();
+    } else if (kind === 'armorPierce') {
+      // A narrow, fast tracer round — Armor Piercing's shot, built to read
+      // as punching clean through hyperarmor and whatever's behind it.
+      ctx.strokeStyle = 'rgba(207,61,61,0.5)';
+      ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(-13, 0); ctx.lineTo(9, 0); ctx.stroke();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(9, 0); ctx.stroke();
     } else {
       // normal (player default)
       ctx.fillStyle = '#2f8f5b';
@@ -4526,6 +4579,11 @@
     const hpPct = Math.max(0, player.hp / player.maxHp);
     ctx.fillStyle = hpPct > 0.5 ? '#6ecb63' : hpPct > 0.2 ? '#e6c14a' : '#c0392b';
     ctx.fillRect(9, 19, 88 * hpPct, 4);
+    // Static Shield: a thin cyan strip riding above the HP bar while it's up.
+    if (player.shieldHp > 0) {
+      ctx.fillStyle = '#4fd6ff';
+      ctx.fillRect(9, 17, 88 * Math.min(1, player.shieldHp / PLAYER_SHIELD_MAX), 1.5);
+    }
 
     // Everything below the HP bar stacks dynamically — how many lines a
     // class's pet/parry/ability block takes varies (Petmancer's pet block
