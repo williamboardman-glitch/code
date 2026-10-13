@@ -616,6 +616,7 @@
       slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
       parryStamina: PARRY_STAMINA_MAX, guarding: false, guardRegenWait: 0, autoParryTimer: 0,
       shieldHp: 0, shieldTimer: 0, // Lightning Kitsune's Static Shield
+      gunChargeTimer: 0, // every gun's hold-to-charge massive orb
       // One cooldown per weapon ability slot (level 5/10/15, keys C/Z/V) —
       // whichever weapon is equipped, regardless of which one.
       abilityCooldown: [0, 0, 0],
@@ -981,6 +982,11 @@
   // Lightning Kitsune's Static Shield: a passive damage-absorbing barrier,
   // separate from (and checked before) the holdable sword guard above.
   const PLAYER_SHIELD_MAX = 60;
+  // Every gun's base attack — hold the fire key continuously and it builds
+  // toward one free, massive charged orb on top of your normal shots, a
+  // long-wind-up payoff like Clash Royale's Sparky rather than a per-gun
+  // ability (those stay on C/Z/V).
+  const GUN_CHARGE_TIME = 3;
 
   // ---------- Weapon abilities (C/Z/V, unlocked at gear level 5/10/15) ----------
   // Same three keys for every weapon; which move they trigger depends on
@@ -1001,6 +1007,21 @@
     if (fired === false) return; // ability declined to fire (e.g. no target) — no cooldown spent
     player.abilityCooldown[slot] = def.cooldown;
     addMessage(player.x, player.y - 30, def.name.toUpperCase(), '#8fd0ff');
+  }
+
+  // Every gun's base attack, not a per-weapon C/Z/V ability — released once
+  // the hold-fire charge above hits GUN_CHARGE_TIME. A slow, heavy orb with
+  // a big splash on impact, tinted whichever gun fired it.
+  function fireChargedOrb() {
+    const dir = player.facing;
+    const item = equippedWeaponItem(player);
+    const dmg = playerBaseDmg(player, gunDmgMult(player)) * 6;
+    spawnShockwave(player.x, player.y, item.color, 34);
+    spawnImpactFlash(player.x, player.y - 2, item.color);
+    shakeScreen(7);
+    sfx.heavyShot();
+    pBullets.push({ x: player.x, y: player.y - 2, vx: 160 * dir, vy: 0, kind: 'chargedOrb', dmg, color: item.color });
+    addMessage(player.x, player.y - 32, 'CHARGED SHOT!', item.color);
   }
 
   // ===== Dragon Tooth Katana (fire sword) =====
@@ -2335,7 +2356,21 @@
       }
     }
 
-    if (held('KeyX', 'KeyJ', 'ControlLeft', 'Space')) shoot();
+    const fireHeld = held('KeyX', 'KeyJ', 'ControlLeft', 'Space');
+    if (fireHeld) shoot();
+    // Any gun's base attack: holding fire continuously also builds toward
+    // one free charged orb, on top of whatever's normally firing.
+    if (hasGun(player) && fireHeld) {
+      player.gunChargeTimer += dt;
+      if (player.gunChargeTimer >= GUN_CHARGE_TIME) {
+        player.gunChargeTimer = 0;
+        fireChargedOrb();
+      } else if (Math.random() < dt * 10) {
+        spawnEnergySparks(player.x, player.y, equippedWeaponItem(player).color);
+      }
+    } else {
+      player.gunChargeTimer = 0;
+    }
 
     if (player.vx !== 0 && player.onGround) player.walkT += dt;
     else player.walkT = 0;
@@ -2975,7 +3010,11 @@
       }
       b.x += b.vx * dt; b.y += b.vy * dt;
       b.dead = isSolidPixel(b.x, b.y);
-      if (b.dead) { if (b.kind === 'acid') spawnAcidPuddle(b.x, b.y); continue; }
+      if (b.dead) {
+        if (b.kind === 'acid') spawnAcidPuddle(b.x, b.y);
+        else if (b.kind === 'chargedOrb') explode(b.x, b.y, 75, b.dmg, { palette: [b.color, '#ffffff'], ringColor: b.color });
+        continue;
+      }
       for (const e of enemies) {
         if (e.dead || (b.hitSet && b.hitSet.has(e))) continue;
         if (rectsOverlap(b.x, b.y, 4, 4, e.x, e.y, e.cfg.w, e.cfg.h)) {
@@ -2986,6 +3025,10 @@
             explode(b.x, b.y, 55, b.dmg, { burn: true, palette: ['#ff9d3d', '#ffe27a'], ringColor: 'rgba(255,120,40,0.9)' });
           } else if (b.kind === 'plasmaCharged') {
             explode(b.x, b.y, 50, b.dmg, { palette: ['#3dc8ff', '#d2f4ff'], ringColor: 'rgba(61,200,255,0.9)' });
+          } else if (b.kind === 'chargedOrb') {
+            // The massive charged orb — biggest splash in the game, so it
+            // pays off holding fire for the full 3s.
+            explode(b.x, b.y, 75, b.dmg, { palette: [b.color, '#ffffff'], ringColor: b.color });
           } else if (b.kind === 'berserker') {
             applyDamage(e, b.dmg);
             explode(b.x, b.y, 60, 20, { palette: ['#ffe98a', '#fff5cc'], ringColor: 'rgba(255,220,140,0.95)' });
@@ -4336,6 +4379,28 @@
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(9, 0); ctx.stroke();
+    } else if (kind === 'chargedOrb') {
+      // Every gun's charged-release payload — a big, crackling orb, tinted
+      // whichever gun fired it, with jagged sparks orbiting the core so it
+      // reads as "massive" rather than another bullet.
+      const pulse = 0.8 + Math.sin(elapsed * 22) * 0.2;
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = b.color || '#3dc8ff';
+      ctx.beginPath(); ctx.arc(0, 0, 13 * pulse, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = b.color || '#3dc8ff';
+      ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 4; i++) {
+        const a = elapsed * 10 + i * (Math.PI / 2);
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * 9, Math.sin(a) * 9);
+        ctx.lineTo(Math.cos(a) * 15, Math.sin(a) * 15);
+        ctx.stroke();
+      }
     } else {
       // normal (player default)
       ctx.fillStyle = '#2f8f5b';
@@ -4624,6 +4689,20 @@
       const staminaPct = Math.max(0, player.parryStamina / PARRY_STAMINA_MAX);
       ctx.fillStyle = staminaPct > 0.5 ? '#8fd0ff' : staminaPct > 0.2 ? '#e6c14a' : '#c0392b';
       ctx.fillRect(8, barY, barW * staminaPct, 3);
+      hudY += HUD_LINE + 4;
+    }
+
+    // Charge: any gun, shown only while actively holding fire — the bar
+    // fills toward the free massive orb every gun builds toward.
+    if (hasGun(player) && player.gunChargeTimer > 0) {
+      const chargePct = Math.min(1, player.gunChargeTimer / GUN_CHARGE_TIME);
+      ctx.fillStyle = chargePct >= 1 ? '#ffe8a3' : equippedWeaponItem(player).color;
+      ctx.fillText(chargePct >= 1 ? 'CHARGED!' : 'CHARGING…', 8, hudY);
+      const barY = hudY + 2, barW = 60;
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(8, barY, barW, 3);
+      ctx.fillStyle = equippedWeaponItem(player).color;
+      ctx.fillRect(8, barY, barW * chargePct, 3);
       hudY += HUD_LINE + 4;
     }
 

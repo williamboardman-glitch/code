@@ -115,6 +115,20 @@ as a thin cyan strip above your HP bar) that soaks hits automatically, no
 key held, draining before anything reaches your guard bar or HP. It works
 for any build — sword, gun, or pets-only — not just a sword-equipped one.
 
+## Charged shot
+
+Any gun's base attack: keep holding the fire key (Space/X/J) and it
+builds toward one free charged orb on top of whatever's firing normally
+— a long wind-up payoff for sustained aggression, not a replacement for
+your regular shots. A "CHARGING…" bar (tinted whichever gun you're
+holding) appears in the HUD while it fills; let three full seconds pass
+without releasing and it unleashes a massive, slow-moving orb with the
+biggest splash damage in the game, tinted the same color. Release the
+fire key early and the charge resets to zero — no partial credit. It's
+tied to the fire key itself, so it works the same for every gun (Plasma
+Cannon, Railgun Rifle, Tesla Blipper) regardless of which one's equipped,
+and doesn't apply to a sword or a pets-only build.
+
 ## Bullets & the knife
 
 Normal ammo isn't infinite — equip a gun and you start with 100 bullets.
