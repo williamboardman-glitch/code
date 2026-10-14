@@ -1221,12 +1221,21 @@
     pBullets.push({ x: player.x, y: player.y - 2, vx, vy, kind: 'beam', dmg, pierce: true });
     sfx.heavyShot();
   }
-  // A brief damage buff, folded into playerBaseDmg() while active.
+  // A brief damage buff, folded into playerBaseDmg() while active — plus a
+  // single massive overcharged laser, bigger and faster than Beam Wave,
+  // that pierces and ignores hyperarmor on everything it crosses.
   function abilityOverload() {
     player.dmgBuffTimer = 6;
+    const dir = player.facing;
+    let vx = 0, vy = 0;
+    if (player.aim === -1) vy = -700; else if (player.aim === 1 && !player.onGround) vy = 700; else vx = 700 * dir;
+    const dmg = playerBaseDmg(player, gunDmgMult(player)) * 2.6;
+    spawnShellCasing(player.x - dir * 2, player.y - 6, dir);
+    pBullets.push({ x: player.x, y: player.y - 2, vx, vy, kind: 'overloadBeam', dmg, pierce: true, ignoreHyperarmor: true });
     // Sparks crackling upward — an overcharge, not another ring pulse.
     spawnEnergySparks(player.x, player.y, '#8fe0ff');
-    sfx.frost();
+    shakeScreen(4);
+    sfx.heavyShot();
   }
 
   // ===== Railgun Rifle (precision gun) =====
@@ -1402,10 +1411,15 @@
     }
     player.fireCooldown = BASE_COOLDOWN;
     const dir = player.facing;
+    // Plasma Cannon's base shot is a much faster bolt than every other
+    // gun's — it reads as a thin laser line (see drawBullet's 'plasmaBolt'
+    // case) rather than the shared round pellet, so it needs the speed to
+    // actually look like one.
+    const bulletSpeed = player.equippedWeapon === 'plasmaCannon' ? 640 : 420;
     let vx = 0, vy = 0;
-    if (player.aim === -1) { vy = -420; }
-    else if (player.aim === 1 && !player.onGround) { vy = 420; }
-    else { vx = 420 * dir; }
+    if (player.aim === -1) { vy = -bulletSpeed; }
+    else if (player.aim === 1 && !player.onGround) { vy = bulletSpeed; }
+    else { vx = bulletSpeed * dir; }
     // Bullets are logically spawned at the player's own center (not out at
     // the visual muzzle tip) so a target that's overlapping the player —
     // e.g. a melee zombie right on top of you — is guaranteed to already
@@ -1421,7 +1435,8 @@
     if (ammo === 'normal') {
       player.bullets--;
       sfx.shot();
-      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: 'normal', dmg, homing });
+      const bulletKind = player.equippedWeapon === 'plasmaCannon' ? 'plasmaBolt' : 'normal';
+      pBullets.push({ x: muzzleX, y: muzzleY, vx, vy, kind: bulletKind, dmg, homing });
       if (player.bullets <= 0) addMessage(player.x, player.y - 24, 'OUT OF BULLETS', '#c9b98f');
     } else if (ammo === 'berserker') {
       player.souls.berserker--; sfx.heavyShot();
@@ -4460,6 +4475,35 @@
         ctx.moveTo(Math.cos(a) * 9 * s, Math.sin(a) * 9 * s);
         ctx.lineTo(Math.cos(a) * 15 * s, Math.sin(a) * 15 * s);
         ctx.stroke();
+      }
+    } else if (kind === 'plasmaBolt') {
+      // Plasma Cannon's base shot — thin and very fast, so it reads as a
+      // laser line streaking past rather than a pellet in flight, distinct
+      // from every other gun's shared default shot.
+      ctx.strokeStyle = 'rgba(61,200,255,0.45)';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-18, 0); ctx.lineTo(9, 0); ctx.stroke();
+      ctx.strokeStyle = '#eafcff';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(9, 0); ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(9, 0, 1.6, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === 'overloadBeam') {
+      // Overload's signature shot — a massive overcharged laser, thicker
+      // and brighter than Beam Wave, crackling with stray arcs as it tears
+      // through everything in its path.
+      const pulse = 0.85 + Math.sin(elapsed * 30) * 0.15;
+      ctx.strokeStyle = 'rgba(143,224,255,0.5)';
+      ctx.lineWidth = 11 * pulse;
+      ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(14, 0); ctx.stroke();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4 * pulse;
+      ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(14, 0); ctx.stroke();
+      ctx.strokeStyle = '#d8c7ff';
+      ctx.lineWidth = 1.2;
+      for (let i = 0; i < 3; i++) {
+        const o = (i - 1) * 5;
+        ctx.beginPath(); ctx.moveTo(o, -6); ctx.lineTo(o + 2, 6); ctx.stroke();
       }
     } else {
       // normal (player default)

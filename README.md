@@ -60,7 +60,7 @@ equip a weapon — locked ones show the level they unlock at.
 | 🗡️ Dragon Tooth Katana | **Blazing Slash** — a wide fiery arc that burns everything it catches | **Scaled Parry** — a free instant full block (and counter-hit) for a moment, no guard stamina spent | **Draconic Roar** — a short channel pulsing fire damage to everything nearby and slowing it |
 | 🗡️ Nightblade Shadow | **Shadow Step** — teleport behind the nearest enemy and land a heavy hit | **Veiled Strike** — brief invulnerability and invisibility, then your next hit lands harder | **Silent Execution** — instantly finishes a low-HP enemy outright, or hits hard otherwise |
 | 🗡️ Tsunami Blade | **Tidal Wave** — a wave of water that knocks enemies back with solid AoE damage | **Hydro-Slash** — a fast crescent water blade that pierces through every enemy in its path | **Rejuvenating Flow** — a wide slash that heals you for every kill it lands |
-| 🔫 Plasma Cannon | **Charged Shot** — a slow, heavy bolt that explodes in a wide radius | **Beam Wave** — a shot that pierces through everything in its path | **Overload** — a brief damage buff to every hit you land |
+| 🔫 Plasma Cannon | **Charged Shot** — a slow, heavy bolt that explodes in a wide radius | **Beam Wave** — a shot that pierces through everything in its path | **Overload** — a brief damage buff plus one massive overcharged laser that pierces and ignores hyperarmor |
 | 🔫 Railgun Rifle | **Sonic Dart** — a free, massive hit on the nearest enemy, no ammo spent | **Armor Piercing** — a round that pierces every enemy in its path, ignoring hyperarmor on each one, even mid-boss-nova | **Target Lock** — your next few shots home in on the nearest enemy |
 | 🔫 Tesla Blipper | **Arc Lightning** — an instant bolt that chains to 2 more enemies | **EM Pulse** — an AoE pulse that damages and slows everything nearby | **Voltaic Charge** — a burst of movement speed plus a short lightning storm: several bolts rain down on nearby enemies over about a second, stunning whatever they hit |
 
@@ -133,6 +133,14 @@ every fresh enemy along its path instead of stopping dead at the first
 one. It's tied to the fire key itself, so it works the same for every
 gun (Plasma Cannon, Railgun Rifle, Tesla Blipper) regardless of which
 one's equipped, and doesn't apply to a sword or a pets-only build.
+
+The Plasma Cannon's normal tap-fire shot is also its own thing visually
+and mechanically: instead of the plain pellet every other gun fires, it's
+a thin, very fast laser line — noticeably quicker than Railgun Rifle's or
+Tesla Blipper's base shot, so it reads as a bolt of light rather than a
+projectile in flight. A soul loaded as ammo still looks and behaves like
+that soul's own shot, same as any other gun — this only changes the
+plain, soulless tap-fire.
 
 ## Bullets & the knife
 
