@@ -117,22 +117,21 @@ for any build — sword, gun, or pets-only — not just a sword-equipped one.
 
 ## Charged shot
 
-Any gun's base attack: a quick tap of the fire key (Space/X/J) still
-fires a normal ammo-based shot exactly as always — same bullets, same
-souls, nothing about tapping changes. Hold it down past an instant,
-though, and it switches to charging instead — no normal shots fire while
-you're holding, and a "CHARGING…" bar (tinted whichever gun you're
-holding) fills in the HUD. Let go whenever you like: the charge releases
-as one orb sized and scaled to exactly how long you held it, free and
-without spending any ammo — a quick release pops a small, weak orb, and
-holding the full three seconds (the bar reads "CHARGED!" once it caps)
-releases the biggest, hardest-hitting one in the game. Holding past three
-seconds doesn't lose anything — it just holds at max charge until you
-let go. The orb pierces, too — it keeps traveling and exploding again on
-every fresh enemy along its path instead of stopping dead at the first
-one. It's tied to the fire key itself, so it works the same for every
-gun (Plasma Cannon, Railgun Rifle, Tesla Blipper) regardless of which
-one's equipped, and doesn't apply to a sword or a pets-only build.
+Exclusive to the Tesla Blipper — Plasma Cannon and Railgun Rifle just
+fire continuously on hold, same as a normal tap repeated. With Tesla
+Blipper equipped, a quick tap of the fire key (Space/X/J) still fires a
+normal ammo-based shot exactly as always — same bullets, same souls,
+nothing about tapping changes. Hold it down past an instant, though, and
+it switches to charging instead — no normal shots fire while you're
+holding, and a "CHARGING…" bar fills in the HUD. Let go whenever you
+like: the charge releases as one orb sized and scaled to exactly how long
+you held it, free and without spending any ammo — a quick release pops a
+small, weak orb, and holding the full three seconds (the bar reads
+"CHARGED!" once it caps) releases the biggest, hardest-hitting one in the
+game. Holding past three seconds doesn't lose anything — it just holds at
+max charge until you let go. The orb pierces, too — it keeps traveling
+and exploding again on every fresh enemy along its path instead of
+stopping dead at the first one.
 
 The Plasma Cannon's normal tap-fire shot is also its own thing visually
 and mechanically: instead of the plain pellet every other gun fires, it's

@@ -616,7 +616,7 @@
       slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
       parryStamina: PARRY_STAMINA_MAX, guarding: false, guardRegenWait: 0, autoParryTimer: 0,
       shieldHp: 0, shieldTimer: 0, // Lightning Kitsune's Static Shield
-      gunChargeTimer: 0, // every gun's hold-to-charge massive orb
+      gunChargeTimer: 0, // Tesla Blipper's hold-to-charge massive orb
       // One cooldown per weapon ability slot (level 5/10/15, keys C/Z/V) —
       // whichever weapon is equipped, regardless of which one.
       abilityCooldown: [0, 0, 0],
@@ -1012,9 +1012,9 @@
     addMessage(player.x, player.y - 30, def.name.toUpperCase(), '#8fd0ff');
   }
 
-  // Every gun's base attack, not a per-weapon C/Z/V ability — released once
-  // the hold-fire charge above hits GUN_CHARGE_TIME. A slow, heavy orb with
-  // a big splash on impact, tinted whichever gun fired it.
+  // Tesla Blipper's base attack, not a per-weapon C/Z/V ability — released
+  // once the hold-fire charge above hits GUN_CHARGE_TIME. A slow, heavy
+  // orb with a big splash on impact, tinted Tesla's own color.
   // scale is 0-1: how much of the full 3s charge window was actually held,
   // so a quick release fires a small, weak orb and a full hold fires the
   // massive one — the whole point of letting it go whenever, not just at
@@ -1825,10 +1825,12 @@
   function handleKeyUp(ev) {
     keys[ev.code] = false;
     if (GAME_KEYS.has(ev.code)) ev.preventDefault();
-    // Releasing a gun's fire key resolves whatever was building: a quick
-    // tap fires a normal ammo-based shot, a hold past the tap threshold
-    // releases a charged orb sized by how long it was held.
-    if (FIRE_KEYS.includes(ev.code) && !FIRE_KEYS.some(c => keys[c]) && state === 'playing' && hasGun(player)) {
+    // Releasing the fire key resolves whatever was building — but only the
+    // Tesla Blipper has this hold-to-charge mechanic at all: a quick tap
+    // fires a normal ammo-based shot, a hold past the tap threshold
+    // releases a charged orb sized by how long it was held. Every other
+    // gun just fires continuously on hold instead (see updatePlayer).
+    if (FIRE_KEYS.includes(ev.code) && !FIRE_KEYS.some(c => keys[c]) && state === 'playing' && player.equippedWeapon === 'teslaBlipper') {
       if (player.gunChargeTimer > FIRE_TAP_THRESHOLD) {
         fireChargedOrb(Math.min(1, player.gunChargeTimer / GUN_CHARGE_TIME));
       } else if (player.gunChargeTimer > 0) {
@@ -2404,11 +2406,13 @@
     }
 
     const fireHeld = held(...FIRE_KEYS);
-    if (hasGun(player)) {
-      // A gun's base attack: a quick tap still fires a normal ammo-based
-      // shot (resolved on release, see handleKeyUp), but holding past the
-      // tap threshold switches to charging instead of auto-firing — no
-      // normal shots while a charge is building.
+    if (player.equippedWeapon === 'teslaBlipper') {
+      // Tesla Blipper alone can hold the fire key to charge a free massive
+      // orb: a quick tap still fires a normal ammo-based shot (resolved on
+      // release, see handleKeyUp), but holding past the tap threshold
+      // switches to charging instead of auto-firing — no normal shots
+      // while a charge is building. Every other gun has no charge at all
+      // and just auto-fires on hold (the else branch below).
       if (fireHeld) {
         player.gunChargeTimer += dt;
         if (player.gunChargeTimer > FIRE_TAP_THRESHOLD) {
@@ -4796,9 +4800,9 @@
       hudY += HUD_LINE + 4;
     }
 
-    // Charge: any gun, shown only while actively holding fire — the bar
-    // fills toward the free massive orb every gun builds toward.
-    if (hasGun(player) && player.gunChargeTimer > 0) {
+    // Charge: Tesla Blipper only, shown only while actively holding fire —
+    // the bar fills toward its free massive orb.
+    if (player.equippedWeapon === 'teslaBlipper' && player.gunChargeTimer > 0) {
       const chargePct = Math.min(1, player.gunChargeTimer / GUN_CHARGE_TIME);
       ctx.fillStyle = chargePct >= 1 ? '#ffe8a3' : equippedWeaponItem(player).color;
       ctx.fillText(chargePct >= 1 ? 'CHARGED!' : 'CHARGING…', 8, hudY);
