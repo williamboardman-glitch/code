@@ -292,6 +292,19 @@
     img.src = `sprites/${key}.png`;
     ENEMY_SPRITES[key] = img;
   }
+  // Scratch canvas for the sprite hit-flash trick (see drawEnemy): doing
+  // the white 'source-atop' composite directly on the main canvas would
+  // mask against everything already drawn there (the background, tiles,
+  // other sprites...), painting a solid white box instead of a flashed
+  // silhouette. Compositing against this small canvas first — which holds
+  // nothing but the one sprite being flashed — masks correctly, then the
+  // result is drawn onto the main canvas like any other image. 256px is
+  // comfortably larger than any enemy's drawn size (tallest is ~45 virtual
+  // px), reused every call instead of allocating a canvas per frame.
+  const flashCanvas = document.createElement('canvas');
+  flashCanvas.width = 256; flashCanvas.height = 256;
+  const flashCtx = flashCanvas.getContext('2d');
+  flashCtx.imageSmoothingEnabled = false;
   // Illustrated full-screen backdrops, one per floor theme, preloaded the
   // same way as the enemy sprites above — drawBackground() falls back to
   // its original procedural gradient+moon for any theme whose image hasn't
@@ -4114,12 +4127,17 @@
       const faceRight = (player.x - e.x) >= 0;
       ctx.save();
       if (!faceRight) ctx.scale(-1, 1);
-      ctx.drawImage(sprite, -drawW / 2, hh - drawH, drawW, drawH);
       if (flash) {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(-drawW / 2, hh - drawH, drawW, drawH);
-        ctx.globalCompositeOperation = 'source-over';
+        const fw = Math.min(256, Math.ceil(drawW)), fh = Math.min(256, Math.ceil(drawH));
+        flashCtx.clearRect(0, 0, fw, fh);
+        flashCtx.drawImage(sprite, 0, 0, fw, fh);
+        flashCtx.globalCompositeOperation = 'source-atop';
+        flashCtx.fillStyle = '#fff';
+        flashCtx.fillRect(0, 0, fw, fh);
+        flashCtx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(flashCanvas, 0, 0, fw, fh, -drawW / 2, hh - drawH, drawW, drawH);
+      } else {
+        ctx.drawImage(sprite, -drawW / 2, hh - drawH, drawW, drawH);
       }
       ctx.restore();
     } else if (c.name === 'grunt') {
