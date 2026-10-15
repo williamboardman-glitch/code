@@ -36,6 +36,11 @@
 
   // ---------- Virtual low-res buffer (gives the whole game its pixelated look) ----------
   const TILE = 30;
+  // Minimum horizontal gap melee zombies keep from each other while
+  // chasing the player — big enough that two of the widest illustrated
+  // enemy sprites (the "brute" portrait, ~33px drawn wide) don't visibly
+  // overlap when stacked, same purpose as a hitbox but purely cosmetic.
+  const ENEMY_SEPARATION = 36;
   const COLS = 70, ROWS = 9;
   const VW = COLS * TILE, VH = ROWS * TILE; // 2100 x 270
   const VIEW_W = 480, VIEW_H = 270; // visible window into the level, in world/virtual pixels — every draw call in the game is still written in this coordinate space
@@ -3133,6 +3138,30 @@
         if (rectsOverlap(e.x, e.y, e.cfg.w, e.cfg.h, player.x, player.y, player.w, player.h)) {
           hurtPlayer(4 * e.weakDmgMult);
         }
+      }
+    }
+
+    // Every melee zombie on a platform beelines for the same player x, so
+    // with nothing keeping them apart they happily walk right on top of
+    // each other. That was barely visible with the old slim procedural
+    // rectangles, but the illustrated portrait sprites are drawn well
+    // wider than the hitbox, so stacked zombies now visibly cut into each
+    // other. A flat positional correction (rather than a velocity nudge
+    // added into the hunt logic above) guarantees the gap regardless of
+    // how much faster one zombie's hunt speed is than another's.
+    for (let i = 0; i < enemies.length; i++) {
+      const a = enemies[i];
+      if (a.dead || !a.cfg.melee) continue;
+      for (let j = i + 1; j < enemies.length; j++) {
+        const b = enemies[j];
+        if (b.dead || !b.cfg.melee || Math.abs(a.y - b.y) > 20) continue;
+        const gap = b.x - a.x;
+        const overlap = ENEMY_SEPARATION - Math.abs(gap);
+        if (overlap <= 0) continue;
+        const dir = gap === 0 ? 1 : Math.sign(gap);
+        const push = overlap / 2;
+        a.x = Math.max(a.minX, Math.min(a.maxX, a.x - dir * push));
+        b.x = Math.max(b.minX, Math.min(b.maxX, b.x + dir * push));
       }
     }
   }
