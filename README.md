@@ -288,6 +288,12 @@ Souls are consumed one per special shot; specials require harvesting the
 matching zombie type first. See [Bullets & the knife](#bullets--the-knife)
 above for how normal ammo works.
 
+All 10 of these regular enemies render as illustrated portrait sprites
+(`sprites/*.png`) rather than the plain procedural rectangles everything
+else in the game still uses — they face toward the player and flash white
+on a hit, same as before, just with real detail instead of flat color
+blocks. The three bosses below keep their original procedural art.
+
 ## The Guardian
 
 Floor 2 ends in a sealed arena, marked by a carved pattern block pulsing

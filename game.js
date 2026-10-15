@@ -279,6 +279,19 @@
       },
     },
   };
+  // Illustrated portrait sprites for the 10 regular enemy types (bosses
+  // keep their existing procedural art — their source portraits sit on a
+  // textured background that doesn't key out cleanly). Preloaded once;
+  // drawEnemy() falls back to the old procedural shapes for any type whose
+  // image hasn't finished loading yet (or failed to load at all), so a
+  // slow/broken image load never leaves an enemy invisible.
+  const ENEMY_SPRITE_KEYS = ['grunt', 'brute', 'pyro', 'frost', 'lightning', 'acid', 'shrieker', 'shadow', 'imp', 'cactus'];
+  const ENEMY_SPRITES = {};
+  for (const key of ENEMY_SPRITE_KEYS) {
+    const img = new Image();
+    img.src = `sprites/${key}.png`;
+    ENEMY_SPRITES[key] = img;
+  }
   const SOUL_META = {
     berserker: { label: 'HEAVY', color: '#c0392b' },
     pyromancer: { label: 'FIRE', color: '#ff8a3d' },
@@ -4047,6 +4060,8 @@
     const legSwing = Math.sin(e.walkT * 8) * 3;
     const hw = c.w / 2, hh = c.h / 2;
     const col = (a) => flash ? '#fff' : a;
+    const sprite = ENEMY_SPRITES[c.name];
+    const spriteReady = !!(sprite && sprite.complete && sprite.naturalWidth > 0);
 
     ctx.save();
     ctx.translate(x, y);
@@ -4059,12 +4074,34 @@
       ctx.rotate((Math.floor(e.x) % 2 === 0 ? 1 : -1) * 1.3 * t);
     }
 
-    // legs (shared base)
-    ctx.fillStyle = col(c.dark);
-    ctx.fillRect(-hw + 2, hh - 8, 5, 8 - legSwing * 0.3);
-    ctx.fillRect(hw - 7, hh - 8, 5, 8 + legSwing * 0.3);
+    if (!spriteReady) {
+      // legs (shared base) — the illustrated sprites already include their
+      // own legs/feet, so this procedural base is only for the fallback
+      // (pre-load, failed load, or any type with no sprite — bosses).
+      ctx.fillStyle = col(c.dark);
+      ctx.fillRect(-hw + 2, hh - 8, 5, 8 - legSwing * 0.3);
+      ctx.fillRect(hw - 7, hh - 8, 5, 8 + legSwing * 0.3);
+    }
 
-    if (c.name === 'grunt') {
+    if (spriteReady) {
+      // Illustrated portrait sprite, drawn taller than the collision box
+      // (1.55x) for real detail instead of the old chunky rectangles, but
+      // feet-anchored at hh so it still stands on the same ground line the
+      // procedural art and the physics hitbox both use.
+      const drawH = c.h * 1.55;
+      const drawW = drawH * (sprite.naturalWidth / sprite.naturalHeight);
+      const faceRight = (player.x - e.x) >= 0;
+      ctx.save();
+      if (!faceRight) ctx.scale(-1, 1);
+      ctx.drawImage(sprite, -drawW / 2, hh - drawH, drawW, drawH);
+      if (flash) {
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(-drawW / 2, hh - drawH, drawW, drawH);
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      ctx.restore();
+    } else if (c.name === 'grunt') {
       // hunched shambler: ragged tunic, exposed ribs, lolling head
       ctx.fillStyle = col(c.color);
       ctx.fillRect(-hw, -hh + 8, c.w, c.h - 16);
