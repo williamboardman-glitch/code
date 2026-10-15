@@ -39,13 +39,13 @@
   const COLS = 70, ROWS = 9;
   const VW = COLS * TILE, VH = ROWS * TILE; // 2100 x 270
   const VIEW_W = 480, VIEW_H = 270; // visible window into the level, in world/virtual pixels — every draw call in the game is still written in this coordinate space
-  // The buffer's actual pixel resolution is 720p (1280x720) — a flat 8/3x
+  // The buffer's actual pixel resolution is 1080p (1920x1080) — a flat 4x
   // scale up from the 480x270 virtual space above — so the game renders
   // noticeably sharper/less blocky without touching a single one of the
   // thousands of draw calls elsewhere, which all keep using VIEW_W/VIEW_H-
   // scale coordinates as always. ctx.scale() below does the upscaling once,
   // as the base transform every draw call then inherits automatically.
-  const RENDER_SCALE = 1280 / VIEW_W; // === 720 / VIEW_H too (480:270 and 1280:720 are both exactly 16:9)
+  const RENDER_SCALE = 1920 / VIEW_W; // === 1080 / VIEW_H too (480:270 and 1920:1080 are both exactly 16:9)
   const BUFFER_W = Math.round(VIEW_W * RENDER_SCALE), BUFFER_H = Math.round(VIEW_H * RENDER_SCALE);
   const buffer = document.createElement('canvas');
   buffer.width = BUFFER_W; buffer.height = BUFFER_H;

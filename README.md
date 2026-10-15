@@ -212,7 +212,7 @@ fused loadout at a glance, with the currently-loaded one outlined in gold.
 
 Open `index.html` in a browser (or serve the folder with any static file
 server). No build step or dependencies. The whole game renders through a
-720p (1280x720) internal canvas, itself scaled up to fill the window with
+1080p (1920x1080) internal canvas, itself scaled up to fill the window with
 nearest-neighbor filtering, for a crisp pixel-art look without the blur a
 smoothed scale would add.
 
