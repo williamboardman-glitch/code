@@ -292,6 +292,12 @@
     img.src = `sprites/${key}.png`;
     ENEMY_SPRITES[key] = img;
   }
+  // The player's own illustrated base sprite (bare-handed stance) — drawn
+  // in place of the old procedural body in drawPlayer(). Whichever weapon
+  // is equipped (sword/gun/knife) is still drawn on top the same way as
+  // before; only the body itself is now an image.
+  const PLAYER_SPRITE = new Image();
+  PLAYER_SPRITE.src = 'sprites/player.png';
   // Scratch canvas for the sprite hit-flash trick (see drawEnemy): doing
   // the white 'source-atop' composite directly on the main canvas would
   // mask against everything already drawn there (the background, tiles,
@@ -3824,73 +3830,112 @@
       ctx.translate(0, 13); ctx.rotate(-0.5); ctx.translate(0, -13);
     }
 
-    const legSwing = moving ? Math.sin(player.walkT * 12) * 4 : 0;
-    const armSwing = moving ? Math.sin(player.walkT * 12 + Math.PI) * 2 : 0;
+    const playerSpriteReady = !!(PLAYER_SPRITE && PLAYER_SPRITE.complete && PLAYER_SPRITE.naturalWidth > 0);
+    const gy = -2 + gunUp;
 
-    // back boot + leg (khaki cargo pants over combat boots)
-    ctx.fillStyle = flash ? '#fff' : '#1c1a16';
-    ctx.fillRect(-6, 10 + (player.onGround ? 0 : -2), 5, 3 - legSwing * 0.2);
-    ctx.fillStyle = flash ? '#fff' : '#5b6b45';
-    ctx.fillRect(-6, 3 + (player.onGround ? 0 : -2), 5, 7 - legSwing * 0.3);
+    if (playerSpriteReady) {
+      // Illustrated base sprite in place of the old procedural body —
+      // feet-anchored at the same y=13 line the old boots ended on, scaled
+      // up a bit for real detail. Whichever weapon is equipped still draws
+      // separately below, same as it always did.
+      const drawH = 46, drawW = drawH * (PLAYER_SPRITE.naturalWidth / PLAYER_SPRITE.naturalHeight);
+      const footY = 13;
+      if (flash) {
+        const fw = Math.min(256, Math.ceil(drawW)), fh = Math.min(256, Math.ceil(drawH));
+        flashCtx.clearRect(0, 0, fw, fh);
+        flashCtx.drawImage(PLAYER_SPRITE, 0, 0, fw, fh);
+        flashCtx.globalCompositeOperation = 'source-atop';
+        flashCtx.fillStyle = '#fff';
+        flashCtx.fillRect(0, 0, fw, fh);
+        flashCtx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(flashCanvas, 0, 0, fw, fh, -drawW / 2, footY - drawH, drawW, drawH);
+      } else {
+        ctx.drawImage(PLAYER_SPRITE, -drawW / 2, footY - drawH, drawW, drawH);
+      }
+      // shadow helm: the guardian's boss-drop reward — a small glowing
+      // accent near the head rather than a full procedural helm redraw,
+      // since the illustrated sprite's head isn't at a fixed pixel offset
+      // the way the old procedural head was.
+      if (player.shadowHelm) {
+        const pulse = 0.7 + Math.sin(elapsed * 5) * 0.3;
+        ctx.fillStyle = flash ? '#fff' : `rgba(167,139,250,${pulse})`;
+        ctx.beginPath(); ctx.arc(1, footY - drawH + 7, 2.4, 0, Math.PI * 2); ctx.fill();
+      }
+    } else {
+      const legSwing = moving ? Math.sin(player.walkT * 12) * 4 : 0;
+      const armSwing = moving ? Math.sin(player.walkT * 12 + Math.PI) * 2 : 0;
 
-    // backpack (peeks out behind torso)
-    ctx.fillStyle = flash ? '#fff' : '#4a3a24';
-    ctx.fillRect(-8, -7, 4, 11);
+      // back boot + leg (khaki cargo pants over combat boots)
+      ctx.fillStyle = flash ? '#fff' : '#1c1a16';
+      ctx.fillRect(-6, 10 + (player.onGround ? 0 : -2), 5, 3 - legSwing * 0.2);
+      ctx.fillStyle = flash ? '#fff' : '#5b6b45';
+      ctx.fillRect(-6, 3 + (player.onGround ? 0 : -2), 5, 7 - legSwing * 0.3);
 
-    // front boot + leg
-    ctx.fillStyle = flash ? '#fff' : '#1c1a16';
-    ctx.fillRect(1, 10 + (player.onGround ? 0 : -2), 5, 3 + legSwing * 0.2);
-    ctx.fillStyle = flash ? '#fff' : '#6d7f4a';
-    ctx.fillRect(1, 3 + (player.onGround ? 0 : -2), 5, 7 + legSwing * 0.3);
+      // backpack (peeks out behind torso)
+      ctx.fillStyle = flash ? '#fff' : '#4a3a24';
+      ctx.fillRect(-8, -7, 4, 11);
 
-    // torso: tan field jacket with a shaded side and a bandolier strap
-    ctx.fillStyle = flash ? '#fff' : '#8a7a52';
-    ctx.fillRect(-7, -8, 14, 12);
-    ctx.fillStyle = flash ? '#fff' : '#6b5d3e';
-    ctx.fillRect(-7, -8, 4, 12);
-    ctx.fillStyle = flash ? '#fff' : '#c9b98f';
-    ctx.fillRect(4, -8, 2, 12);
-    ctx.fillStyle = flash ? '#fff' : '#5a3a2a';
-    ctx.fillRect(-6, -7, 12, 2);
-    // belt + pouch
-    ctx.fillStyle = flash ? '#fff' : '#3a2e1c';
-    ctx.fillRect(-7, 3, 14, 2);
-    ctx.fillStyle = flash ? '#fff' : '#2b2216';
-    ctx.fillRect(-2, 1, 4, 4);
+      // front boot + leg
+      ctx.fillStyle = flash ? '#fff' : '#1c1a16';
+      ctx.fillRect(1, 10 + (player.onGround ? 0 : -2), 5, 3 + legSwing * 0.2);
+      ctx.fillStyle = flash ? '#fff' : '#6d7f4a';
+      ctx.fillRect(1, 3 + (player.onGround ? 0 : -2), 5, 7 + legSwing * 0.3);
 
-    // head: skin + headband + hair
-    ctx.fillStyle = flash ? '#fff' : '#d9a876';
-    ctx.fillRect(-5, -16, 10, 8);
-    ctx.fillStyle = flash ? '#fff' : '#7a2f22';
-    ctx.fillRect(-6, -18, 12, 3);
-    ctx.fillStyle = flash ? '#fff' : '#5a2118';
-    ctx.fillRect(4, -18, 3, 5);
-    ctx.fillStyle = flash ? '#fff' : '#2b1d14';
-    ctx.fillRect(-6, -20, 12, 2);
-    // eyes
-    ctx.fillStyle = flash ? '#000' : '#1a1a1a';
-    ctx.fillRect(1, -13, 2, 2);
+      // torso: tan field jacket with a shaded side and a bandolier strap
+      ctx.fillStyle = flash ? '#fff' : '#8a7a52';
+      ctx.fillRect(-7, -8, 14, 12);
+      ctx.fillStyle = flash ? '#fff' : '#6b5d3e';
+      ctx.fillRect(-7, -8, 4, 12);
+      ctx.fillStyle = flash ? '#fff' : '#c9b98f';
+      ctx.fillRect(4, -8, 2, 12);
+      ctx.fillStyle = flash ? '#fff' : '#5a3a2a';
+      ctx.fillRect(-6, -7, 12, 2);
+      // belt + pouch
+      ctx.fillStyle = flash ? '#fff' : '#3a2e1c';
+      ctx.fillRect(-7, 3, 14, 2);
+      ctx.fillStyle = flash ? '#fff' : '#2b2216';
+      ctx.fillRect(-2, 1, 4, 4);
 
-    // shadow helm: the guardian's boss-drop reward, worn over the headband
-    if (player.shadowHelm) {
-      ctx.fillStyle = flash ? '#fff' : '#1a1220';
-      ctx.fillRect(-6, -20, 12, 9);
-      ctx.fillRect(-7, -14, 3, 4);
-      ctx.fillStyle = flash ? '#fff' : '#3a2a52';
+      // head: skin + headband + hair
+      ctx.fillStyle = flash ? '#fff' : '#d9a876';
+      ctx.fillRect(-5, -16, 10, 8);
+      ctx.fillStyle = flash ? '#fff' : '#7a2f22';
+      ctx.fillRect(-6, -18, 12, 3);
+      ctx.fillStyle = flash ? '#fff' : '#5a2118';
+      ctx.fillRect(4, -18, 3, 5);
+      ctx.fillStyle = flash ? '#fff' : '#2b1d14';
       ctx.fillRect(-6, -20, 12, 2);
-      ctx.fillStyle = flash ? '#fff' : '#a78bfa';
-      ctx.fillRect(0, -14, 2, 2);
+      // eyes
+      ctx.fillStyle = flash ? '#000' : '#1a1a1a';
+      ctx.fillRect(1, -13, 2, 2);
+
+      // shadow helm: the guardian's boss-drop reward, worn over the headband
+      if (player.shadowHelm) {
+        ctx.fillStyle = flash ? '#fff' : '#1a1220';
+        ctx.fillRect(-6, -20, 12, 9);
+        ctx.fillRect(-7, -14, 3, 4);
+        ctx.fillStyle = flash ? '#fff' : '#3a2a52';
+        ctx.fillRect(-6, -20, 12, 2);
+        ctx.fillStyle = flash ? '#fff' : '#a78bfa';
+        ctx.fillRect(0, -14, 2, 2);
+      }
+
+      // rear arm (subtle, behind torso)
+      ctx.fillStyle = flash ? '#fff' : '#7a6a48';
+      ctx.fillRect(-4, -5 + armSwing, 4, 8);
+
+      // front arm, angled for up/down aim — the rifle only exists for a class
+      // that actually has one; everyone else just has a bare, ready fist.
+      ctx.fillStyle = flash ? '#fff' : '#8a7a52';
+      ctx.fillRect(3, -4, 5, 6);
     }
 
-    // rear arm (subtle, behind torso)
-    ctx.fillStyle = flash ? '#fff' : '#7a6a48';
-    ctx.fillRect(-4, -5 + armSwing, 4, 8);
-
-    // front arm, angled for up/down aim — the rifle only exists for a class
-    // that actually has one; everyone else just has a bare, ready fist.
-    const gy = -2 + gunUp;
-    ctx.fillStyle = flash ? '#fff' : '#8a7a52';
-    ctx.fillRect(3, -4, 5, 6);
+    // Everything from here down (weapon-in-hand, knife swing, guard shield)
+    // was tuned against the old, smaller procedural body. Scaling and
+    // nudging it as one group keeps it all proportioned to the taller
+    // illustrated sprite without having to re-tune every offset by hand.
+    ctx.save();
+    if (playerSpriteReady) { ctx.translate(0, -8); ctx.scale(1.3, 1.3); }
     const swordEquipped = hasSword(player);
     if (swordEquipped && player.knifeSwing <= 0) {
       // A sword's base stance holds the blade itself, not a rifle — drawn
@@ -3927,7 +3972,10 @@
         ctx.fillStyle = '#ffcf4a';
         ctx.fillRect(fx + 1, fy - 1, 4, 3);
       }
-    } else {
+    } else if (!playerSpriteReady) {
+      // No weapon at all — a bare fist. The illustrated sprite already
+      // shows one in its base pose, so this placeholder is only needed
+      // for the procedural fallback body.
       ctx.fillStyle = flash ? '#fff' : '#d9a876';
       ctx.fillRect(6, gy - 2, 5, 5);
     }
@@ -4004,6 +4052,7 @@
       ctx.arc(10, gy, 16, -0.8, 0.8);
       ctx.stroke();
     }
+    ctx.restore();
     ctx.restore();
   }
 
