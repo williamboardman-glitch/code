@@ -216,6 +216,12 @@ server). No build step or dependencies. The whole game renders through a
 nearest-neighbor filtering, for a crisp pixel-art look without the blur a
 smoothed scale would add.
 
+Every floor's background (`backgrounds/*.png`) is an illustrated full-screen
+backdrop — sky, skyline, and all — rather than the plain gradient the rest
+of the game's procedural art uses; the moon/sun, parallax pillars, and
+weather particles (snow, embers, fireflies, etc.) still layer on top of it
+exactly as before.
+
 Before the game starts you're asked whether you're on a touchscreen device
 or a keyboard (with a best guess pre-filled based on your device) — pick
 one and the matching controls are ready to go.

@@ -292,6 +292,17 @@
     img.src = `sprites/${key}.png`;
     ENEMY_SPRITES[key] = img;
   }
+  // Illustrated full-screen backdrops, one per floor theme, preloaded the
+  // same way as the enemy sprites above — drawBackground() falls back to
+  // its original procedural gradient+moon for any theme whose image hasn't
+  // loaded yet (or failed to).
+  const BACKGROUND_THEME_KEYS = ['temple', 'dungeon', 'jungle', 'ice', 'hell', 'desert', 'crypt', 'throne'];
+  const BACKGROUND_SPRITES = {};
+  for (const key of BACKGROUND_THEME_KEYS) {
+    const img = new Image();
+    img.src = `backgrounds/${key}.png`;
+    BACKGROUND_SPRITES[key] = img;
+  }
   const SOUL_META = {
     berserker: { label: 'HEAVY', color: '#c0392b' },
     pyromancer: { label: 'FIRE', color: '#ff8a3d' },
@@ -3386,89 +3397,99 @@
 
   function drawBackground() {
     const theme = currentLevel().theme;
-    const grad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
-    if (theme === 'dungeon') {
-      grad.addColorStop(0, '#0d0a16');
-      grad.addColorStop(0.6, '#1c1428');
-      grad.addColorStop(1, '#2a1a3a');
-    } else if (theme === 'jungle') {
-      grad.addColorStop(0, '#04140a');
-      grad.addColorStop(0.6, '#0a2e1a');
-      grad.addColorStop(1, '#123d20');
-    } else if (theme === 'hell') {
-      grad.addColorStop(0, '#1a0503');
-      grad.addColorStop(0.55, '#4a1206');
-      grad.addColorStop(1, '#7a2a0a');
-    } else if (theme === 'ice') {
-      grad.addColorStop(0, '#03060e');
-      grad.addColorStop(0.6, '#0b2030');
-      grad.addColorStop(1, '#153a4a');
-    } else if (theme === 'desert') {
-      grad.addColorStop(0, '#180f28');
-      grad.addColorStop(0.55, '#4a2f3a');
-      grad.addColorStop(1, '#8a6a3a');
-    } else if (theme === 'crypt') {
-      grad.addColorStop(0, '#050505');
-      grad.addColorStop(0.55, '#1a1612');
-      grad.addColorStop(1, '#332c22');
-    } else if (theme === 'throne') {
-      grad.addColorStop(0, '#05010a');
-      grad.addColorStop(0.55, '#1a0526');
-      grad.addColorStop(1, '#2a0a38');
-    } else {
-      grad.addColorStop(0, '#6be3d8');
-      grad.addColorStop(0.6, '#8fedc9');
-      grad.addColorStop(1, '#c8e896');
-    }
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    const bgImg = BACKGROUND_SPRITES[theme];
+    const bgReady = !!(bgImg && bgImg.complete && bgImg.naturalWidth > 0);
 
-    if (theme === 'dungeon') {
-      // dim blood moon
-      ctx.fillStyle = 'rgba(180,60,70,0.8)';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 16, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(167,139,250,0.06)';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 42, 0, Math.PI * 2); ctx.fill();
-    } else if (theme === 'jungle') {
-      // pale green moon through the canopy
-      ctx.fillStyle = 'rgba(200,255,210,0.85)';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 15, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(140,255,150,0.08)';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 40, 0, Math.PI * 2); ctx.fill();
-    } else if (theme === 'hell') {
-      // pulsing hellfire sun
-      ctx.fillStyle = 'rgba(255,90,20,0.9)';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 20, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(255,40,10,0.15)';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 48, 0, Math.PI * 2); ctx.fill();
-    } else if (theme === 'ice') {
-      // pale frozen moon
-      ctx.fillStyle = 'rgba(220,245,255,0.9)';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 16, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(180,230,255,0.1)';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 44, 0, Math.PI * 2); ctx.fill();
-    } else if (theme === 'desert') {
-      // dim, dust-choked sun
-      ctx.fillStyle = 'rgba(210,150,255,0.7)';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 19, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(160,90,210,0.14)';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 46, 0, Math.PI * 2); ctx.fill();
-    } else if (theme === 'crypt') {
-      // a pale, bone-white moon over the grave
-      ctx.fillStyle = 'rgba(230,220,200,0.85)';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 16, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(230,220,200,0.12)';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 44, 0, Math.PI * 2); ctx.fill();
-    } else if (theme === 'throne') {
-      // a watching violet eye where a sun or moon should be
-      ctx.fillStyle = 'rgba(192,74,255,0.95)';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 17, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(192,74,255,0.18)';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 50, 0, Math.PI * 2); ctx.fill();
+    if (bgReady) {
+      // Illustrated backdrop already bakes in its own sky, moon/sun and
+      // skyline, so it replaces both the gradient fill and the procedural
+      // moon/sun below — stretched to fill the viewport exactly.
+      ctx.drawImage(bgImg, 0, 0, VIEW_W, VIEW_H);
     } else {
-      // sun
-      ctx.fillStyle = '#fff3b0';
-      ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 18, 0, Math.PI * 2); ctx.fill();
+      const grad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+      if (theme === 'dungeon') {
+        grad.addColorStop(0, '#0d0a16');
+        grad.addColorStop(0.6, '#1c1428');
+        grad.addColorStop(1, '#2a1a3a');
+      } else if (theme === 'jungle') {
+        grad.addColorStop(0, '#04140a');
+        grad.addColorStop(0.6, '#0a2e1a');
+        grad.addColorStop(1, '#123d20');
+      } else if (theme === 'hell') {
+        grad.addColorStop(0, '#1a0503');
+        grad.addColorStop(0.55, '#4a1206');
+        grad.addColorStop(1, '#7a2a0a');
+      } else if (theme === 'ice') {
+        grad.addColorStop(0, '#03060e');
+        grad.addColorStop(0.6, '#0b2030');
+        grad.addColorStop(1, '#153a4a');
+      } else if (theme === 'desert') {
+        grad.addColorStop(0, '#180f28');
+        grad.addColorStop(0.55, '#4a2f3a');
+        grad.addColorStop(1, '#8a6a3a');
+      } else if (theme === 'crypt') {
+        grad.addColorStop(0, '#050505');
+        grad.addColorStop(0.55, '#1a1612');
+        grad.addColorStop(1, '#332c22');
+      } else if (theme === 'throne') {
+        grad.addColorStop(0, '#05010a');
+        grad.addColorStop(0.55, '#1a0526');
+        grad.addColorStop(1, '#2a0a38');
+      } else {
+        grad.addColorStop(0, '#6be3d8');
+        grad.addColorStop(0.6, '#8fedc9');
+        grad.addColorStop(1, '#c8e896');
+      }
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+      if (theme === 'dungeon') {
+        // dim blood moon
+        ctx.fillStyle = 'rgba(180,60,70,0.8)';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 16, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(167,139,250,0.06)';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 42, 0, Math.PI * 2); ctx.fill();
+      } else if (theme === 'jungle') {
+        // pale green moon through the canopy
+        ctx.fillStyle = 'rgba(200,255,210,0.85)';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 15, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(140,255,150,0.08)';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 40, 0, Math.PI * 2); ctx.fill();
+      } else if (theme === 'hell') {
+        // pulsing hellfire sun
+        ctx.fillStyle = 'rgba(255,90,20,0.9)';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 20, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,40,10,0.15)';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 48, 0, Math.PI * 2); ctx.fill();
+      } else if (theme === 'ice') {
+        // pale frozen moon
+        ctx.fillStyle = 'rgba(220,245,255,0.9)';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 16, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(180,230,255,0.1)';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 44, 0, Math.PI * 2); ctx.fill();
+      } else if (theme === 'desert') {
+        // dim, dust-choked sun
+        ctx.fillStyle = 'rgba(210,150,255,0.7)';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 19, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(160,90,210,0.14)';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 46, 0, Math.PI * 2); ctx.fill();
+      } else if (theme === 'crypt') {
+        // a pale, bone-white moon over the grave
+        ctx.fillStyle = 'rgba(230,220,200,0.85)';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 16, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(230,220,200,0.12)';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 44, 0, Math.PI * 2); ctx.fill();
+      } else if (theme === 'throne') {
+        // a watching violet eye where a sun or moon should be
+        ctx.fillStyle = 'rgba(192,74,255,0.95)';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 17, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(192,74,255,0.18)';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 50, 0, Math.PI * 2); ctx.fill();
+      } else {
+        // sun
+        ctx.fillStyle = '#fff3b0';
+        ctx.beginPath(); ctx.arc(VIEW_W - 60, 40, 18, 0, Math.PI * 2); ctx.fill();
+      }
     }
 
     // distant pillars / tree trunks / spires (parallax)
