@@ -212,8 +212,9 @@ fused loadout at a glance, with the currently-loaded one outlined in gold.
 
 Open `index.html` in a browser (or serve the folder with any static file
 server). No build step or dependencies. The whole game renders through a
-low-res virtual canvas scaled up with nearest-neighbor filtering for a
-genuine chunky pixel-art look.
+720p (1280x720) internal canvas, itself scaled up to fill the window with
+nearest-neighbor filtering, for a crisp pixel-art look without the blur a
+smoothed scale would add.
 
 Before the game starts you're asked whether you're on a touchscreen device
 or a keyboard (with a best guess pre-filled based on your device) — pick
