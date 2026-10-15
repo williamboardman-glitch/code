@@ -223,8 +223,19 @@ weather particles (snow, embers, fireflies, etc.) still layer on top of it
 exactly as before. The 10 regular enemies (`sprites/*.png`) and the
 player's own body (`sprites/player.png`) are illustrated the same way,
 standing in for the flat-color rectangles the rest of the game's
-procedural art still uses — whichever weapon is equipped is still drawn
-separately on top, tinted to that weapon's own color exactly as before.
+procedural art still uses.
+
+Each gun and sword also has its own illustrated sprite of the player
+actually holding that specific weapon (`sprites/dragonToothKatana.png`,
+`nightbladeShadow.png`, `tsunamiBlade.png`, `plasmaCannon.png`,
+`railgunRifle.png`, `teslaBlipper.png`, `demonKnife.png`), shown while
+standing, walking, jumping, etc. Mid-swing with a sword, the game instead
+falls back to the plain body sprite plus the original procedural swing-arc
+animation, since a single static pose can't convey that motion. Guns
+always show their illustrated sprite, procedural muzzle flash and all.
+The default bare-handed knife has no illustrated pose of its own and
+keeps using the plain body sprite with the existing procedural fist/knife
+animations.
 
 Before the game starts you're asked whether you're on a touchscreen device
 or a keyboard (with a best guess pre-filled based on your device) — pick

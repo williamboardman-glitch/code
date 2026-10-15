@@ -293,11 +293,22 @@
     ENEMY_SPRITES[key] = img;
   }
   // The player's own illustrated base sprite (bare-handed stance) — drawn
-  // in place of the old procedural body in drawPlayer(). Whichever weapon
-  // is equipped (sword/gun/knife) is still drawn on top the same way as
-  // before; only the body itself is now an image.
+  // in place of the old procedural body in drawPlayer() whenever no
+  // weapon-specific sprite below applies.
   const PLAYER_SPRITE = new Image();
   PLAYER_SPRITE.src = 'sprites/player.png';
+  // Per-weapon illustrated sprites — the player's whole body shown actually
+  // holding that weapon, not the base body with a generic procedural
+  // overlay. Used at rest (standing/walking/aiming); a sword mid-swing
+  // still falls back to the base body + the existing procedural swing arc
+  // below, since these are single static poses, not animated swing frames.
+  const PLAYER_WEAPON_SPRITE_KEYS = ['dragonToothKatana', 'nightbladeShadow', 'tsunamiBlade', 'plasmaCannon', 'railgunRifle', 'teslaBlipper', 'demonKnife'];
+  const PLAYER_WEAPON_SPRITES = {};
+  for (const key of PLAYER_WEAPON_SPRITE_KEYS) {
+    const img = new Image();
+    img.src = `sprites/${key}.png`;
+    PLAYER_WEAPON_SPRITES[key] = img;
+  }
   // Scratch canvas for the sprite hit-flash trick (see drawEnemy): doing
   // the white 'source-atop' composite directly on the main canvas would
   // mask against everything already drawn there (the background, tiles,
@@ -3830,27 +3841,46 @@
       ctx.translate(0, 13); ctx.rotate(-0.5); ctx.translate(0, -13);
     }
 
-    const playerSpriteReady = !!(PLAYER_SPRITE && PLAYER_SPRITE.complete && PLAYER_SPRITE.naturalWidth > 0);
+    // Pick which illustrated body to show. A weapon-specific sprite (the
+    // player actually holding that exact sword/gun) is used at rest;
+    // mid-swing falls back to the base body + the existing procedural
+    // swing-arc animation below, since these are single static poses, not
+    // animated frames, and the swing's motion is worth more than the
+    // static "holding it" art for that one brief moment.
+    const swordEquippedForSprite = hasSword(player);
+    const gunEquippedForSprite = hasGun(player);
+    const midSwingForSprite = player.knifeSwing > 0;
+    let activeSprite = PLAYER_SPRITE;
+    let weaponBakedIn = false;
+    if (gunEquippedForSprite || (swordEquippedForSprite && !midSwingForSprite)) {
+      const weaponSprite = PLAYER_WEAPON_SPRITES[player.equippedWeapon];
+      if (weaponSprite) { activeSprite = weaponSprite; weaponBakedIn = true; }
+    } else if (!swordEquippedForSprite && !gunEquippedForSprite && player.demonKnife && !midSwingForSprite) {
+      activeSprite = PLAYER_WEAPON_SPRITES.demonKnife;
+      weaponBakedIn = true;
+    }
+    const playerSpriteReady = !!(activeSprite && activeSprite.complete && activeSprite.naturalWidth > 0);
+    weaponBakedIn = weaponBakedIn && playerSpriteReady;
     const gy = -2 + gunUp;
 
     if (playerSpriteReady) {
-      // Illustrated base sprite in place of the old procedural body —
-      // feet-anchored at the same y=13 line the old boots ended on, scaled
-      // up a bit for real detail. Whichever weapon is equipped still draws
-      // separately below, same as it always did.
-      const drawH = 46, drawW = drawH * (PLAYER_SPRITE.naturalWidth / PLAYER_SPRITE.naturalHeight);
+      // Illustrated body in place of the old procedural one — feet-
+      // anchored at the same y=13 line the old boots ended on, scaled up a
+      // bit for real detail. If this isn't weaponBakedIn, whichever weapon
+      // is equipped still draws separately below, same as it always did.
+      const drawH = 46, drawW = drawH * (activeSprite.naturalWidth / activeSprite.naturalHeight);
       const footY = 13;
       if (flash) {
         const fw = Math.min(256, Math.ceil(drawW)), fh = Math.min(256, Math.ceil(drawH));
         flashCtx.clearRect(0, 0, fw, fh);
-        flashCtx.drawImage(PLAYER_SPRITE, 0, 0, fw, fh);
+        flashCtx.drawImage(activeSprite, 0, 0, fw, fh);
         flashCtx.globalCompositeOperation = 'source-atop';
         flashCtx.fillStyle = '#fff';
         flashCtx.fillRect(0, 0, fw, fh);
         flashCtx.globalCompositeOperation = 'source-over';
         ctx.drawImage(flashCanvas, 0, 0, fw, fh, -drawW / 2, footY - drawH, drawW, drawH);
       } else {
-        ctx.drawImage(PLAYER_SPRITE, -drawW / 2, footY - drawH, drawW, drawH);
+        ctx.drawImage(activeSprite, -drawW / 2, footY - drawH, drawW, drawH);
       }
       // shadow helm: the guardian's boss-drop reward — a small glowing
       // accent near the head rather than a full procedural helm redraw,
@@ -3940,9 +3970,12 @@
     if (swordEquipped && player.knifeSwing <= 0) {
       // A sword's base stance holds the blade itself, not a rifle — drawn
       // at rest the same way the attack swing starts (blade up), so the
-      // two blend together.
-      const swordColor = equippedWeaponItem(player);
-      drawKatanaBlade(5, gy - 1, -Math.PI / 2, 1, swordColor.color, swordColor.colorEdge);
+      // two blend together. Skipped when the illustrated weapon sprite
+      // already shows the blade in-hand.
+      if (!weaponBakedIn) {
+        const swordColor = equippedWeaponItem(player);
+        drawKatanaBlade(5, gy - 1, -Math.PI / 2, 1, swordColor.color, swordColor.colorEdge);
+      }
       if (firing) {
         const fx = 20, fy = gy - 1;
         ctx.fillStyle = '#fff8c9';
@@ -3955,14 +3988,18 @@
       // Mid-swing: the sword-swing block below draws the full weapon, so
       // skip a base weapon here to avoid a double blade.
     } else if (hasGun(player)) {
-      ctx.fillStyle = flash ? '#fff' : (equippedWeaponItem(player).color || '#2b2418'); // barrel
-      ctx.fillRect(7, gy - 1, 13, 3);
-      ctx.fillStyle = flash ? '#fff' : '#4a4030'; // receiver body
-      ctx.fillRect(3, gy - 2, 6, 5);
-      ctx.fillStyle = flash ? '#fff' : '#1e1a12'; // magazine
-      ctx.fillRect(5, gy + 2, 3, 6);
-      ctx.fillStyle = flash ? '#fff' : '#2b2418'; // stock
-      ctx.fillRect(-1, gy - 1, 4, 3);
+      // Skipped when the illustrated weapon sprite already shows the gun
+      // in-hand (always true once that sprite's loaded).
+      if (!weaponBakedIn) {
+        ctx.fillStyle = flash ? '#fff' : (equippedWeaponItem(player).color || '#2b2418'); // barrel
+        ctx.fillRect(7, gy - 1, 13, 3);
+        ctx.fillStyle = flash ? '#fff' : '#4a4030'; // receiver body
+        ctx.fillRect(3, gy - 2, 6, 5);
+        ctx.fillStyle = flash ? '#fff' : '#1e1a12'; // magazine
+        ctx.fillRect(5, gy + 2, 3, 6);
+        ctx.fillStyle = flash ? '#fff' : '#2b2418'; // stock
+        ctx.fillRect(-1, gy - 1, 4, 3);
+      }
 
       if (firing) {
         const fx = 20, fy = gy - 1;
