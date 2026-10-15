@@ -196,10 +196,13 @@
   const JUNGLE_SLOW_ZONES = [[4, 7], [45, 48]];
 
   let levelIndex = 0;
-  // The Guardian's boss room: once you walk past this column while it's
-  // still alive, a barrier seals the way back until it's dead.
+  // The Guardian's boss room: a carved pattern block sits right at this
+  // threshold — the boss doesn't exist in the world at all until the
+  // player steps on it, which spawns it in and (once it's alive) seals the
+  // way back until it's dead.
   const BOSS_ARENA_START_COL = 63;
   let bossArenaSealed = false;
+  let bossAwakened = false;
   function currentLevel() { return LEVEL_DEFS[levelIndex]; }
 
   let map;
@@ -346,7 +349,6 @@
     ['brute', 44, 8], ['brute', 46, 8], ['pyro', 47, 8], ['pyro', 48, 8], ['grunt', 49, 8], ['grunt', 50, 8],
     ['shrieker', 51, 8], ['brute', 54, 8], ['lightning', 55, 8], ['grunt', 56, 8], ['grunt', 57, 8],
     ['acid', 59, 6], ['brute', 60, 6], ['lightning', 61, 8], ['acid', 62, 8],
-    ['boss', 64, 8],
   ];
   const LEVEL3_SPAWN = [
     ['grunt', 3, 8], ['grunt', 5, 8], ['brute', 7, 8], ['brute', 9, 8], ['grunt', 11, 8],
@@ -378,9 +380,7 @@
     ['brute', 65, 8], ['frost', 66, 8], ['shadow', 67, 8],
   ];
   // Hell belongs to the Arch Demon alone — no lesser zombies share its floor.
-  const HELL_SPAWN = [
-    ['archdemon', 64, 8],
-  ];
+  const HELL_SPAWN = [];
   const DESERT_SPAWN = [
     ['grunt', 3, 8], ['cactus', 5, 8], ['grunt', 7, 8], ['brute', 9, 8],
     ['cactus', 8, 6], ['grunt', 11, 8], ['lightning', 12, 8], ['cactus', 16, 8],
@@ -399,9 +399,7 @@
   ];
   // The Demon God's throne room is its alone, same as Hell's Arch Demon —
   // the true final fight, with no lesser enemies to hide behind.
-  const THRONE_SPAWN = [
-    ['demongod', 64, 8],
-  ];
+  const THRONE_SPAWN = [];
   // The mass grave the king built his throne over — the hardest mix of
   // lesser enemies in the game, one last gauntlet of everything that's
   // hunted the player so far before the throne room itself.
@@ -421,15 +419,18 @@
     ['brute', 61, 8], ['lightning', 62, 8], ['acid', 63, 8], ['frost', 64, 8],
     ['brute', 65, 8], ['shadow', 66, 8], ['pyro', 67, 8],
   ];
+  // bossSpawn (type, col, row) isn't in spawnList — the boss doesn't exist
+  // in the world at all until the player reaches the pattern block at
+  // BOSS_ARENA_START_COL (see the awaken check in updatePlayer).
   const LEVEL_DEFS = [
     { theme: 'temple', name: 'Temple of Bones', spawnList: LEVEL1_SPAWN },
-    { theme: 'dungeon', name: 'The Dark Dungeon', spawnList: LEVEL2_SPAWN, hasBoss: true },
+    { theme: 'dungeon', name: 'The Dark Dungeon', spawnList: LEVEL2_SPAWN, hasBoss: true, bossSpawn: ['boss', 64, 8] },
     { theme: 'jungle', name: 'The Dark Jungle', spawnList: LEVEL3_SPAWN },
     { theme: 'ice', name: 'The Frozen Temple', spawnList: ICE_SPAWN },
-    { theme: 'hell', name: 'The Burning Hell', spawnList: HELL_SPAWN, hasBoss: true },
+    { theme: 'hell', name: 'The Burning Hell', spawnList: HELL_SPAWN, hasBoss: true, bossSpawn: ['archdemon', 64, 8] },
     { theme: 'desert', name: 'The Cursed Desert', spawnList: DESERT_SPAWN },
     { theme: 'crypt', name: 'The Bone Crypt', spawnList: CRYPT_SPAWN },
-    { theme: 'throne', name: "The Demon God's Throne", spawnList: THRONE_SPAWN, hasBoss: true },
+    { theme: 'throne', name: "The Demon God's Throne", spawnList: THRONE_SPAWN, hasBoss: true, bossSpawn: ['demongod', 64, 8] },
   ];
 
   const BASE_DMG = 16;
@@ -648,6 +649,7 @@
     levelBanner = { text: '', t: 0 };
     respawn = { x: player.x, y: player.y };
     bossArenaSealed = false;
+    bossAwakened = false;
   }
 
   // Shared by goToLevel() and resumeSave(): resets a floor's transient state
@@ -659,6 +661,7 @@
     spawnFloorHazards();
     camX = 0;
     bossArenaSealed = false;
+    bossAwakened = false;
     player.x = x; player.y = y; player.vx = 0; player.vy = 0; player.groundVx = 0;
     player.knockX = 0; player.knockTimer = 0;
     pets.forEach((pet, i) => { pet.x = x - 14 - i * 16; pet.y = y; });
@@ -673,7 +676,8 @@
     levelBanner = { text: `FLOOR ${idx + 1} — ${currentLevel().name.toUpperCase()}`, t: 3 };
     state = 'playing';
     sfx.checkpoint();
-    if (currentLevel().hasBoss) startBossMusic();
+    // Boss music now starts when the pattern block actually awakens it
+    // (see the boss-floor check in updatePlayer), not on floor entry.
     saveGame();
   }
 
@@ -1933,7 +1937,8 @@
     shopScreen.classList.add('hidden');
     gearScreen.classList.add('hidden');
     skipCutsceneBtn.classList.add('hidden');
-    if (currentLevel().hasBoss) startBossMusic();
+    // Boss music now starts when the pattern block actually awakens it
+    // (see the boss-floor check in updatePlayer), not on floor entry.
     sfx.checkpoint();
   }
 
@@ -2387,18 +2392,30 @@
 
     if (player.x < player.w / 2) player.x = player.w / 2;
 
-    // Any boss floor's arena: cross into it and the way back seals shut
-    // until the boss is dead — no retreating from the fight. Driven by
-    // whether a live boss is actually present, not a hardcoded theme list,
-    // so it automatically covers every current and future boss floor.
+    // Any boss floor's arena: the boss doesn't exist in the world until the
+    // player steps on the pattern block carved into the arena threshold —
+    // that's what actually spawns it in. Cross into it and the way back
+    // seals shut until the boss is dead — no retreating from the fight.
+    // Driven by whether a live boss is actually present, not a hardcoded
+    // theme list, so it automatically covers every current and future
+    // boss floor.
     if (currentLevel().hasBoss) {
+      // Crossing the threshold awakens the boss and seals the arena in the
+      // same instant — one message/sfx for both, not two stacked on top of
+      // each other at the same spot.
+      if (!bossAwakened && player.x >= BOSS_ARENA_START_COL * TILE) {
+        bossAwakened = true;
+        bossArenaSealed = true;
+        const [type, col, row] = currentLevel().bossSpawn;
+        const boss = spawnEnemy(type, col, row);
+        enemies.push(boss);
+        startBossMusic();
+        shakeScreen(10);
+        sfx.checkpoint();
+        addMessage(player.x, player.y - 40, `${boss.cfg.displayName} AWAKENS — THE ARENA SEALS SHUT`, boss.cfg.hudColor);
+      }
       const boss = enemies.find(en => en.cfg.isBoss);
       if (boss && !boss.dead) {
-        if (!bossArenaSealed && player.x >= BOSS_ARENA_START_COL * TILE) {
-          bossArenaSealed = true;
-          sfx.checkpoint();
-          addMessage(player.x, player.y - 40, 'THE ARENA SEALS SHUT', boss.cfg.hudColor);
-        }
         if (bossArenaSealed) player.x = Math.max(player.x, BOSS_ARENA_START_COL * TILE);
       } else if (bossArenaSealed) {
         bossArenaSealed = false;
@@ -4556,6 +4573,30 @@
     ctx.globalAlpha = 1;
   }
 
+  // The carved stone block sitting right at the arena threshold, before
+  // the boss has been awakened — a 3x3 rune pattern on top that pulses in
+  // the boss's own color, gone the moment the player steps on it and it
+  // actually spawns the boss in (see the awaken check in updatePlayer).
+  function drawPatternBlock() {
+    if (!currentLevel().hasBoss || bossAwakened) return;
+    const x = px(BOSS_ARENA_START_COL * TILE - camX);
+    if (x < -20 || x > VIEW_W + 20) return;
+    const y = px((ROWS - 1) * TILE - 6);
+    const bossCfg = ENEMY_TYPES[currentLevel().bossSpawn[0]];
+    const rgb = hexToRgbTriplet(bossCfg.hudColor || '#a78bfa');
+    ctx.fillStyle = '#3a3428';
+    ctx.fillRect(x - 9, y - 6, 18, 10);
+    ctx.fillStyle = '#2a251c';
+    ctx.fillRect(x - 9, y - 6, 18, 3);
+    const pulse = 0.55 + Math.sin(elapsed * 3) * 0.35;
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 3; col++) {
+        ctx.fillStyle = `rgba(${rgb},${pulse})`;
+        ctx.fillRect(x - 6 + col * 6, y - 10 - row * 3, 2, 2);
+      }
+    }
+  }
+
   function drawArenaBarrier() {
     const x = px(BOSS_ARENA_START_COL * TILE - camX);
     if (x < -20 || x > VIEW_W + 20) return;
@@ -4978,6 +5019,7 @@
     }
     drawBackground();
     drawTiles();
+    drawPatternBlock();
     if (bossArenaSealed) drawArenaBarrier();
     for (const hz of hazards) drawHazard(hz);
     for (const e of enemies) drawEnemy(e);

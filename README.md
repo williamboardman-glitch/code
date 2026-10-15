@@ -289,8 +289,11 @@ above for how normal ammo works.
 
 ## The Guardian
 
-Floor 2 ends in a sealed arena: cross into it and the way back shuts until
-the Guardian is dead. It has 520 HP and cycles between four attacks —
+Floor 2 ends in a sealed arena, marked by a carved pattern block pulsing
+at the threshold — the Guardian doesn't exist in the world at all until
+you reach it. Step on it and the Guardian spawns in on the spot, and the
+way back seals shut in the same instant, not before and not after. It has
+520 HP and cycles between four attacks —
 
 - **Dash flurry** — three rapid dashes through your position, each its own hit
 - **Ground slam** — a telegraphed leap-slam shockwave; jump it to avoid the hit
@@ -328,8 +331,9 @@ last gauntlet before the Arch Demon: stock up at the shop beforehand.
 
 Hell is its floor and its floor alone — no lesser zombies share it, just a
 long walk in past a handful of permanent lava pools (periodic burn damage
-while you're standing in one) before the fight. It has 900 HP and cycles
-between five
+while you're standing in one) and the Arch Demon's own pattern block
+before the fight; like the Guardian, it doesn't exist until you step on
+it. It has 900 HP and cycles between five
 attacks, on top of the same channeled nova the Guardian uses (at 50% and
 20% HP) —
 
@@ -340,8 +344,8 @@ attacks, on top of the same channeled nova the Guardian uses (at 50% and
   Guardian's slam, jumping doesn't save you here, only running clear does
 - **Summon** — calls in two imps to flank you
 
-Like the Guardian's arena, crossing into the Arch Demon's fight seals the
-way back until it's dead.
+Like the Guardian's arena, the pattern block spawns it in and seals the
+way back in the same step, until it's dead.
 
 Beating it grants the **Demon Knife**, a permanent upgrade to your
 bullets-out fallback weapon: instead of a stationary swipe it dashes you
@@ -368,9 +372,10 @@ beforehand.
 
 ## The Demon God
 
-The true final boss, alone on its own throne floor at the very end. It has
-1400 HP and cycles between four attacks, on top of the same channeled nova
-the other two bosses use (at 50% and 20% HP) —
+The true final boss, alone on its own throne floor at the very end — and,
+like the other two, it doesn't exist until you reach its pattern block.
+It has 1400 HP and cycles between four attacks, on top of the same
+channeled nova the other two bosses use (at 50% and 20% HP) —
 
 - **Godsplit charge** — three fast dashes through your position
 - **Radial judgment** — a full 360-degree burst of void bolts
@@ -378,9 +383,9 @@ the other two bosses use (at 50% and 20% HP) —
   then strikes there after a beat; staying still is what gets you killed
 - **Summon** — raises a brute and a shambler to flank you
 
-Like the other two arenas, crossing into the fight seals the way back until
-it's dead. Beating it grants a permanent +20% damage bonus and ends the run
-— reach the end of its floor to win.
+Like the other two, stepping on the pattern block spawns it in and seals
+the way back until it's dead. Beating it grants a permanent +20% damage
+bonus and ends the run — reach the end of its floor to win.
 
 ## Shop
 
