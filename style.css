@@ -518,6 +518,7 @@ button:active { transform: translateY(0); }
 
 .tcActions {
   display: flex;
+  flex-direction: column;
   align-items: flex-end;
   gap: 6px;
 }
@@ -525,6 +526,12 @@ button:active { transform: translateY(0); }
 .tcSecondary {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.tcPrimaryRow {
+  display: flex;
+  align-items: flex-end;
   gap: 6px;
 }
 
