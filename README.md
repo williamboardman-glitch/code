@@ -237,6 +237,16 @@ The default bare-handed knife has no illustrated pose of its own and
 keeps using the plain body sprite with the existing procedural fist/knife
 animations.
 
+Every bullet and projectile (`sprites/bullets/*.png`) is illustrated the
+same way — one image per shot type (normal, each soul's elemental shot,
+every gun ability's beam/bolt, the charged orb, etc.) in place of the
+small vector shapes the game used to draw by hand. A fused combo shot and
+a charged orb are the two exceptions that still need to be colored at
+render time rather than loaded as-is — a combo's left/right halves are
+tinted to its two source souls' colors, and an orb is tinted to whichever
+gun fired it — since those colors are chosen per shot rather than fixed
+per type.
+
 Before the game starts you're asked whether you're on a touchscreen device
 or a keyboard (with a best guess pre-filled based on your device) — pick
 one and the matching controls are ready to go.

@@ -314,6 +314,29 @@
     img.src = `sprites/${key}.png`;
     PLAYER_WEAPON_SPRITES[key] = img;
   }
+  // Illustrated bullet/projectile sprites, one per drawBullet() 'kind' (see
+  // BULLET_SPRITE_KEY_FOR below for the handful of kinds that intentionally
+  // share one image — 'fire' with 'pyro', 'shadow'/'void' with 'dark').
+  // drawBullet() falls back to its old procedural vector art for any kind
+  // whose image hasn't finished loading.
+  const BULLET_SPRITE_KEYS = ['normal', 'lightning', 'pyro', 'frost', 'acid', 'dark', 'berserker', 'spike', 'combo', 'plasmaBolt', 'beam', 'overloadBeam', 'hydroSlash', 'armorPierce', 'chargedOrb'];
+  const BULLET_SPRITES = {};
+  for (const key of BULLET_SPRITE_KEYS) {
+    const img = new Image();
+    img.src = `sprites/bullets/${key}.png`;
+    BULLET_SPRITES[key] = img;
+  }
+  // Kinds that reuse another kind's illustrated art outright (no distinct
+  // reference image of their own).
+  const BULLET_SPRITE_KEY_FOR = { fire: 'pyro', shadow: 'dark', void: 'dark' };
+  // Target on-screen length (the travel-axis dimension, before rotation)
+  // for each sprite, roughly matched to the old procedural shot's size so
+  // swapping art doesn't suddenly make shots easier or harder to read.
+  const BULLET_SPRITE_LEN = {
+    normal: 22, lightning: 24, pyro: 22, frost: 20, acid: 20, dark: 24,
+    berserker: 20, spike: 18, combo: 20, plasmaBolt: 26, beam: 28,
+    overloadBeam: 34, hydroSlash: 24, armorPierce: 26, chargedOrb: 26,
+  };
   // Scratch canvas for the sprite hit-flash trick (see drawEnemy): doing
   // the white 'source-atop' composite directly on the main canvas would
   // mask against everything already drawn there (the background, tiles,
@@ -4565,6 +4588,57 @@
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
+
+    // Illustrated projectile art in place of the old procedural vector
+    // shapes below, which stay as the fallback for any kind whose image
+    // hasn't finished loading. 'combo' and 'chargedOrb' are tinted at draw
+    // time (via the same scratch-canvas composite trick drawPlayer/drawEnemy
+    // use for their hit-flash) since their colors are chosen per-instance
+    // — two souls' colors for a fused shot, one weapon's color for an
+    // orb — rather than fixed like every other kind's art.
+    const spriteKind = BULLET_SPRITE_KEY_FOR[kind] || kind || 'normal';
+    const bulletSprite = BULLET_SPRITES[spriteKind];
+    const bulletSpriteReady = !!(bulletSprite && bulletSprite.complete && bulletSprite.naturalWidth > 0);
+    if (bulletSpriteReady) {
+      const baseLen = BULLET_SPRITE_LEN[spriteKind] || 22;
+      if (kind === 'combo') {
+        const dw = baseLen, dh = baseLen * (bulletSprite.naturalHeight / bulletSprite.naturalWidth);
+        const fw = Math.ceil(dw), fh = Math.ceil(dh);
+        flashCtx.clearRect(0, 0, fw, fh);
+        flashCtx.drawImage(bulletSprite, 0, 0, fw, fh);
+        flashCtx.globalCompositeOperation = 'source-atop';
+        flashCtx.save();
+        flashCtx.beginPath(); flashCtx.rect(0, 0, fw / 2, fh); flashCtx.clip();
+        flashCtx.fillStyle = SOUL_META[b.comboA].color;
+        flashCtx.fillRect(0, 0, fw / 2, fh);
+        flashCtx.restore();
+        flashCtx.save();
+        flashCtx.beginPath(); flashCtx.rect(fw / 2, 0, fw - fw / 2, fh); flashCtx.clip();
+        flashCtx.fillStyle = SOUL_META[b.comboB].color;
+        flashCtx.fillRect(fw / 2, 0, fw - fw / 2, fh);
+        flashCtx.restore();
+        flashCtx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(flashCanvas, 0, 0, fw, fh, -dw / 2, -dh / 2, dw, dh);
+      } else if (kind === 'chargedOrb') {
+        const s = 0.4 + (b.scale != null ? b.scale : 1) * 0.6;
+        const dw = baseLen * s, dh = baseLen * s * (bulletSprite.naturalHeight / bulletSprite.naturalWidth);
+        const fw = Math.ceil(dw), fh = Math.ceil(dh);
+        flashCtx.clearRect(0, 0, fw, fh);
+        flashCtx.drawImage(bulletSprite, 0, 0, fw, fh);
+        flashCtx.globalCompositeOperation = 'source-atop';
+        flashCtx.globalAlpha = 0.45;
+        flashCtx.fillStyle = b.color || '#3dc8ff';
+        flashCtx.fillRect(0, 0, fw, fh);
+        flashCtx.globalAlpha = 1;
+        flashCtx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(flashCanvas, 0, 0, fw, fh, -dw / 2, -dh / 2, dw, dh);
+      } else {
+        const dw = baseLen, dh = baseLen * (bulletSprite.naturalHeight / bulletSprite.naturalWidth);
+        ctx.drawImage(bulletSprite, -dw / 2, -dh / 2, dw, dh);
+      }
+      ctx.restore();
+      return;
+    }
 
     if (kind === 'lightning') {
       ctx.strokeStyle = '#d8c7ff';
