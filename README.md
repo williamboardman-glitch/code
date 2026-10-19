@@ -233,9 +233,9 @@ standing, walking, jumping, etc. Mid-swing with a sword, the game instead
 falls back to the plain body sprite plus the original procedural swing-arc
 animation, since a single static pose can't convey that motion. Guns
 always show their illustrated sprite, procedural muzzle flash and all.
-The default bare-handed knife has no illustrated pose of its own and
-keeps using the plain body sprite with the existing procedural fist/knife
-animations.
+Bare-handed — no sword or gun equipped, which is also the game's
+starting loadout — uses that same knife-in-hand sprite too, same
+mid-swing fallback as a sword.
 
 Every bullet and projectile (`sprites/bullets/*.png`) is illustrated the
 same way — one image per shot type (normal, each soul's elemental shot,

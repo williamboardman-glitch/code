@@ -3900,7 +3900,11 @@
     // mid-swing falls back to the base body + the existing procedural
     // swing-arc animation below, since these are single static poses, not
     // animated frames, and the swing's motion is worth more than the
-    // static "holding it" art for that one brief moment.
+    // static "holding it" art for that one brief moment. Bare-handed
+    // (no sword/gun equipped — the default knife, same as after finding
+    // the Demon Knife) reuses that same knife-in-hand sprite rather than
+    // the plain fists pose, for every bare-handed state, not just once
+    // the Demon Knife is actually found.
     const swordEquippedForSprite = hasSword(player);
     const gunEquippedForSprite = hasGun(player);
     const midSwingForSprite = player.knifeSwing > 0;
@@ -3909,7 +3913,7 @@
     if (gunEquippedForSprite || (swordEquippedForSprite && !midSwingForSprite)) {
       const weaponSprite = PLAYER_WEAPON_SPRITES[player.equippedWeapon];
       if (weaponSprite) { activeSprite = weaponSprite; weaponBakedIn = true; }
-    } else if (!swordEquippedForSprite && !gunEquippedForSprite && player.demonKnife && !midSwingForSprite) {
+    } else if (!swordEquippedForSprite && !gunEquippedForSprite && !midSwingForSprite) {
       activeSprite = PLAYER_WEAPON_SPRITES.demonKnife;
       weaponBakedIn = true;
     }
