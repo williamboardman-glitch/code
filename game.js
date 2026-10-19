@@ -330,12 +330,14 @@
   // reference image of their own).
   const BULLET_SPRITE_KEY_FOR = { fire: 'pyro', shadow: 'dark', void: 'dark' };
   // Target on-screen length (the travel-axis dimension, before rotation)
-  // for each sprite, roughly matched to the old procedural shot's size so
-  // swapping art doesn't suddenly make shots easier or harder to read.
+  // for each sprite. Sized a bit larger than the old procedural shot it
+  // replaces (roughly +25%) since the illustrated art reads as weaker at
+  // the old tiny size — most of a shot's pixels were the faint trailing
+  // dust rather than its bright, solid-colored head.
   const BULLET_SPRITE_LEN = {
-    normal: 22, lightning: 24, pyro: 22, frost: 20, acid: 20, dark: 24,
-    berserker: 20, spike: 18, combo: 20, plasmaBolt: 26, beam: 28,
-    overloadBeam: 34, hydroSlash: 24, armorPierce: 26, chargedOrb: 26,
+    normal: 27, lightning: 30, pyro: 27, frost: 25, acid: 25, dark: 30,
+    berserker: 25, spike: 22, combo: 25, plasmaBolt: 32, beam: 35,
+    overloadBeam: 42, hydroSlash: 30, armorPierce: 32, chargedOrb: 32,
   };
   // Scratch canvas for the sprite hit-flash trick (see drawEnemy): doing
   // the white 'source-atop' composite directly on the main canvas would
