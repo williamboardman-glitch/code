@@ -237,6 +237,14 @@ Bare-handed — no sword or gun equipped, which is also the game's
 starting loadout — uses that same knife-in-hand sprite too, same
 mid-swing fallback as a sword.
 
+The Shadow Helm (the Guardian's drop, see below) has its own full
+bare-handed sprite too (`sprites/shadowHelm.png`), used instead of the
+plain base sprite once it's found, for as long as no sword/gun/Demon
+Knife sprite is already showing — those still win out (there's no
+single sprite for "holding this weapon and also wearing the helm"),
+marked instead by the small glowing accent near the head the helm
+already used before any of this illustrated art existed.
+
 Every bullet and projectile (`sprites/bullets/*.png`) is illustrated the
 same way — one image per shot type (normal, each soul's elemental shot,
 every gun ability's beam/bolt, the charged orb, etc.) in place of the

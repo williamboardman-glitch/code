@@ -301,6 +301,15 @@
   // weapon-specific sprite below applies.
   const PLAYER_SPRITE = new Image();
   PLAYER_SPRITE.src = 'sprites/player.png';
+  // The same bare-handed stance, but wearing the Shadow Helm — used in
+  // place of PLAYER_SPRITE once the Guardian drops it, for every
+  // bare-handed state that isn't already showing the Demon Knife (that
+  // sprite takes priority if both are owned, same as it already did over
+  // the plain base sprite; the small accent-dot overlay below still marks
+  // the helm in that case and whenever a sword/gun sprite is active, since
+  // there's no combined "holding this weapon AND wearing the helm" art).
+  const PLAYER_SHADOWHELM_SPRITE = new Image();
+  PLAYER_SHADOWHELM_SPRITE.src = 'sprites/shadowHelm.png';
   // Per-weapon illustrated sprites — the player's whole body shown actually
   // holding that weapon, not the base body with a generic procedural
   // overlay. Used at rest (standing/walking/aiming); a sword mid-swing
@@ -3909,15 +3918,22 @@
     const midSwingForSprite = player.knifeSwing > 0;
     let activeSprite = PLAYER_SPRITE;
     let weaponBakedIn = false;
+    let helmBakedIn = false;
     if (gunEquippedForSprite || (swordEquippedForSprite && !midSwingForSprite)) {
       const weaponSprite = PLAYER_WEAPON_SPRITES[player.equippedWeapon];
       if (weaponSprite) { activeSprite = weaponSprite; weaponBakedIn = true; }
     } else if (!swordEquippedForSprite && !gunEquippedForSprite && !midSwingForSprite) {
-      activeSprite = PLAYER_WEAPON_SPRITES.demonKnife;
-      weaponBakedIn = true;
+      if (player.demonKnife) {
+        activeSprite = PLAYER_WEAPON_SPRITES.demonKnife;
+        weaponBakedIn = true;
+      } else if (player.shadowHelm) {
+        activeSprite = PLAYER_SHADOWHELM_SPRITE;
+        helmBakedIn = true;
+      }
     }
     const playerSpriteReady = !!(activeSprite && activeSprite.complete && activeSprite.naturalWidth > 0);
     weaponBakedIn = weaponBakedIn && playerSpriteReady;
+    helmBakedIn = helmBakedIn && playerSpriteReady;
     const gy = -2 + gunUp;
 
     if (playerSpriteReady) {
@@ -3943,7 +3959,7 @@
       // accent near the head rather than a full procedural helm redraw,
       // since the illustrated sprite's head isn't at a fixed pixel offset
       // the way the old procedural head was.
-      if (player.shadowHelm) {
+      if (player.shadowHelm && !helmBakedIn) {
         const pulse = 0.7 + Math.sin(elapsed * 5) * 0.3;
         ctx.fillStyle = flash ? '#fff' : `rgba(167,139,250,${pulse})`;
         ctx.beginPath(); ctx.arc(1, footY - drawH + 7, 2.4, 0, Math.PI * 2); ctx.fill();
