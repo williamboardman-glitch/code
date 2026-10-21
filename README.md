@@ -245,6 +245,18 @@ single sprite for "holding this weapon and also wearing the helm"),
 marked instead by the small glowing accent near the head the helm
 already used before any of this illustrated art existed.
 
+While wearing the helm, idle and walking are true frame-by-frame
+animation (`sprites/anim/helmIdle0-9.png`, `helmWalk0-9.png`) rather
+than one static pose plus the procedural bob/sway every other state
+still uses — a real breathing sway and running stride instead of a
+vertical wiggle. Every other state (bare-handed, each sword/gun, the
+Demon Knife) is still a single illustrated pose animated the same
+procedural way as before; a matching set of real sword-swing and
+gun-fire frames was extracted alongside the helm animation but isn't
+wired in yet, since doing that well means replacing the sword swing's
+smooth procedural rotation with only two still frames, which needs a
+closer look to avoid trading away motion quality for art quality.
+
 Every bullet and projectile (`sprites/bullets/*.png`) is illustrated the
 same way — one image per shot type (normal, each soul's elemental shot,
 every gun ability's beam/bolt, the charged orb, etc.) in place of the

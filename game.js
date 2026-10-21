@@ -310,6 +310,22 @@
   // there's no combined "holding this weapon AND wearing the helm" art).
   const PLAYER_SHADOWHELM_SPRITE = new Image();
   PLAYER_SHADOWHELM_SPRITE.src = 'sprites/shadowHelm.png';
+  // True frame-by-frame idle/walk animation for the Shadow Helm look, in
+  // place of the single static pose above — the only state with a full
+  // animated set to draw from (the bare-handed/weapon sprites are each a
+  // single pose, animated only by the existing procedural bob/sway/swing).
+  // Falls back to PLAYER_SHADOWHELM_SPRITE if a frame hasn't loaded yet.
+  const PLAYER_HELM_IDLE_FRAMES = [];
+  const PLAYER_HELM_WALK_FRAMES = [];
+  for (let i = 0; i < 10; i++) {
+    const idleImg = new Image();
+    idleImg.src = `sprites/anim/helmIdle${i}.png`;
+    PLAYER_HELM_IDLE_FRAMES.push(idleImg);
+    const walkImg = new Image();
+    walkImg.src = `sprites/anim/helmWalk${i}.png`;
+    PLAYER_HELM_WALK_FRAMES.push(walkImg);
+  }
+  const PLAYER_HELM_IDLE_FPS = 6, PLAYER_HELM_WALK_FPS = 12;
   // Per-weapon illustrated sprites — the player's whole body shown actually
   // holding that weapon, not the base body with a generic procedural
   // overlay. Used at rest (standing/walking/aiming); a sword mid-swing
@@ -3927,7 +3943,10 @@
         activeSprite = PLAYER_WEAPON_SPRITES.demonKnife;
         weaponBakedIn = true;
       } else if (player.shadowHelm) {
-        activeSprite = PLAYER_SHADOWHELM_SPRITE;
+        const frames = moving ? PLAYER_HELM_WALK_FRAMES : PLAYER_HELM_IDLE_FRAMES;
+        const fps = moving ? PLAYER_HELM_WALK_FPS : PLAYER_HELM_IDLE_FPS;
+        const frame = frames[Math.floor(elapsed * fps) % frames.length];
+        activeSprite = (frame && frame.complete && frame.naturalWidth > 0) ? frame : PLAYER_SHADOWHELM_SPRITE;
         helmBakedIn = true;
       }
     }
