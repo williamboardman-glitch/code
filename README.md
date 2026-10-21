@@ -323,7 +323,8 @@ All 10 of these regular enemies render as illustrated portrait sprites
 (`sprites/*.png`) rather than the plain procedural rectangles everything
 else in the game still uses — they face toward the player and flash white
 on a hit, same as before, just with real detail instead of flat color
-blocks. The three bosses below keep their original procedural art.
+blocks. The three bosses below (`sprites/boss.png`, `archdemon.png`,
+`demongod.png`) are illustrated the same way, telegraphs and all.
 
 ## The Guardian
 

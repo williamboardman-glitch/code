@@ -284,13 +284,12 @@
       },
     },
   };
-  // Illustrated portrait sprites for the 10 regular enemy types (bosses
-  // keep their existing procedural art — their source portraits sit on a
-  // textured background that doesn't key out cleanly). Preloaded once;
-  // drawEnemy() falls back to the old procedural shapes for any type whose
-  // image hasn't finished loading yet (or failed to load at all), so a
-  // slow/broken image load never leaves an enemy invisible.
-  const ENEMY_SPRITE_KEYS = ['grunt', 'brute', 'pyro', 'frost', 'lightning', 'acid', 'shrieker', 'shadow', 'imp', 'cactus'];
+  // Illustrated portrait sprites for the 10 regular enemy types plus all 3
+  // bosses, keyed by cfg.name ('boss' is the Guardian's internal name).
+  // Preloaded once; drawEnemy() falls back to the old procedural shapes for
+  // any type whose image hasn't finished loading yet (or failed to load at
+  // all), so a slow/broken image load never leaves an enemy invisible.
+  const ENEMY_SPRITE_KEYS = ['grunt', 'brute', 'pyro', 'frost', 'lightning', 'acid', 'shrieker', 'shadow', 'imp', 'cactus', 'boss', 'archdemon', 'demongod'];
   const ENEMY_SPRITES = {};
   for (const key of ENEMY_SPRITE_KEYS) {
     const img = new Image();
