@@ -5327,6 +5327,12 @@
 
   function render() {
     ctx.save();
+    // Clear before the shake offset below shifts drawBackground() off the
+    // buffer's true edges — otherwise the sliver it misses each shaken
+    // frame shows last frame's stale pixels instead of blank space, which
+    // reads as a stray white streak during the Guardian's dash/slam (and
+    // any other attack that calls shakeScreen).
+    ctx.clearRect(0, 0, VIEW_W, VIEW_H);
     if (shake.t > 0) {
       const m = shake.mag * (shake.t / 0.25);
       ctx.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m);
