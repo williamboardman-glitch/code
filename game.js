@@ -3944,11 +3944,17 @@
     if (gunEquippedForSprite || (swordEquippedForSprite && !midSwingForSprite)) {
       const weaponSprite = PLAYER_WEAPON_SPRITES[player.equippedWeapon];
       if (weaponSprite) { activeSprite = weaponSprite; weaponBakedIn = true; }
-    } else if (!swordEquippedForSprite && !gunEquippedForSprite && !midSwingForSprite) {
+    } else if (!swordEquippedForSprite && !gunEquippedForSprite) {
+      // The Demon Knife's dash fires every frame while held (no cooldown —
+      // see knifeAttack()), so knifeSwing is effectively never 0 throughout
+      // a sustained attack. Falling back to the base body for "mid-swing"
+      // like every other bare-handed swing would mean the Demon Knife's own
+      // sprite never actually shows while fighting with it — so it bypasses
+      // that fallback and stays baked in regardless of swing state.
       if (player.demonKnife) {
         activeSprite = PLAYER_WEAPON_SPRITES.demonKnife;
         weaponBakedIn = true;
-      } else if (player.shadowHelm) {
+      } else if (!midSwingForSprite && player.shadowHelm) {
         const frames = moving ? PLAYER_HELM_WALK_FRAMES : PLAYER_HELM_IDLE_FRAMES;
         const fps = moving ? PLAYER_HELM_WALK_FPS : PLAYER_HELM_IDLE_FPS;
         const frame = frames[Math.floor(elapsed * fps) % frames.length];
