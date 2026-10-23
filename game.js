@@ -730,7 +730,7 @@
       // deaths wipe) so the Guardian's reward can survive a death that
       // doesn't put the boss back in play to be re-earned.
       homingNext: false, shadowHelm: false, helmDmgBonus: 1, knockX: 0, knockTimer: 0,
-      usedSpecialThisFloor: false, knifeSwing: 0, bigSlash: false, demonKnife: false, godDmgBonus: 1,
+      usedSpecialThisFloor: false, knifeSwing: 0, bigSlash: false, demonKnife: false, godDmgBonus: 1, demonDashCooldown: 0,
       slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
       parryStamina: PARRY_STAMINA_MAX, guarding: false, guardRegenWait: 0, autoParryTimer: 0,
       shieldHp: 0, shieldTimer: 0, // Lightning Kitsune's Static Shield
@@ -1587,15 +1587,51 @@
     }
   }
 
+  // The Demon Knife's dash-strike — a short burning lunge bound to its own
+  // key (X) rather than the normal attack, with its own 1s cooldown so it
+  // reads as a deliberate special move instead of just a faster swing.
+  // Silently no-ops on cooldown (same as useAbility's C/Z/V abilities)
+  // rather than popping a message every time it's mashed early.
+  function useDemonDash() {
+    if (!player.demonKnife || player.demonDashCooldown > 0) return;
+    player.demonDashCooldown = 1;
+    player.knifeSwing = 0.15;
+    player.bigSlash = false;
+    const dir = player.facing;
+    const ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
+    const dmg = playerBaseDmg(player, meleeDmgMult(player));
+    const startX = player.x;
+    const dashDist = 16, stepSize = 4;
+    let remaining = dashDist;
+    while (remaining > 0) {
+      const step = Math.min(stepSize, remaining);
+      const testX = player.x + dir * step;
+      if (isSolidPixel(testX, player.y)) break;
+      player.x = testX;
+      remaining -= step;
+    }
+    sfx.demonSlash();
+    spawnHitParticles(player.x, ky, '#ff8a3d');
+    const loX = Math.min(startX, player.x) - 12, hiX = Math.max(startX, player.x) + 12;
+    for (const e of enemies) {
+      if (e.dead) continue;
+      if (e.x > loX && e.x < hiX && Math.abs(e.y - ky) < e.cfg.h / 2 + 14) {
+        applyDamage(e, dmg);
+        if (!e.dead) { e.burnTimer = 3; e.burnTick = 0.5; }
+      }
+    }
+  }
+
   // Colors for the melee hit-particles when a soul is infused into the
   // blade — pyromancer has no entry since it bypasses this and explodes.
   const SOUL_SWING_COLOR = { berserker: '#ffe98a', frost: '#9fe8f5', lightning: '#d8c7ff', acid: '#8bc34a', shadow: '#8a6fd1' };
 
   // Backup melee weapon once you're out of bullets — a short-range swipe
   // that can hit whatever's directly in front of (or above/below) you.
-  // Beating the Arch Demon upgrades it into the Demon Knife: instead of a
-  // stationary swipe, it's a short forward dash-strike that burns (DoT)
-  // everything it cuts through along the way.
+  // Beating the Arch Demon upgrades it into the Demon Knife, but that only
+  // changes its look (see drawPlayer) and unlocks the separate X-bound
+  // dash-strike special below (useDemonDash) — the normal attack key
+  // always does this same plain swipe, demon knife or not.
   //
   // A soul loaded as ammo (keys 1-7) infuses the blade with that soul's
   // on-hit trait instead of firing it as a bullet — same TRAIT_DMG damage
@@ -1608,40 +1644,6 @@
     player.knifeSwing = 0.15;
     const dir = player.facing;
     const ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
-
-    if (player.demonKnife) {
-      // The Demon Knife keeps its own always-burning dash identity rather
-      // than layering a soul on top — a selected soul is simply not spent
-      // or applied here (no bullet path reaches this either, so nothing
-      // is silently lost: the soul just sits in reserve until switched off).
-      // A heavier cooldown than the base attack's — this is a deliberate
-      // dash-strike you line up and commit to, not something to hold the
-      // attack button through for continuous free hits.
-      player.fireCooldown = 1;
-      player.bigSlash = false;
-      const dmg = playerBaseDmg(player, meleeDmgMult(player));
-      const startX = player.x;
-      const dashDist = 16, stepSize = 4;
-      let remaining = dashDist;
-      while (remaining > 0) {
-        const step = Math.min(stepSize, remaining);
-        const testX = player.x + dir * step;
-        if (isSolidPixel(testX, player.y)) break;
-        player.x = testX;
-        remaining -= step;
-      }
-      sfx.demonSlash();
-      spawnHitParticles(player.x, ky, '#ff8a3d');
-      const loX = Math.min(startX, player.x) - 12, hiX = Math.max(startX, player.x) + 12;
-      for (const e of enemies) {
-        if (e.dead) continue;
-        if (e.x > loX && e.x < hiX && Math.abs(e.y - ky) < e.cfg.h / 2 + 14) {
-          applyDamage(e, dmg);
-          if (!e.dead) { e.burnTimer = 3; e.burnTick = 0.5; }
-        }
-      }
-      return;
-    }
 
     let soul = null, combo = null;
     if (TRAIT_DMG[player.ammo] !== undefined) {
@@ -1895,7 +1897,10 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) claimFocus(); });
   claimFocus();
 
-  const FIRE_KEYS = ['KeyX', 'KeyJ', 'ControlLeft', 'Space'];
+  // KeyX used to double as a fire key (continuous hold-to-attack, same as
+  // Space) but is now the dedicated Demon Knife dash button instead — see
+  // useDemonDash() and its own keydown binding below.
+  const FIRE_KEYS = ['KeyJ', 'ControlLeft', 'Space'];
   const GAME_KEYS = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS',
     'Space', 'KeyX', 'KeyJ', 'ControlLeft', 'KeyR', 'KeyQ', 'KeyE', 'KeyB', 'KeyC', 'KeyZ', 'KeyV', 'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9',
@@ -1939,6 +1944,7 @@
     if (ev.code === 'KeyW' || ev.code === 'ArrowUp') player.jumpBuffer = 0.12;
     if (ev.code === 'ArrowDown' || ev.code === 'KeyS') trySlide();
     if (ev.code === 'KeyR') useSpecialAttack();
+    if (ev.code === 'KeyX') useDemonDash();
     if (ev.code === 'KeyC') useAbility(0);
     if (ev.code === 'KeyZ') useAbility(1);
     if (ev.code === 'KeyV') useAbility(2);
@@ -2348,6 +2354,7 @@
     player.invuln = Math.max(0, player.invuln - dt);
     player.hurtFlash = Math.max(0, player.hurtFlash - dt);
     player.knifeSwing = Math.max(0, player.knifeSwing - dt);
+    player.demonDashCooldown = Math.max(0, player.demonDashCooldown - dt);
     player.coyote = Math.max(0, player.coyote - dt);
     player.jumpBuffer = Math.max(0, player.jumpBuffer - dt);
     player.shockedTimer = Math.max(0, player.shockedTimer - dt);

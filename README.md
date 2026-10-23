@@ -153,9 +153,13 @@ key always swings the blade, souls and all (see below); a pets-only build
 has no weapon of its own either, and falls straight to the knife.
 
 Beat the Arch Demon and that knife is upgraded permanently into the
-**Demon Knife**: instead of a stationary swipe it becomes a short forward
-dash-strike, cutting through everything in its path and setting each hit
-on fire (a damage-over-time burn), rather than just plain melee damage.
+**Demon Knife** — cosmetic on the normal attack (same plain swipe as
+before, soul infusion and all), but it also unlocks a separate special:
+press **X** for a short forward dash-strike, cutting through everything
+in its path and setting each hit on fire (a damage-over-time burn). It
+has its own 1-second cooldown, independent of the normal attack, so it's
+a deliberate extra move to line up rather than something to just hold
+through.
 
 The knife isn't just a last resort, either — key **8** switches to it
 manually anytime, bullets or not.
@@ -178,8 +182,10 @@ bite channels a loaded soul the same way too (see [Pets](#pets)).
 | Acid Spitter | Burns the hit enemy with acid and leaves a damaging puddle |
 | Shadow | The katana itself swells to roughly twice size for that one swing — a much wider reach instead of a pull |
 
-The Demon Knife keeps its own always-burning dash and doesn't take a
-soul — it's already fire-infused by default.
+The Demon Knife's dash special (key **X**) doesn't take a soul — it's
+already fire-infused by default — but its normal attack (the same key as
+everyone else's knife swing) still infuses a loaded soul exactly like
+any other melee swing.
 
 ## Traps
 
@@ -294,7 +300,8 @@ shared or synced anywhere.
 - **← → / A D** — move
 - **↑ / W** — jump (hold for a higher, longer jump — needed to clear the wider pits)
 - **↓ / S** — slide (grounded only): a quick burst of speed in the direction you're facing, with brief invulnerability — good for closing distance or diving through incoming fire. Short cooldown between slides, and walking off a ledge mid-slide cancels it.
-- **Space / X / J** — shoot in the direction you're facing (hold ↑ or ↓ to aim vertically)
+- **Space / J** — shoot in the direction you're facing (hold ↑ or ↓ to aim vertically)
+- **X** — Demon Knife dash-strike (once you have it; see [Soul-infused slashes](#soul-infused-slashes)). 1s cooldown, separate from the normal attack above.
 - **1-7** — switch ammo
 - **8** — switch to the knife manually (works anytime, not just when out of bullets)
 - **9** — place a trap (requires a trap charge, and being on the ground)
@@ -332,7 +339,7 @@ shared or synced anywhere.
 | Imp | Small, fast, swarming melee — low health, decent bite | none | — |
 | Cactus | Rooted in place, throws spike volleys | Trap charge | Place a trap with key 9 (see [Traps](#traps)) |
 | The Guardian | Floor 2's boss (see below) | — | Drops the Shadow Helm on death (+10% damage) instead of a soul |
-| The Arch Demon | Floor 5's boss, alone on its whole floor (see below) | — | Drops the Demon Knife on death — upgrades your bullets-out knife into a burning dash strike |
+| The Arch Demon | Floor 5's boss, alone on its whole floor (see below) | — | Drops the Demon Knife on death — unlocks a burning dash strike on key X |
 | The Demon God | Floor 8's boss, the true final fight (see below) | — | Grants a permanent +20% damage bonus on death |
 
 Souls are consumed one per special shot; specials require harvesting the
@@ -407,9 +414,10 @@ Like the Guardian's arena, the pattern block spawns it in and seals the
 way back in the same step, until it's dead.
 
 Beating it grants the **Demon Knife**, a permanent upgrade to your
-bullets-out fallback weapon: instead of a stationary swipe it dashes you
+bullets-out fallback weapon — its own key-**X** special dashes you
 forward through anything in front of you, and every enemy it cuts is left
-burning.
+burning. (See [Soul-infused slashes](#soul-infused-slashes) for how that's
+separate from the normal attack key.)
 
 ## The Cursed Desert
 
