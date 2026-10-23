@@ -1614,6 +1614,12 @@
       // than layering a soul on top — a selected soul is simply not spent
       // or applied here (no bullet path reaches this either, so nothing
       // is silently lost: the soul just sits in reserve until switched off).
+      // Its dash-strike also ignores the base attack cooldown set above —
+      // earning it from the Arch Demon is meant to feel like a genuine
+      // upgrade over the plain knife swipe, not just a reskin of it, so
+      // it's free to fire every single frame fireHeld stays true instead
+      // of being throttled to BASE_COOLDOWN like every other melee/gun hit.
+      player.fireCooldown = 0;
       player.bigSlash = false;
       const dmg = playerBaseDmg(player, meleeDmgMult(player));
       const startX = player.x;
