@@ -338,6 +338,19 @@
     img.src = `sprites/${key}.png`;
     PLAYER_WEAPON_SPRITES[key] = img;
   }
+  // Real frame-by-frame art for the Demon Knife, same treatment as the
+  // Shadow Helm above: an idle/walk pair (a slow ember-flicker and a
+  // stride, in place of the single static demonKnife.png pose) plus a
+  // dedicated 4-frame action set — ready crouch, dash streak, the big
+  // swirling slash, recovery sparks — played out over useDemonDash()'s
+  // own player.demonDashSwingT window (see drawPlayer), replacing the
+  // old procedural orange arc for that one special specifically. The
+  // plain knife swing (Space, knifeSwing) is untouched by any of this.
+  const PLAYER_DEMONKNIFE_IDLE_FRAMES = ['dkIdle0', 'dkIdle1'].map(n => { const img = new Image(); img.src = `sprites/anim/${n}.png`; return img; });
+  const PLAYER_DEMONKNIFE_WALK_FRAMES = ['dkWalk0', 'dkWalk1'].map(n => { const img = new Image(); img.src = `sprites/anim/${n}.png`; return img; });
+  const PLAYER_DEMONKNIFE_IDLE_FPS = 3, PLAYER_DEMONKNIFE_WALK_FPS = 8;
+  const PLAYER_DEMONKNIFE_DASH_FRAMES = ['dkReady', 'dkStreak', 'dkSwirl', 'dkRecover'].map(n => { const img = new Image(); img.src = `sprites/anim/${n}.png`; return img; });
+  const DEMONKNIFE_DASH_ANIM_TIME = 0.32;
   // Illustrated bullet/projectile sprites, one per drawBullet() 'kind' (see
   // BULLET_SPRITE_KEY_FOR below for the handful of kinds that intentionally
   // share one image — 'fire' with 'pyro', 'shadow'/'void' with 'dark').
@@ -730,7 +743,7 @@
       // deaths wipe) so the Guardian's reward can survive a death that
       // doesn't put the boss back in play to be re-earned.
       homingNext: false, shadowHelm: false, helmDmgBonus: 1, knockX: 0, knockTimer: 0,
-      usedSpecialThisFloor: false, knifeSwing: 0, bigSlash: false, demonKnife: false, godDmgBonus: 1, demonDashCooldown: 0,
+      usedSpecialThisFloor: false, knifeSwing: 0, bigSlash: false, demonKnife: false, godDmgBonus: 1, demonDashCooldown: 0, demonDashSwingT: 0,
       slideTimer: 0, slideCooldown: 0, slideDir: 1, slideDustTimer: 0,
       parryStamina: PARRY_STAMINA_MAX, guarding: false, guardRegenWait: 0, autoParryTimer: 0,
       shieldHp: 0, shieldTimer: 0, // Lightning Kitsune's Static Shield
@@ -1595,7 +1608,7 @@
   function useDemonDash() {
     if (!player.demonKnife || player.demonDashCooldown > 0) return;
     player.demonDashCooldown = 1;
-    player.knifeSwing = 0.15;
+    player.demonDashSwingT = DEMONKNIFE_DASH_ANIM_TIME;
     player.bigSlash = false;
     const dir = player.facing;
     const ky = player.y - 2 + (player.aim === -1 ? -10 : player.aim === 1 ? 10 : 0);
@@ -2355,6 +2368,7 @@
     player.hurtFlash = Math.max(0, player.hurtFlash - dt);
     player.knifeSwing = Math.max(0, player.knifeSwing - dt);
     player.demonDashCooldown = Math.max(0, player.demonDashCooldown - dt);
+    player.demonDashSwingT = Math.max(0, player.demonDashSwingT - dt);
     player.coyote = Math.max(0, player.coyote - dt);
     player.jumpBuffer = Math.max(0, player.jumpBuffer - dt);
     player.shockedTimer = Math.max(0, player.shockedTimer - dt);
@@ -3943,15 +3957,31 @@
     const swordEquippedForSprite = hasSword(player);
     const gunEquippedForSprite = hasGun(player);
     const midSwingForSprite = player.knifeSwing > 0;
+    // useDemonDash() drives its own timer rather than knifeSwing, so this
+    // takes priority over everything else below (sword/gun included — the
+    // dash is a knife move regardless of what's equipped) for the handful
+    // of frames its own illustrated sequence plays out.
+    const demonDashActive = player.demonDashSwingT > 0 && player.demonKnife;
     let activeSprite = PLAYER_SPRITE;
     let weaponBakedIn = false;
     let helmBakedIn = false;
-    if (gunEquippedForSprite || (swordEquippedForSprite && !midSwingForSprite)) {
+    if (demonDashActive) {
+      const frames = PLAYER_DEMONKNIFE_DASH_FRAMES;
+      const prog = 1 - player.demonDashSwingT / DEMONKNIFE_DASH_ANIM_TIME;
+      const frame = frames[Math.min(frames.length - 1, Math.floor(prog * frames.length))];
+      if (frame && frame.complete && frame.naturalWidth > 0) { activeSprite = frame; weaponBakedIn = true; }
+    } else if (gunEquippedForSprite || (swordEquippedForSprite && !midSwingForSprite)) {
       const weaponSprite = PLAYER_WEAPON_SPRITES[player.equippedWeapon];
       if (weaponSprite) { activeSprite = weaponSprite; weaponBakedIn = true; }
     } else if (!swordEquippedForSprite && !gunEquippedForSprite && !midSwingForSprite) {
       if (player.demonKnife) {
-        activeSprite = PLAYER_WEAPON_SPRITES.demonKnife;
+        // Real idle/walk frames in place of the single static demonKnife.png
+        // pose — same treatment as the Shadow Helm below, falling back to
+        // that static pose if a frame hasn't finished loading yet.
+        const frames = moving ? PLAYER_DEMONKNIFE_WALK_FRAMES : PLAYER_DEMONKNIFE_IDLE_FRAMES;
+        const fps = moving ? PLAYER_DEMONKNIFE_WALK_FPS : PLAYER_DEMONKNIFE_IDLE_FPS;
+        const frame = frames[Math.floor(elapsed * fps) % frames.length];
+        activeSprite = (frame && frame.complete && frame.naturalWidth > 0) ? frame : PLAYER_WEAPON_SPRITES.demonKnife;
         weaponBakedIn = true;
       } else if (player.shadowHelm) {
         const frames = moving ? PLAYER_HELM_WALK_FRAMES : PLAYER_HELM_IDLE_FRAMES;

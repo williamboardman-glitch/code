@@ -255,13 +255,20 @@ While wearing the helm, idle and walking are true frame-by-frame
 animation (`sprites/anim/helmIdle0-9.png`, `helmWalk0-9.png`) rather
 than one static pose plus the procedural bob/sway every other state
 still uses — a real breathing sway and running stride instead of a
-vertical wiggle. Every other state (bare-handed, each sword/gun, the
-Demon Knife) is still a single illustrated pose animated the same
-procedural way as before; a matching set of real sword-swing and
-gun-fire frames was extracted alongside the helm animation but isn't
-wired in yet, since doing that well means replacing the sword swing's
-smooth procedural rotation with only two still frames, which needs a
-closer look to avoid trading away motion quality for art quality.
+vertical wiggle. The Demon Knife gets the same treatment, its own
+idle/walk pair (`sprites/anim/dkIdle0-1.png`, `dkWalk0-1.png`) in place
+of the single static `demonKnife.png` pose — plus a dedicated 4-frame
+illustrated sequence (`dkReady`, `dkStreak`, `dkSwirl`, `dkRecover`)
+that plays out over its X-bound dash special specifically, replacing
+the old procedural orange arc for that one move. The plain knife swing
+on the normal attack key is untouched, still the procedural arc. Every
+other state (bare-handed, each sword/gun) is still a single illustrated
+pose animated the same procedural way as before; a matching set of real
+sword-swing and gun-fire frames was extracted alongside the helm
+animation but isn't wired in yet, since doing that well means replacing
+the sword swing's smooth procedural rotation with only two still
+frames, which needs a closer look to avoid trading away motion quality
+for art quality.
 
 Every bullet and projectile (`sprites/bullets/*.png`) is illustrated the
 same way — one image per shot type (normal, each soul's elemental shot,
