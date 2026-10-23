@@ -1621,7 +1621,7 @@
       player.bigSlash = false;
       const dmg = playerBaseDmg(player, meleeDmgMult(player));
       const startX = player.x;
-      const dashDist = 50, stepSize = 8;
+      const dashDist = 16, stepSize = 4;
       let remaining = dashDist;
       while (remaining > 0) {
         const step = Math.min(stepSize, remaining);
