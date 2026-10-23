@@ -2472,7 +2472,7 @@
       }
     }
 
-    if (player.onGround) { player.coyote = 0.09; player.jumpsUsed = 0; }
+    if (player.onGround) { player.coyote = 0.13; player.jumpsUsed = 0; }
     if (player.jumpBuffer > 0 && (player.coyote > 0 || player.jumpsUsed < 2)) {
       const isDoubleJump = player.coyote <= 0;
       player.vy = JUMP_VELOCITY * (isDoubleJump ? 0.85 : 1);
