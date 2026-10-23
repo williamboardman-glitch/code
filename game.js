@@ -1614,12 +1614,10 @@
       // than layering a soul on top — a selected soul is simply not spent
       // or applied here (no bullet path reaches this either, so nothing
       // is silently lost: the soul just sits in reserve until switched off).
-      // Its dash-strike also ignores the base attack cooldown set above —
-      // earning it from the Arch Demon is meant to feel like a genuine
-      // upgrade over the plain knife swipe, not just a reskin of it, so
-      // it's free to fire every single frame fireHeld stays true instead
-      // of being throttled to BASE_COOLDOWN like every other melee/gun hit.
-      player.fireCooldown = 0;
+      // A heavier cooldown than the base attack's — this is a deliberate
+      // dash-strike you line up and commit to, not something to hold the
+      // attack button through for continuous free hits.
+      player.fireCooldown = 1;
       player.bigSlash = false;
       const dmg = playerBaseDmg(player, meleeDmgMult(player));
       const startX = player.x;
@@ -3944,17 +3942,11 @@
     if (gunEquippedForSprite || (swordEquippedForSprite && !midSwingForSprite)) {
       const weaponSprite = PLAYER_WEAPON_SPRITES[player.equippedWeapon];
       if (weaponSprite) { activeSprite = weaponSprite; weaponBakedIn = true; }
-    } else if (!swordEquippedForSprite && !gunEquippedForSprite) {
-      // The Demon Knife's dash fires every frame while held (no cooldown —
-      // see knifeAttack()), so knifeSwing is effectively never 0 throughout
-      // a sustained attack. Falling back to the base body for "mid-swing"
-      // like every other bare-handed swing would mean the Demon Knife's own
-      // sprite never actually shows while fighting with it — so it bypasses
-      // that fallback and stays baked in regardless of swing state.
+    } else if (!swordEquippedForSprite && !gunEquippedForSprite && !midSwingForSprite) {
       if (player.demonKnife) {
         activeSprite = PLAYER_WEAPON_SPRITES.demonKnife;
         weaponBakedIn = true;
-      } else if (!midSwingForSprite && player.shadowHelm) {
+      } else if (player.shadowHelm) {
         const frames = moving ? PLAYER_HELM_WALK_FRAMES : PLAYER_HELM_IDLE_FRAMES;
         const fps = moving ? PLAYER_HELM_WALK_FPS : PLAYER_HELM_IDLE_FPS;
         const frame = frames[Math.floor(elapsed * fps) % frames.length];
